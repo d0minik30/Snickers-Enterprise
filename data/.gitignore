@@ -1,0 +1,11 @@
+# Raw NASA downloads (DEM, shapefiles, zips) stay local
+raw/
+
+# Python virtual environment for data/scripts
+scripts/.venv/
+__pycache__/
+
+# The root .gitignore blocks *.png and *.geojson repo-wide.
+# Our small processed overlays in output/ are meant to be committed, so allow them here.
+!output/*.png
+!output/*.geojson
