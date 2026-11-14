@@ -1,0 +1,722 @@
+[
+  {
+    "imageid": "NRF_0017_0668451937_008EBY_N0030578NCAM00195_05_0LLJ",
+    "sol": 17,
+    "site": 3,
+    "drive": "578",
+    "instrument": "NAVCAM_RIGHT",
+    "date_taken_utc": "2021-03-08T05:07:20.702",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00017/ids/edr/browse/ncam/NRF_0017_0668451937_008EBY_N0030578NCAM00195_05_0LLJ01.png",
+    "waypoint": {
+      "sol": 16,
+      "site": 3,
+      "drive": 578,
+      "lat": 18.4452799,
+      "lon": 77.45149726,
+      "yaw": 71.21268035,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NRF_0017_0668452002_600EBY_N0030578NCAM00183_06_0LLJ",
+    "sol": 17,
+    "site": 3,
+    "drive": "578",
+    "instrument": "NAVCAM_RIGHT",
+    "date_taken_utc": "2021-03-08T05:08:26.341",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00017/ids/edr/browse/ncam/NRF_0017_0668452002_600EBY_N0030578NCAM00183_06_0LLJ01.png",
+    "waypoint": {
+      "sol": 16,
+      "site": 3,
+      "drive": 578,
+      "lat": 18.4452799,
+      "lon": 77.45149726,
+      "yaw": 71.21268035,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0018_0668543320_776EBY_N0030578NCAM00190_04_0LLJ",
+    "sol": 18,
+    "site": 3,
+    "drive": "578",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-09T06:30:25.737",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00018/ids/edr/browse/ncam/NLF_0018_0668543320_776EBY_N0030578NCAM00190_04_0LLJ01.png",
+    "waypoint": {
+      "sol": 16,
+      "site": 3,
+      "drive": 578,
+      "lat": 18.4452799,
+      "lon": 77.45149726,
+      "yaw": 71.21268035,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0018_0668545153_612EBY_N0030578NCAM00190_04_0LLJ",
+    "sol": 18,
+    "site": 3,
+    "drive": "578",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-09T07:00:58.542",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00018/ids/edr/browse/ncam/NLF_0018_0668545153_612EBY_N0030578NCAM00190_04_0LLJ01.png",
+    "waypoint": {
+      "sol": 16,
+      "site": 3,
+      "drive": 578,
+      "lat": 18.4452799,
+      "lon": 77.45149726,
+      "yaw": 71.21268035,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J",
+    "sol": 20,
+    "site": 3,
+    "drive": "770",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-11T09:58:03.968",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00020/ids/edr/browse/ncam/NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J01.png",
+    "waypoint": {
+      "sol": 20,
+      "site": 3,
+      "drive": 770,
+      "lat": 18.44514836,
+      "lon": 77.45185605,
+      "yaw": 127.8354832,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0020_0668728666_168ECM_N0030770NCAM02020_01_295J",
+    "sol": 20,
+    "site": 3,
+    "drive": "770",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-11T09:59:32.449",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00020/ids/edr/browse/ncam/NLF_0020_0668728666_168ECM_N0030770NCAM02020_01_295J01.png",
+    "waypoint": {
+      "sol": 20,
+      "site": 3,
+      "drive": 770,
+      "lat": 18.44514836,
+      "lon": 77.45185605,
+      "yaw": 127.8354832,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0023_0668989261_427ECM_N0030792NCAM00194_01_290J",
+    "sol": 23,
+    "site": 3,
+    "drive": "792",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-14T10:22:49.783",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00023/ids/edr/browse/ncam/NLF_0023_0668989261_427ECM_N0030792NCAM00194_01_290J01.png",
+    "waypoint": {
+      "sol": 23,
+      "site": 3,
+      "drive": 792,
+      "lat": 18.44520229,
+      "lon": 77.45177711,
+      "yaw": -51.91995721,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0023_0668990131_179ECM_N0030792NCAM02023_01_295J",
+    "sol": 23,
+    "site": 3,
+    "drive": "792",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-14T10:37:19.636",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00023/ids/edr/browse/ncam/NLF_0023_0668990131_179ECM_N0030792NCAM02023_01_295J01.png",
+    "waypoint": {
+      "sol": 23,
+      "site": 3,
+      "drive": 792,
+      "lat": 18.44520229,
+      "lon": 77.45177711,
+      "yaw": -51.91995721,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NRF_0029_0669530788_675ECM_N0030828NCAM02029_01_295J",
+    "sol": 29,
+    "site": 3,
+    "drive": "828",
+    "instrument": "NAVCAM_RIGHT",
+    "date_taken_utc": "2021-03-20T16:48:23.861",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00029/ids/edr/browse/ncam/NRF_0029_0669530788_675ECM_N0030828NCAM02029_01_295J01.png",
+    "waypoint": {
+      "sol": 29,
+      "site": 3,
+      "drive": 828,
+      "lat": 18.44516437,
+      "lon": 77.4518217,
+      "yaw": 116.8378381,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NRF_0029_0669530737_914ECM_N0030828NCAM02029_01_295J",
+    "sol": 29,
+    "site": 3,
+    "drive": "828",
+    "instrument": "NAVCAM_RIGHT",
+    "date_taken_utc": "2021-03-20T16:47:31.610",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00029/ids/edr/browse/ncam/NRF_0029_0669530737_914ECM_N0030828NCAM02029_01_295J01.png",
+    "waypoint": {
+      "sol": 29,
+      "site": 3,
+      "drive": 828,
+      "lat": 18.44516437,
+      "lon": 77.4518217,
+      "yaw": 116.8378381,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0031_0669701720_789EBY_N0031044NCAM00600_00_0LLJ",
+    "sol": 31,
+    "site": 3,
+    "drive": "1044",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-22T16:17:15.602",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00031/ids/edr/browse/ncam/NLF_0031_0669701720_789EBY_N0031044NCAM00600_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 31,
+      "site": 3,
+      "drive": 1044,
+      "lat": 18.44518,
+      "lon": 77.45133181,
+      "yaw": -134.5171706,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NRF_0031_0669701926_722EBY_N0031044NCAM00600_00_0LLJ",
+    "sol": 31,
+    "site": 3,
+    "drive": "1044",
+    "instrument": "NAVCAM_RIGHT",
+    "date_taken_utc": "2021-03-22T16:20:42.177",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00031/ids/edr/browse/ncam/NRF_0031_0669701926_722EBY_N0031044NCAM00600_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 31,
+      "site": 3,
+      "drive": 1044,
+      "lat": 18.44518,
+      "lon": 77.45133181,
+      "yaw": -134.5171706,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0032_0669789514_761ECM_N0031266NCAM02032_07_195J",
+    "sol": 32,
+    "site": 3,
+    "drive": "1266",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-23T16:40:30.261",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00032/ids/edr/browse/ncam/NLF_0032_0669789514_761ECM_N0031266NCAM02032_07_195J01.png",
+    "waypoint": {
+      "sol": 32,
+      "site": 3,
+      "drive": 1266,
+      "lat": 18.44470001,
+      "lon": 77.45119664,
+      "yaw": -132.4060083,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0032_0669789369_152ECM_N0031266NCAM02032_01_295J",
+    "sol": 32,
+    "site": 3,
+    "drive": "1266",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-23T16:38:04.584",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00032/ids/edr/browse/ncam/NLF_0032_0669789369_152ECM_N0031266NCAM02032_01_295J01.png",
+    "waypoint": {
+      "sol": 32,
+      "site": 3,
+      "drive": 1266,
+      "lat": 18.44470001,
+      "lon": 77.45119664,
+      "yaw": -132.4060083,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0033_0669877239_418ECM_N0031374NCAM02033_01_295J",
+    "sol": 33,
+    "site": 3,
+    "drive": "1374",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-24T17:02:35.675",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00033/ids/edr/browse/ncam/NLF_0033_0669877239_418ECM_N0031374NCAM02033_01_295J01.png",
+    "waypoint": {
+      "sol": 33,
+      "site": 3,
+      "drive": 1374,
+      "lat": 18.44475218,
+      "lon": 77.45102446,
+      "yaw": -0.2999887133,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0033_0669877142_481ECM_N0031374NCAM02033_01_295J",
+    "sol": 33,
+    "site": 3,
+    "drive": "1374",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-03-24T17:00:59.403",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00033/ids/edr/browse/ncam/NLF_0033_0669877142_481ECM_N0031374NCAM02033_01_295J01.png",
+    "waypoint": {
+      "sol": 33,
+      "site": 3,
+      "drive": 1374,
+      "lat": 18.44475218,
+      "lon": 77.45102446,
+      "yaw": -0.2999887133,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0045_0670932866_237ECM_N0031416NCAM00298_01_295J",
+    "sol": 45,
+    "site": 3,
+    "drive": "1416",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-05T22:16:32.444",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00045/ids/edr/browse/ncam/NLF_0045_0670932866_237ECM_N0031416NCAM00298_01_295J01.png",
+    "waypoint": {
+      "sol": 44,
+      "site": 3,
+      "drive": 1416,
+      "lat": 18.44494297,
+      "lon": 77.45102048,
+      "yaw": 136.9143137,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0045_0670932474_176ECM_N0031416NCAM00298_01_295J",
+    "sol": 45,
+    "site": 3,
+    "drive": "1416",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-05T22:10:00.370",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00045/ids/edr/browse/ncam/NLF_0045_0670932474_176ECM_N0031416NCAM00298_01_295J01.png",
+    "waypoint": {
+      "sol": 44,
+      "site": 3,
+      "drive": 1416,
+      "lat": 18.44494297,
+      "lon": 77.45102048,
+      "yaw": 136.9143137,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0046_0671024021_615ECM_N0031416NCAM00298_01_295J",
+    "sol": 46,
+    "site": 3,
+    "drive": "1416",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-06T23:35:48.718",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00046/ids/edr/browse/ncam/NLF_0046_0671024021_615ECM_N0031416NCAM00298_01_295J01.png",
+    "waypoint": {
+      "sol": 44,
+      "site": 3,
+      "drive": 1416,
+      "lat": 18.44494297,
+      "lon": 77.45102048,
+      "yaw": 136.9143137,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0046_0671024226_132ECM_N0031416NCAM00298_01_295J",
+    "sol": 46,
+    "site": 3,
+    "drive": "1416",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-06T23:39:13.226",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00046/ids/edr/browse/ncam/NLF_0046_0671024226_132ECM_N0031416NCAM00298_01_295J01.png",
+    "waypoint": {
+      "sol": 44,
+      "site": 3,
+      "drive": 1416,
+      "lat": 18.44494297,
+      "lon": 77.45102048,
+      "yaw": 136.9143137,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0047_0671114203_533EBY_N0031416NCAM00603_00_0LLJ",
+    "sol": 47,
+    "site": 3,
+    "drive": "1416",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-08T00:38:51.891",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00047/ids/edr/browse/ncam/NLF_0047_0671114203_533EBY_N0031416NCAM00603_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 44,
+      "site": 3,
+      "drive": 1416,
+      "lat": 18.44494297,
+      "lon": 77.45102048,
+      "yaw": 136.9143137,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0047_0671114224_611EBY_N0031416NCAM00603_00_0LLJ",
+    "sol": 47,
+    "site": 3,
+    "drive": "1416",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-08T00:39:12.750",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00047/ids/edr/browse/ncam/NLF_0047_0671114224_611EBY_N0031416NCAM00603_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 44,
+      "site": 3,
+      "drive": 1416,
+      "lat": 18.44494297,
+      "lon": 77.45102048,
+      "yaw": 136.9143137,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0048_0671204803_602ECM_N0031708NCAM00296_01_295J",
+    "sol": 48,
+    "site": 3,
+    "drive": "1708",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-09T01:48:52.262",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00048/ids/edr/browse/ncam/NLF_0048_0671204803_602ECM_N0031708NCAM00296_01_295J01.png",
+    "waypoint": {
+      "sol": 47,
+      "site": 3,
+      "drive": 1708,
+      "lat": 18.44477901,
+      "lon": 77.45152954,
+      "yaw": 179.8926029,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0048_0671201674_630ECM_N0031708NCAM00296_01_295J",
+    "sol": 48,
+    "site": 3,
+    "drive": "1708",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-09T00:56:43.394",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00048/ids/edr/browse/ncam/NLF_0048_0671201674_630ECM_N0031708NCAM00296_01_295J01.png",
+    "waypoint": {
+      "sol": 47,
+      "site": 3,
+      "drive": 1708,
+      "lat": 18.44477901,
+      "lon": 77.45152954,
+      "yaw": 179.8926029,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0050_0671379226_926EBY_N0031950NCAM00294_00_0LLJ",
+    "sol": 50,
+    "site": 3,
+    "drive": "1950",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-11T02:15:57.092",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00050/ids/edr/browse/ncam/NLF_0050_0671379226_926EBY_N0031950NCAM00294_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 49,
+      "site": 3,
+      "drive": 1950,
+      "lat": 18.44479578,
+      "lon": 77.45201926,
+      "yaw": 179.8492333,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NRF_0050_0671379226_926EBY_N0031950NCAM00294_00_0LLJ",
+    "sol": 50,
+    "site": 3,
+    "drive": "1950",
+    "instrument": "NAVCAM_RIGHT",
+    "date_taken_utc": "2021-04-11T02:15:57.112",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00050/ids/edr/browse/ncam/NRF_0050_0671379226_926EBY_N0031950NCAM00294_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 49,
+      "site": 3,
+      "drive": 1950,
+      "lat": 18.44479578,
+      "lon": 77.45201926,
+      "yaw": 179.8492333,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0055_0671828623_680EBY_N0032046NCAM00295_00_0LLJ",
+    "sol": 55,
+    "site": 3,
+    "drive": "2046",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-16T07:05:57.621",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00055/ids/edr/browse/ncam/NLF_0055_0671828623_680EBY_N0032046NCAM00295_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 52,
+      "site": 3,
+      "drive": 2046,
+      "lat": 18.44475241,
+      "lon": 77.45213981,
+      "yaw": 175.2276716,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0055_0671823755_948EBY_N0032046NCAM00295_00_0LLJ",
+    "sol": 55,
+    "site": 3,
+    "drive": "2046",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-16T05:44:50.050",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00055/ids/edr/browse/ncam/NLF_0055_0671823755_948EBY_N0032046NCAM00295_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 52,
+      "site": 3,
+      "drive": 2046,
+      "lat": 18.44475241,
+      "lon": 77.45213981,
+      "yaw": 175.2276716,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0060_0672265209_237EBY_N0032046NCAM00410_00_0LLJ",
+    "sol": 60,
+    "site": 3,
+    "drive": "2046",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-21T08:22:27.367",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00060/ids/edr/browse/ncam/NLF_0060_0672265209_237EBY_N0032046NCAM00410_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 52,
+      "site": 3,
+      "drive": 2046,
+      "lat": 18.44475241,
+      "lon": 77.45213981,
+      "yaw": 175.2276716,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NRF_0060_0672265209_237EBY_N0032046NCAM00410_00_0LLJ",
+    "sol": 60,
+    "site": 3,
+    "drive": "2046",
+    "instrument": "NAVCAM_RIGHT",
+    "date_taken_utc": "2021-04-21T08:22:27.367",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00060/ids/edr/browse/ncam/NRF_0060_0672265209_237EBY_N0032046NCAM00410_00_0LLJ01.png",
+    "waypoint": {
+      "sol": 52,
+      "site": 3,
+      "drive": 2046,
+      "lat": 18.44475241,
+      "lon": 77.45213981,
+      "yaw": 175.2276716,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLM_0065_0672719652_349ECM_N0032150TRAV12006_01_2LLJ",
+    "sol": 65,
+    "site": 3,
+    "drive": "2150",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-04-26T14:36:35.451",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00065/ids/edr/browse/ncam/NLM_0065_0672719652_349ECM_N0032150TRAV12006_01_2LLJ01.png",
+    "waypoint": {
+      "sol": 65,
+      "site": 3,
+      "drive": 2150,
+      "lat": 18.44466622,
+      "lon": 77.45222556,
+      "yaw": 172.9225262,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NRM_0065_0672719709_543ECM_N0032150TRAV12002_01_2LLJ",
+    "sol": 65,
+    "site": 3,
+    "drive": "2150",
+    "instrument": "NAVCAM_RIGHT",
+    "date_taken_utc": "2021-04-26T14:37:32.758",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00065/ids/edr/browse/ncam/NRM_0065_0672719709_543ECM_N0032150TRAV12002_01_2LLJ01.png",
+    "waypoint": {
+      "sol": 65,
+      "site": 3,
+      "drive": 2150,
+      "lat": 18.44466622,
+      "lon": 77.45222556,
+      "yaw": 172.9225262,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLE_0070_0673172017_401ECM_N0032208NCAM00190_04_0LLJ",
+    "sol": 70,
+    "site": 3,
+    "drive": "2208",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-05-01T20:16:05.129",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00070/ids/edr/browse/ncam/NLE_0070_0673172017_401ECM_N0032208NCAM00190_04_0LLJ01.png",
+    "waypoint": {
+      "sol": 66,
+      "site": 3,
+      "drive": 2208,
+      "lat": 18.44452862,
+      "lon": 77.45229762,
+      "yaw": 162.2585254,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLE_0070_0673174064_027ECM_N0032208NCAM00189_04_0LLJ",
+    "sol": 70,
+    "site": 3,
+    "drive": "2208",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-05-01T20:50:11.558",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00070/ids/edr/browse/ncam/NLE_0070_0673174064_027ECM_N0032208NCAM00189_04_0LLJ01.png",
+    "waypoint": {
+      "sol": 66,
+      "site": 3,
+      "drive": 2208,
+      "lat": 18.44452862,
+      "lon": 77.45229762,
+      "yaw": 162.2585254,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0075_0673599197_036ECM_N0032430NCAM00500_01_295J",
+    "sol": 75,
+    "site": 3,
+    "drive": "2430",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-05-06T18:55:40.717",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00075/ids/edr/browse/ncam/NLF_0075_0673599197_036ECM_N0032430NCAM00500_01_295J01.png",
+    "waypoint": {
+      "sol": 73,
+      "site": 3,
+      "drive": 2430,
+      "lat": 18.44412598,
+      "lon": 77.45258734,
+      "yaw": 156.1862473,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0075_0673599280_164ECM_N0032430NCAM00500_01_295J",
+    "sol": 75,
+    "site": 3,
+    "drive": "2430",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-05-06T18:57:03.839",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00075/ids/edr/browse/ncam/NLF_0075_0673599280_164ECM_N0032430NCAM00500_01_295J01.png",
+    "waypoint": {
+      "sol": 73,
+      "site": 3,
+      "drive": 2430,
+      "lat": 18.44412598,
+      "lon": 77.45258734,
+      "yaw": 156.1862473,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLE_0080_0674048171_974ECM_N0032430NCAM00193_04_0LLJ",
+    "sol": 80,
+    "site": 3,
+    "drive": "2430",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-05-11T23:38:38.692",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00080/ids/edr/browse/ncam/NLE_0080_0674048171_974ECM_N0032430NCAM00193_04_0LLJ01.png",
+    "waypoint": {
+      "sol": 73,
+      "site": 3,
+      "drive": 2430,
+      "lat": 18.44412598,
+      "lon": 77.45258734,
+      "yaw": 156.1862473,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0080_0674047950_137EBY_N0032430NCAM00192_04_0LLJ",
+    "sol": 80,
+    "site": 3,
+    "drive": "2430",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-05-11T23:34:56.858",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00080/ids/edr/browse/ncam/NLF_0080_0674047950_137EBY_N0032430NCAM00192_04_0LLJ01.png",
+    "waypoint": {
+      "sol": 73,
+      "site": 3,
+      "drive": 2430,
+      "lat": 18.44412598,
+      "lon": 77.45258734,
+      "yaw": 156.1862473,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0085_0674497718_262ECM_N0040000NCAM00501_01_295J",
+    "sol": 85,
+    "site": 4,
+    "drive": "0",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-05-17T04:31:09.578",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00085/ids/edr/browse/ncam/NLF_0085_0674497718_262ECM_N0040000NCAM00501_01_295J01.png",
+    "waypoint": {
+      "sol": 84,
+      "site": 4,
+      "drive": 0,
+      "lat": 18.44421928,
+      "lon": 77.45227652,
+      "yaw": -58.38374285,
+      "final": "y"
+    }
+  },
+  {
+    "imageid": "NLF_0085_0674497957_615ECM_N0040000NCAM00501_01_295J",
+    "sol": 85,
+    "site": 4,
+    "drive": "0",
+    "instrument": "NAVCAM_LEFT",
+    "date_taken_utc": "2021-05-17T04:35:07.689",
+    "url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00085/ids/edr/browse/ncam/NLF_0085_0674497957_615ECM_N0040000NCAM00501_01_295J01.png",
+    "waypoint": {
+      "sol": 84,
+      "site": 4,
+      "drive": 0,
+      "lat": 18.44421928,
+      "lon": 77.45227652,
+      "yaw": -58.38374285,
+      "final": "y"
+    }
+  }
+]
