@@ -287,6 +287,11 @@
   opacity: 0.75;
 }
 
+.clearSwatch {
+  outline: 1px solid var(--muted);
+  outline-offset: -1px;
+}
+
 .sandSwatch {
   border: 1.5px solid var(--text);
   background: color-mix(in srgb, var(--text) 12%, transparent);

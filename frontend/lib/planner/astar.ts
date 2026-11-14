@@ -1,10 +1,13 @@
 import type { Hazard, LatLon } from '@/lib/planner/types';
-import { AREA_HEIGHT_M, AREA_WIDTH_M, elevationAt, fromLocalM, toLocalM } from '@/lib/planner/terrain';
+import { AREA_HEIGHT_M, AREA_WIDTH_M, fromLocalM, isSandAt, slopeAt, toLocalM } from '@/lib/planner/terrain';
 
 const CELL_M = 20;
 const COLS = Math.ceil(AREA_WIDTH_M / CELL_M) + 1;
 const ROWS = Math.ceil(AREA_HEIGHT_M / CELL_M) + 1;
 const HAZARD_FACTOR = 50;
+// Real terrain has short steep spots that a linear slope cost happily crosses; above this angle each extra degree
+// costs quadratically more, so slope-aware routes avoid the steepest cells, not just the most climbing.
+const STEEP_FROM_DEG = 12;
 // Grid paths have many equally cheap staircases; this nudges the search towards the straight line between the
 // end points so that a route with no slope weight really hugs it (only the slope-blind profile uses it). Metres of cost per metre off the line, per step.
 const OFF_LINE_COST = 0.002;
@@ -13,20 +16,29 @@ const NEIGHBOURS = [
   [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
 ] as const;
 
-let elevationGrid: Float64Array | undefined;
+/** Real slope and sand under each search node, sampled once from the Jezero grid. */
+let terrainGrid: { slope: Float32Array; sand: Uint8Array } | undefined;
 
-function elevations(): Float64Array {
-  if (!elevationGrid) {
-    elevationGrid = new Float64Array(COLS * ROWS);
+function terrain() {
+  if (!terrainGrid) {
+    const slope = new Float32Array(COLS * ROWS);
+    const sand = new Uint8Array(COLS * ROWS);
     for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) elevationGrid[r * COLS + c] = elevationAt(fromLocalM({ x: c * CELL_M, y: r * CELL_M }));
+      for (let c = 0; c < COLS; c++) {
+        const p = fromLocalM({ x: c * CELL_M, y: r * CELL_M });
+        slope[r * COLS + c] = slopeAt(p);
+        sand[r * COLS + c] = isSandAt(p) ? 1 : 0;
+      }
     }
+    terrainGrid = { slope, sand };
   }
-  return elevationGrid;
+  return terrainGrid;
 }
 
 export type Weighting = {
   slopeWeight: number;
+  /** Cost multiplier for stepping onto sand (1 = sand is ignored). */
+  sandFactor: number;
   /** Hazards this search treats as expensive, with their radius already widened by the margin. */
   avoided: Hazard[];
   marginM: number;
@@ -92,7 +104,7 @@ class Heap {
 
 /** Cheapest 8-neighbour path between the cells nearest the two points, as cell-centre positions. */
 export function findPath(start: LatLon, end: LatLon, w: Weighting): LatLon[] {
-  const elev = elevations();
+  const { slope, sand } = terrain();
   const factor = hazardFactors(w.avoided, w.marginM);
   const from = cellOf(start);
   const goal = cellOf(end);
@@ -124,9 +136,12 @@ export function findPath(start: LatLon, end: LatLon, w: Weighting): LatLon[] {
       const next = ny * COLS + nx;
       if (closed[next]) continue;
       const stepM = CELL_M * Math.hypot(dx, dy);
-      const slopeDeg = (Math.atan(Math.abs(elev[next] - elev[cur]) / stepM) * 180) / Math.PI;
+      const slopeDeg = slope[next];
+      const steep = Math.max(0, slopeDeg - STEEP_FROM_DEG);
+      const onSand = sand[next] === 1 ? w.sandFactor : 1;
+      const terrainCost = 1 + (w.slopeWeight * (slopeDeg + (steep * steep) / 2)) / 10;
       const total =
-        cost[cur] + stepM * (1 + (w.slopeWeight * slopeDeg) / 10) * factor[next] + (w.slopeWeight === 0 ? OFF_LINE_COST * offLineM(nx, ny) : 0);
+        cost[cur] + stepM * terrainCost * factor[next] * onSand + (w.slopeWeight === 0 ? OFF_LINE_COST * offLineM(nx, ny) : 0);
       if (total < cost[next]) {
         cost[next] = total;
         cameFrom[next] = cur;

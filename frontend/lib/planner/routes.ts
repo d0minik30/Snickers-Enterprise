@@ -1,7 +1,7 @@
 import type { Hazard, LatLon, Risk, Route, RouteProfile, Waypoint } from '@/lib/planner/types';
 import { cumulativeM, distanceM, pointAlong, slicePath } from '@/lib/nav/geo';
 import { findPath, type Weighting } from '@/lib/planner/astar';
-import { elevationAt, fromLocalM, toLocalM, type LocalM } from '@/lib/planner/terrain';
+import { elevationAt, fromLocalM, isSandAt, slopeAt, toLocalM, type LocalM } from '@/lib/planner/terrain';
 
 export const DEFAULT_START: LatLon = { lat: 18.4446, lon: 77.4509 }; // Perseverance landing site
 export const DEFAULT_END: LatLon = { lat: 18.4890, lon: 77.4080 }; // about 3.56 km away in a straight line
@@ -22,12 +22,14 @@ const SLOPE_SAMPLE_M = 20;
 const POINT_SPACING_M = 20;
 const WAYPOINT_NAMES = ['Landing flats', 'South ridge', 'Boulder gap', 'Delta scarp', 'Sand ripples', 'North terrace'];
 
-type Profile = { slopeWeight: number; avoidsSurvey: boolean; marginM: number };
+// sandFactor: how much more a metre of mapped sand costs than firm ground (soft footing, wheel slip).
+type Profile = { slopeWeight: number; sandFactor: number; avoidsSurvey: boolean; marginM: number };
 const PROFILES: Record<RouteProfile, Profile> = {
-  safest: { slopeWeight: 1.5, avoidsSurvey: true, marginM: 30 },
-  shortest: { slopeWeight: 0, avoidsSurvey: false, marginM: 10 },
-  flattest: { slopeWeight: 6, avoidsSurvey: true, marginM: 10 },
+  safest: { slopeWeight: 0.6, sandFactor: 4, avoidsSurvey: true, marginM: 30 },
+  shortest: { slopeWeight: 0, sandFactor: 1, avoidsSurvey: false, marginM: 10 },
+  flattest: { slopeWeight: 6, sandFactor: 1.5, avoidsSurvey: true, marginM: 10 },
 };
+const STEEP_DEG = 12; // above this a route is at least medium risk
 const PROFILE_ORDER: RouteProfile[] = ['safest', 'shortest', 'flattest'];
 
 export function isInsideHazard(p: LatLon, h: Hazard): boolean {
@@ -112,23 +114,21 @@ function shapePath(gridPath: LatLon[], start: LatLon, end: LatLon, avoided: Haza
   return densify([start, ...local.slice(1, -1).map(fromLocalM), end]);
 }
 
-/** Steepest slope between samples at most SLOPE_SAMPLE_M apart along the path. */
-function maxSlopeDeg(points: LatLon[]): number {
-  let steepest = 0;
+/** Samples along the path at most SLOPE_SAMPLE_M apart, including both ends of every segment. */
+function samples(points: LatLon[]): LatLon[] {
+  const out: LatLon[] = [points[0]];
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1];
     const b = points[i];
-    const segM = distanceM(a, b);
-    const steps = Math.max(1, Math.ceil(segM / SLOPE_SAMPLE_M));
-    let prev = elevationAt(a);
-    for (let s = 1; s <= steps; s++) {
-      const t = s / steps;
-      const next = elevationAt({ lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t });
-      steepest = Math.max(steepest, Math.atan(Math.abs(next - prev) / (segM / steps)));
-      prev = next;
-    }
+    const steps = Math.max(1, Math.ceil(distanceM(a, b) / SLOPE_SAMPLE_M));
+    for (let s = 1; s <= steps; s++) out.push({ lat: a.lat + ((b.lat - a.lat) * s) / steps, lon: a.lon + ((b.lon - a.lon) * s) / steps });
   }
-  return (steepest * 180) / Math.PI;
+  return out;
+}
+
+/** Steepest real slope under the path (each 40 m cell holds the steepest of its 20 m DEM pixels). */
+function maxSlopeDeg(points: LatLon[]): number {
+  return Math.max(...samples(points).map(slopeAt));
 }
 
 function makeWaypoints(points: LatLon[], lengthM: number): Waypoint[] {
@@ -154,6 +154,7 @@ function buildRoute(profile: RouteProfile, start: LatLon, end: LatLon, hazards: 
   const p = PROFILES[profile];
   const weighting: Weighting = {
     slopeWeight: p.slopeWeight,
+    sandFactor: p.sandFactor,
     avoided: hazards.filter(h => p.avoidsSurvey || h.source === 'control'),
     marginM: p.marginM,
   };
@@ -161,7 +162,8 @@ function buildRoute(profile: RouteProfile, start: LatLon, end: LatLon, hazards: 
   const lengthM = cumulativeM(points).at(-1) ?? 0;
   const slope = maxSlopeDeg(points);
   const inHazard = points.some(pt => hazards.some(h => isInsideHazard(pt, h)));
-  const risk: Risk = inHazard ? 'high' : slope > 12 ? 'medium' : 'low';
+  const onSand = samples(points).some(isSandAt);
+  const risk: Risk = inHazard ? 'high' : slope > STEEP_DEG || onSand ? 'medium' : 'low';
   return {
     id: routeId(profile, start, end, hazards),
     profile,

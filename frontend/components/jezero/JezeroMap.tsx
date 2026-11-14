@@ -11,6 +11,7 @@ import {
   SLOPE_ATTRIBUTION,
   loadMapLayers,
   loadSand,
+  steepOnly,
   loadSlopeBounds,
 } from './mapData';
 import css from './jezero.module.css';
@@ -113,10 +114,10 @@ export default function JezeroMap({ overlays, onStatus }: Props) {
       map.on('mouseout', () => statusRef.current?.({ zoom: map!.getZoom(), cursor: null }));
       statusRef.current?.({ zoom: map.getZoom(), cursor: null });
 
-      const [slopeBounds, sand] = await Promise.all([loadSlopeBounds(), loadSand()]);
+      const [slopeBounds, sand, slopeImage] = await Promise.all([loadSlopeBounds(), loadSand(), steepOnly(DATA_URL.slopePng)]);
       if (cancelled) return;
 
-      slopeRef.current = L.imageOverlay(DATA_URL.slopePng, slopeBounds, {
+      slopeRef.current = L.imageOverlay(slopeImage, slopeBounds, {
         attribution: SLOPE_ATTRIBUTION,
         className: css.slope,
         pane: 'slope',

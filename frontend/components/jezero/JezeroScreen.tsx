@@ -51,7 +51,7 @@ export default function JezeroScreen() {
             <ul className={css.legend} aria-label="Slope legend">
               {SLOPE_CLASSES.map(c => (
                 <li key={c.label}>
-                  <span className={css.swatch} style={{ background: c.color }} aria-hidden />
+                  <span className={`${css.swatch} ${c.color === 'transparent' ? css.clearSwatch : ''}`} style={{ background: c.color }} aria-hidden />
                   {c.label}
                 </li>
               ))}
