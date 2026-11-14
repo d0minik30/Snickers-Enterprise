@@ -1,0 +1,24 @@
+{
+  "center": [18.4447, 77.4508],
+  "zoom": 12,
+  "layers": [
+    {
+      "name": "Mars global base",
+      "url": "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg",
+      "maxNativeZoom": 7
+    },
+    {
+      "name": "CTX Jezero mosaic",
+      "url": "https://trek.nasa.gov/tiles/Mars/EQ/JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+      "maxNativeZoom": 13,
+      "bounds": [[18.2110274, 77.1604655], [18.7211945, 77.6991776]]
+    },
+    {
+      "name": "HiRISE Jezero mosaic",
+      "url": "https://trek.nasa.gov/tiles/Mars/EQ/JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd/1.0.0//default/default028mm/{z}/{y}/{x}.png",
+      "maxNativeZoom": 17,
+      "bounds": [[18.3067994, 77.2229331], [18.669315, 77.583964]]
+    }
+  ],
+  "attribution": "NASA/JPL-Caltech Mars Trek; Viking MDIM 2.1; MRO CTX and HiRISE"
+}
