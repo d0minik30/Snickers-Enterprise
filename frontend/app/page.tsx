@@ -21,6 +21,10 @@ export default function Home() {
           <span className={styles.cellLabel}>CONTROL</span>
           <span className={styles.cellHint}>Open in a wide window</span>
         </Link>
+        <Link href="/map/" className={styles.cell}>
+          <span className={styles.cellLabel}>JEZERO</span>
+          <span className={styles.cellHint}>Explore the map: slope and sand</span>
+        </Link>
       </nav>
 
       <section className={styles.note} aria-labelledby="present">

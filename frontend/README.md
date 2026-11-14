@@ -7,6 +7,8 @@ It has two screens that stay in sync across two browser windows:
   the direction of travel, position error, messages from Control.
 - **Control** (`/control/`) — laptop-sized view for the planners on Earth: plan a route, send it,
   then watch the traverse with data that is always 11:20 old.
+- **Jezero** (`/map/`) — interactive map of Mars that zooms into Jezero Crater and the Perseverance
+  landing site, with toggleable **Slope** and **Sand** overlays from the data team's files in `../data/`.
 
 Everything runs in the browser. There is no server. Map imagery loads live from NASA Mars Trek.
 
@@ -71,7 +73,8 @@ If the venue has no internet, the map shows "MAP IMAGERY UNAVAILABLE" and the ro
 | Signal delay, walking and driving pace, clock speeds | `lib/mission/types.ts` |
 | Control layout and type sizes | `components/control/control.module.css` |
 | Field layout and type sizes | `components/field/field.module.css` |
-| NASA map layers | `lib/mars/tiles.ts` |
+| NASA map layers (Field, Control) | `lib/mars/tiles.ts` |
+| Jezero map (Leaflet), overlays, legend | `components/jezero/` |
 
 ## How to plug in real data
 
@@ -97,4 +100,11 @@ The design and build plan are in `docs/superpowers/`.
 ## Credits
 
 Imagery: NASA / JPL-Caltech / USGS, via [NASA Mars Trek](https://trek.nasa.gov/mars/).
-Map library: [OpenLayers](https://openlayers.org/).
+Sand: Sun & Stack (2020), USGS SIM 3464, https://doi.org/10.3133/sim3464. Slope: MRO CTX Jezero DEM (20 m).
+Map libraries: [OpenLayers](https://openlayers.org/) (Field, Control), [Leaflet](https://leafletjs.com/) (Jezero).
+
+## Map data
+
+`npm run dev` and `npm run build` first run `scripts/copy-data.mjs`, which copies `../data/map_layers.json`
+and `../data/output/{slope.png,slope_bounds.json,sand.geojson}` into `public/data/` (git-ignored, regenerated
+every time). The Jezero map loads them from `/data/...`. Never edit `../data/` from here; it belongs to the data team.

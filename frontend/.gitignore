@@ -4,3 +4,6 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 .smoke/
+
+# Copied from ../data by scripts/copy-data.mjs on predev/prebuild
+/public/data/

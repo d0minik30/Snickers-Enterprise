@@ -1,0 +1,294 @@
+/* Jezero map view, same "Instrument" look as Control: solid surfaces, 1 px rules, square corners,
+   small grey uppercase labels, colour only for meaning. */
+
+.screen {
+  --top-height: 40px;
+  --raised: color-mix(in srgb, var(--text) 6%, var(--surface));
+
+  display: grid;
+  grid-template-rows: var(--top-height) minmax(0, 1fr);
+  height: 100dvh;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------------ top bar */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.home {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.home:hover,
+.home:focus-visible {
+  color: var(--route);
+}
+
+.place,
+.readoutLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+.place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.readout {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  .place,
+  .readout:last-child {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ map */
+
+.mapArea {
+  position: relative;
+  min-height: 0;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  background: var(--surface);
+  font-family: inherit;
+}
+
+/* Same warm, darkened imagery as the Field and Control maps. Overlays sit in their own pane and are not tinted. */
+.map :global(.mars-tiles) {
+  filter: sepia(0.75) saturate(1.5) hue-rotate(-14deg) brightness(0.8) contrast(1.1);
+}
+
+.slope {
+  image-rendering: pixelated;
+}
+
+.loading,
+.unavailable {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 5px 12px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.loading {
+  top: 0;
+  color: var(--muted);
+}
+
+.unavailable {
+  top: 0;
+  z-index: 1000;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  color: var(--caution);
+}
+
+/* Landing-site label */
+.map :global(.leaflet-tooltip).siteLabel {
+  padding: 3px 7px 4px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--text);
+  font-family: var(--font-barlow), 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.map :global(.leaflet-tooltip).siteLabel::before {
+  display: none;
+}
+
+/* ----- Leaflet controls, restyled to match ----- */
+
+.map :global(.leaflet-container) {
+  background: var(--surface);
+  font-family: var(--font-barlow), 'Barlow Condensed', sans-serif;
+}
+
+.map :global(.leaflet-bar) {
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.map :global(.leaflet-bar a) {
+  width: 32px;
+  height: 32px;
+  line-height: 30px;
+  background: var(--surface);
+  color: var(--text);
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0 !important;
+  font-family: inherit;
+}
+
+.map :global(.leaflet-bar a:last-child) {
+  border-bottom: 0;
+}
+
+.map :global(.leaflet-bar a:hover) {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.map :global(.leaflet-bar a.leaflet-disabled) {
+  background: var(--surface);
+  color: var(--rule);
+}
+
+.map :global(.leaflet-control-scale-line) {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid var(--text);
+  border-top: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.map :global(.leaflet-container .leaflet-control-attribution) {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.map :global(.leaflet-container .leaflet-control-attribution a) {
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------------ overlay panel */
+
+.panel {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+}
+
+.panelTitle {
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--rule);
+  cursor: pointer;
+  text-align: left;
+}
+
+.panelTitle + .toggle {
+  border-top: 0;
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+.toggle:focus-visible {
+  outline: 1px solid var(--text);
+  outline-offset: -1px;
+}
+
+.toggle[aria-pressed='true'] {
+  color: var(--text);
+}
+
+.box {
+  width: 12px;
+  height: 12px;
+  border: 1px solid currentColor;
+}
+
+.toggle[aria-pressed='true'] .box {
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.legend {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px 10px 34px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  width: 14px;
+  height: 10px;
+  opacity: 0.75;
+}
+
+.sandSwatch {
+  border: 1.5px solid var(--text);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  opacity: 1;
+}
