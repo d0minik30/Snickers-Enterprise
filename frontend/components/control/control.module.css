@@ -1,0 +1,769 @@
+/* Control view, "Instrument" look: solid surfaces, 1 px rules, square corners, labelled cells,
+   colour only for meaning. Layout numbers and the type scale live here, once. */
+
+.screen {
+  /* ----- grid ----- */
+  --rail-width: 270px;
+  --top-height: 40px;
+  --strip-height: 130px;
+  --min-width: 1120px;
+  --stack-map-height: 60vh; /* below 700 px the rails stack under the map */
+
+  /* ----- spacing ----- */
+  --pad-x: 16px;
+  --pad-y: 14px;
+  --gap: 10px;
+
+  /* ----- type scale (Barlow Condensed) ----- */
+  --type-micro: 11px;          /* labels inside cards and the top bar clocks */
+  --type-label: 12px;          /* small grey uppercase labels and headings */
+  --type-small: 14px;          /* notes, table rows, top bar */
+  --type-body: 16px;           /* running text */
+  --type-title: 16px;          /* card titles, buttons, clock values */
+  --type-value: 18px;          /* readout values */
+  --type-value-compact: 17px;  /* readout values in cards and the start / end cells */
+  --type-big: 28px;            /* the Live placeholder */
+  --track-label: 0.14em;
+  --track-title: 0.1em;
+
+  /* shared Readout sizes (components/shared/shared.module.css) */
+  --readout-label-size: var(--type-label);
+  --readout-value-size: var(--type-value);
+
+  /* ----- derived surfaces (from tokens, no new colours) ----- */
+  --raised: color-mix(in srgb, var(--text) 6%, var(--surface));
+  --rule-strong: color-mix(in srgb, var(--muted) 55%, var(--surface));
+
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--rail-width);
+  grid-template-rows: var(--top-height) minmax(0, 1fr) var(--strip-height);
+  grid-template-areas:
+    'top  top   top'
+    'left map   right'
+    'left strip right';
+  height: 100dvh;
+  min-height: 600px;
+  min-width: var(--min-width);
+  overflow: hidden;
+  font-size: var(--type-small);
+}
+
+/* Shared button reset: square, no chrome, inherits type. */
+:where(.screen) button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+:where(.screen) button:focus-visible {
+  outline: 1px solid var(--text);
+  outline-offset: -1px;
+}
+
+:where(.screen) button:disabled {
+  cursor: not-allowed;
+}
+
+/* Quiet controls brighten on hover; filled (selected) ones keep their colours. */
+.tab:hover,
+.rate:hover,
+.demoButton:hover,
+.armButton:hover,
+.segmented button:hover {
+  color: var(--text);
+}
+
+/* ===================================================================== top bar */
+
+.topBar {
+  --cell-pad: 12px;
+  --track-bar: 0.1em;
+
+  grid-area: top;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--type-small);
+  letter-spacing: var(--track-bar);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.topBar > * {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  flex: 0 0 var(--rail-width);
+  padding: 0 var(--pad-x);
+  border-right: 1px solid var(--rule);
+  font-size: var(--type-title);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.brandView {
+  margin-left: 0.5em;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.tabs {
+  border-right: 1px solid var(--rule);
+}
+
+.tab {
+  height: 100%;
+  padding: 0 18px;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+}
+
+.tab + .tab {
+  border-left: 1px solid var(--rule);
+}
+
+.tab[aria-selected='true'] {
+  background: var(--text);
+  color: var(--surface);
+  font-weight: 700;
+}
+
+.traverse {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 var(--pad-x);
+  font-weight: 600;
+  overflow: hidden;
+}
+
+@media (max-width: 1199px) {
+  .traversePlace {
+    display: none;
+  }
+}
+
+/* Clocks are labelled cells, label stacked over value, to keep the bar narrow. */
+.clock {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  min-width: 84px;
+  padding: 0 var(--cell-pad);
+  border-left: 1px solid var(--rule);
+}
+
+.clockLabel {
+  font-size: var(--type-micro);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.clockValue {
+  font-size: var(--type-title);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.delay,
+.delay .clockLabel {
+  color: var(--caution);
+}
+
+/* ----- demo controls: discreet, set apart at the far right ----- */
+
+.demo {
+  gap: 6px;
+  padding: 0 8px 0 var(--cell-pad);
+  border-left: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: var(--type-label);
+  font-weight: 600;
+}
+
+.rates {
+  display: flex;
+  border: 1px solid var(--rule);
+}
+
+.rate {
+  min-width: 26px;
+  padding: 4px 5px;
+  letter-spacing: 0.02em;
+}
+
+.rate + .rate {
+  border-left: 1px solid var(--rule);
+}
+
+.rate[aria-pressed='true'] {
+  background: var(--rule);
+  color: var(--text);
+}
+
+.demoButton {
+  padding: 4px 7px;
+  border: 1px solid var(--rule);
+  letter-spacing: var(--track-bar);
+}
+
+.demoButton[aria-pressed='true'] {
+  color: var(--caution);
+}
+
+.demoButton[data-confirming='true'] {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ===================================================================== rails (shared) */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.leftRail {
+  grid-area: left;
+  border-right: 1px solid var(--rule);
+}
+
+.rightRail {
+  grid-area: right;
+  border-left: 1px solid var(--rule);
+}
+
+.section {
+  padding: var(--pad-y) var(--pad-x);
+  border-bottom: 1px solid var(--rule);
+}
+
+.heading {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--gap);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.note {
+  margin-top: 8px;
+  font-size: var(--type-small);
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ===================================================================== left rail: Plan */
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--rule-strong);
+}
+
+.segmented button {
+  padding: 8px 0;
+  font-size: var(--type-small);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--text);
+  color: var(--surface);
+  font-weight: 700;
+}
+
+/* ----- start and end ----- */
+
+.ends {
+  display: grid;
+  gap: 14px;
+  --readout-value-size: var(--type-value-compact);
+}
+
+.endCell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.endHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.endValue {
+  letter-spacing: 0.03em;
+}
+
+.endCell[data-armed='true'] .endHead > :first-child {
+  color: var(--text);
+}
+
+.armButton {
+  min-width: 76px;
+  padding: 4px 8px;
+  border: 1px solid var(--rule-strong);
+  font-size: var(--type-label);
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+}
+
+.armButton[aria-pressed='true'] {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--surface);
+  font-weight: 700;
+}
+
+/* ----- candidate routes ----- */
+
+.listHeading {
+  margin: 0;
+  padding: var(--pad-y) var(--pad-x) var(--gap);
+  border-bottom: 1px solid var(--rule);
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+}
+
+.card {
+  --letter-size: 28px; /* the A / B / C box, also the height of the title row */
+
+  display: grid;
+  grid-template-columns: var(--letter-size) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px var(--pad-x) 12px calc(var(--pad-x) - 3px);
+  border-bottom: 1px solid var(--rule);
+  border-left: 3px solid transparent;
+  text-align: left;
+  --readout-value-size: var(--type-value-compact);
+  --readout-label-size: var(--type-micro);
+}
+
+.card:hover {
+  background: var(--raised);
+}
+
+.card[aria-pressed='true'] {
+  border-left-color: var(--route);
+  background: var(--raised);
+}
+
+.cardLetter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--letter-size);
+  height: var(--letter-size);
+  border: 1px solid var(--muted);
+  font-size: var(--type-title);
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.card[aria-pressed='true'] .cardLetter {
+  background: var(--route);
+  border-color: var(--route);
+  color: var(--surface);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  height: var(--letter-size);
+  line-height: var(--letter-size);
+}
+
+.cardTitle {
+  font-size: var(--type-title);
+  font-weight: 700;
+  letter-spacing: var(--track-title);
+  text-transform: uppercase;
+}
+
+.cardRisk {
+  font-size: var(--type-label);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+
+.cardStats {
+  display: grid;
+  grid-template-columns: 1.1fr 1.1fr 1fr;
+  gap: 8px;
+}
+
+.tooClose {
+  padding: var(--pad-y) var(--pad-x);
+  border-bottom: 1px solid var(--rule);
+}
+
+.tooCloseTitle {
+  font-size: var(--type-title);
+  font-weight: 700;
+  letter-spacing: var(--track-title);
+  color: var(--caution);
+}
+
+/* ----- send ----- */
+
+.sendSection {
+  margin-top: auto;
+  padding: var(--pad-y) var(--pad-x);
+  border-top: 1px solid var(--rule);
+}
+
+.sendButton {
+  display: block;
+  width: 100%;
+  padding: 12px 0;
+  background: var(--text);
+  color: var(--surface);
+  font-size: var(--type-title);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+}
+
+.sendButton:disabled {
+  background: var(--rule);
+  color: var(--muted);
+}
+
+.sendNote {
+  margin-top: 8px;
+  text-align: center;
+  font-size: var(--type-small);
+  color: var(--muted);
+}
+
+.sendDelay {
+  color: var(--caution);
+  font-weight: 600;
+}
+
+.inProgress {
+  padding: 10px 0;
+  text-align: center;
+  font-size: var(--type-small);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: var(--track-label);
+  color: var(--caution);
+}
+
+/* ===================================================================== map */
+
+.mapArea {
+  grid-area: map;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mapHint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: var(--text);
+  color: var(--surface);
+  font-size: var(--type-small);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ===================================================================== bottom strip: elevation */
+
+.strip {
+  grid-area: strip;
+  position: relative;
+  min-width: 0;
+  border-top: 1px solid var(--rule);
+  --chart-top: 44px;
+  --chart-bottom: 26px;
+  --chart-left: var(--pad-x);
+  --chart-right: 72px;
+}
+
+.stripTitle {
+  position: absolute;
+  top: 12px;
+  left: var(--pad-x);
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chart {
+  position: absolute;
+  top: var(--chart-top);
+  bottom: var(--chart-bottom);
+  left: var(--chart-left);
+  right: var(--chart-right);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.chartSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.chartArea {
+  fill: var(--route);
+  fill-opacity: 0.14;
+}
+
+.chartLine {
+  fill: none;
+  stroke: var(--route);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartGuide {
+  fill: none;
+  stroke: var(--rule);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartTick {
+  fill: none;
+  stroke: var(--rule-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartWaypoint,
+.chartElevation,
+.chartDistance {
+  position: absolute;
+  font-size: var(--type-label);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chartWaypoint {
+  top: -15px;
+  transform: translateX(-50%);
+  color: var(--route);
+}
+
+.chartElevation {
+  left: calc(100% + 10px);
+  transform: translateY(-50%);
+  color: var(--muted);
+}
+
+.chartDistance {
+  top: calc(100% + 7px);
+  transform: translateX(-50%);
+  color: var(--muted);
+}
+
+.chartDistance:first-of-type {
+  transform: none;
+}
+
+.chartDistanceEnd {
+  left: auto;
+  right: 0;
+  transform: none;
+  color: var(--text);
+}
+
+/* ===================================================================== right rail: Plan details */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.table td {
+  padding: 5px 0;
+  border-top: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.table tr:first-child td {
+  border-top: 0;
+}
+
+.num {
+  text-align: right;
+  padding-left: 10px;
+}
+
+.wpNumber {
+  width: 22px;
+  font-weight: 700;
+  color: var(--route);
+}
+
+.wpName {
+  font-weight: 500;
+}
+
+.passName {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.passGood {
+  color: var(--nominal);
+}
+
+.passLow {
+  color: var(--muted);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 12px;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+
+.pair > * + * {
+  padding-left: 12px;
+  border-left: 1px solid var(--rule);
+}
+
+.why {
+  border-bottom: 0;
+}
+
+.whyText {
+  font-size: var(--type-body);
+  line-height: 1.35;
+}
+
+/* ===================================================================== Live placeholder */
+
+.live {
+  grid-column: 1 / -1;
+  grid-row: 2 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.liveTitle {
+  font-size: var(--type-big);
+  font-weight: 700;
+  letter-spacing: var(--track-title);
+}
+
+.liveCountdown {
+  font-size: var(--type-big);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--caution);
+}
+
+.liveDelivered {
+  color: var(--nominal);
+}
+
+.liveNote {
+  font-size: var(--type-body);
+  color: var(--muted);
+}
+
+/* ===================================================================== narrow screens */
+
+@media (max-width: 699px) {
+  .screen {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto var(--stack-map-height) var(--strip-height) auto auto;
+    grid-template-areas: 'top' 'map' 'strip' 'left' 'right';
+    height: auto;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .topBar {
+    flex-wrap: wrap;
+  }
+
+  .topBar > * {
+    min-height: 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .brand {
+    flex-basis: 100%;
+  }
+
+  .leftRail,
+  .rightRail {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    overflow: visible;
+  }
+
+  .live {
+    grid-row: auto;
+    padding: 48px var(--pad-x);
+  }
+}

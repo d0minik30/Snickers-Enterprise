@@ -1,6 +1,10 @@
-import MapPreview from './MapPreview';
+import type { Metadata } from 'next';
+import ControlScreen from '@/components/control/ControlScreen';
 
-// Temporary: shows the map for the Task 6 visual check. Task 7 replaces this page.
+export const metadata: Metadata = {
+  title: 'Control · Mars Map',
+};
+
 export default function ControlPage() {
-  return <MapPreview />;
+  return <ControlScreen />;
 }
