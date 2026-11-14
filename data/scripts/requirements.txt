@@ -1,0 +1,6 @@
+# Python packages for the data scripts. Install with:
+#   pip install -r data/scripts/requirements.txt
+rasterio
+geopandas
+numpy
+Pillow

@@ -44,3 +44,51 @@ Bounds are `[[lat_min, lon_min], [lat_max, lon_max]]`. Leaflet takes both as the
 **Credit:** tiles by NASA/JPL-Caltech Mars Trek (https://trek.nasa.gov/mars/).
 The global base is Viking orbiter data (MDIM 2.1); the Jezero mosaics are Mars
 Reconnaissance Orbiter (MRO) data from its CTX and HiRISE cameras.
+
+## Overlays and cost grid – `output/`
+
+Two scripts make these from the downloads in `raw/` (not in git). Run them from
+the repo root:
+
+```bash
+pip install -r data/scripts/requirements.txt
+python data/scripts/process_dem.py    # slope.png, slope_bounds.json, cost_grid.json
+python data/scripts/process_sand.py   # sand.geojson
+```
+
+They cover the Jezero box: lon 77.362–77.540, lat 18.360–18.529 (about 10 × 10 km
+around the Perseverance landing site).
+
+| File | What it is | How the frontend uses it |
+|---|---|---|
+| `slope.png` + `slope_bounds.json` | Slope overlay, about 50 % opaque: green < 10°, yellow 10–25°, red > 25° | `L.imageOverlay(png, bounds)` |
+| `sand.geojson` | Sand: polygons of the eolian bedform unit (`Aeb`) | `L.geoJSON(data)` |
+| `cost_grid.json` | Slope in degrees for each ~20 m cell | not drawn; for pathfinding later |
+
+```js
+const out = '../data/output/';  // relative to frontend/index.html
+fetch(out + 'slope_bounds.json').then(r => r.json())
+  .then(bounds => L.imageOverlay(out + 'slope.png', bounds).addTo(map));
+fetch(out + 'sand.geojson').then(r => r.json())
+  .then(sand => L.geoJSON(sand).addTo(map));
+```
+
+- `slope_bounds.json` is `[[lat_min, lon_min], [lat_max, lon_max]]`: the box snapped
+  outward to whole DEM pixels, so up to 20 m larger on each side.
+- `sand.geojson` uses GeoJSON's `[lon, lat]` order; `L.geoJSON` handles that.
+- `cost_grid.json`: `slope_deg[row][col]` with row 0 at the northern edge, col 0 at
+  the western edge and `null` for no data. `bounds`, `rows`, `cols` and
+  `cell_size_deg` place each cell on the map; `cell_size_m` is its size on the
+  ground (20 m north–south, about 18.97 m east–west). How slope becomes a cost is
+  up to the pathfinder.
+- All coordinates are degrees on the Mars 2000 sphere, east-positive longitude.
+- To test locally, start the web server in the repo root, not in `frontend/`, or
+  `../data/` can't be reached.
+- `data/.gitignore` keeps `raw/` out of git but lets `output/*.png` and
+  `output/*.geojson` in, which the root `.gitignore` would block.
+
+**Sources:** slope from "MRO CTX, Jezero DEM, Controlled" (20 m), NASA Mars Trek
+(`raw/jezero_ctx_dem_20m.tif`). Sand from Sun, V.Z., and Stack, K.M., 2020,
+*Geologic map of Jezero crater and the Nili Planum region, Mars*, USGS Scientific
+Investigations Map 3464, https://doi.org/10.3133/sim3464
+(`raw/sim3464_database.zip`; the script reads layer `GeoUnits_v1` straight from the ZIP).
