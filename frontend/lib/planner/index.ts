@@ -1,4 +1,4 @@
-export { DEMO_BOUNDS, elevationAt } from '@/lib/planner/terrain';
+export { DEMO_BOUNDS, SAND_MIN_LABELLED_CELLS, elevationAt, isSandAt, sandAreas, type SandArea } from '@/lib/planner/terrain';
 export {
   DEFAULT_END,
   DEFAULT_START,

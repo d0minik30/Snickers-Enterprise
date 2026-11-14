@@ -1,4 +1,4 @@
-import type { MapOverlay } from '@/components/map/overlays';
+import { sandOverlays, type MapOverlay } from '@/components/map/overlays';
 import type { Tone } from '@/components/shared/Readout';
 import { canReroute, predictBranchDistM, type ControlView, type Uplink } from '@/lib/mission/control';
 import { PACE_MPS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
@@ -192,7 +192,8 @@ export function planOverlays(routes: Route[], selected: RouteProfile, hazards: H
   const waypoints = active ? active.waypoints.slice(0, -1) : [];
   const ends = [start, end].filter((p): p is LatLon => p !== null);
 
-  const overlays: MapOverlay[] = hazards.map(h => ({ kind: 'hazard', id: `hazard:${h.id}`, hazard: h }));
+  const sand = sandOverlays();
+  const overlays: MapOverlay[] = [...sand.areas, ...hazards.map(h => ({ kind: 'hazard' as const, id: `hazard:${h.id}`, hazard: h }))];
   alternatives.forEach((r, i) => overlays.push({
     kind: 'route', id: `route:${r.profile}`, points: r.points, variant: i === 0 ? 'alternative' : 'alternative-dotted',
   }));
@@ -202,6 +203,7 @@ export function planOverlays(routes: Route[], selected: RouteProfile, hazards: H
   if (end) overlays.push({ kind: 'endpoint', id: 'endpoint:end', pos: end, variant: 'end' });
 
   // Chips last, so they draw on top.
+  overlays.push(...sand.labels);
   for (const h of hazards) overlays.push({ kind: 'label', id: `label:hazard:${h.id}`, pos: h.center, text: h.label, tone: 'caution' });
   const placed: LatLon[] = [];
   for (const r of routes) {
@@ -348,7 +350,8 @@ export function liveOverlays(view: ControlView): MapOverlay[] {
       text: `LAST RECEIVED · ${formatClock(view.dataAgeMs)} OLD`,
     });
   }
-  return [...o, ...labels];
+  const sand = sandOverlays();
+  return [...sand.areas, ...o, ...sand.labels, ...labels];
 }
 
 /** A hazard this close to the stretch the traveller covers before a new route lands cannot be routed around. */

@@ -1,4 +1,4 @@
-import type { MapCamera, MapOverlay } from '@/components/map/overlays';
+import { sandOverlays, type MapCamera, type MapOverlay } from '@/components/map/overlays';
 import type { FieldNotice, FieldState } from '@/lib/mission/field';
 import { formatClock, formatDistance } from '@/lib/nav/format';
 import { cumulativeM, slicePath } from '@/lib/nav/geo';
@@ -27,7 +27,8 @@ const missionMinutes = (s: FieldState) => (s.startedMs === null ? 0 : Math.max(0
 export function fieldOverlays(state: FieldState): MapOverlay[] {
   const { route, pos } = state;
   if (!route || !pos) return [];
-  const o: MapOverlay[] = state.hazards.map(h => ({ kind: 'hazard', id: `hazard:${h.id}`, hazard: h }));
+  // Sand areas only: at the follow zoom a patch label would just cover the route.
+  const o: MapOverlay[] = [...sandOverlays().areas, ...state.hazards.map(h => ({ kind: 'hazard' as const, id: `hazard:${h.id}`, hazard: h }))];
 
   if (state.distM > 0) {
     const walked = slicePath(route.points, 0, state.distM);

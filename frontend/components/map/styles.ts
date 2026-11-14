@@ -123,6 +123,11 @@ export function routeStyle(o: Overlay<'route'>, { theme }: StyleContext): Style[
   }
 }
 
+/** Sand: a light even wash, like the sand overlay on /map, so it reads without hiding the imagery. */
+export function areaStyle(_o: Overlay<'area'>, { theme }: StyleContext): Style[] {
+  return [new Style({ fill: new Fill({ color: withAlpha(theme.text, 0.22) }) })];
+}
+
 export function hazardStyle(o: Overlay<'hazard'>, { theme }: StyleContext): Style[] {
   return [new Style({
     fill: new Fill({ color: theme.hatch }),
@@ -209,6 +214,7 @@ export function labelStyle(o: Overlay<'label'>, { theme }: StyleContext): Style[
 
 export function overlayStyle(o: MapOverlay, ctx: StyleContext): Style[] {
   switch (o.kind) {
+    case 'area': return areaStyle(o, ctx);
     case 'route': return routeStyle(o, ctx);
     case 'hazard': return hazardStyle(o, ctx);
     case 'waypoint': return waypointStyle(o, ctx);

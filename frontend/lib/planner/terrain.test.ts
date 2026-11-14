@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_END, DEFAULT_START, PRESET_HAZARDS, planRoutes } from '@/lib/planner';
-import { DEMO_BOUNDS, TERRAIN, elevationAt, isSandAt, slopeAt } from '@/lib/planner/terrain';
+import { DEMO_BOUNDS, TERRAIN, elevationAt, isSandAt, sandAreas, slopeAt } from '@/lib/planner/terrain';
 import { pointAlong } from '@/lib/nav/geo';
 
 describe('real Jezero terrain', () => {
@@ -46,5 +46,18 @@ describe('real Jezero terrain', () => {
     let onSandM = 0;
     for (let d = 0; d < safest.lengthM; d += 20) if (isSandAt(pointAlong(safest.points, d).pos)) onSandM += 20;
     expect(onSandM).toBeLessThanOrEqual(80);
+  });
+
+  it('draws sand exactly where the grid has it', () => {
+    const patches = sandAreas();
+    expect(patches.length).toBeGreaterThan(0);
+    for (const a of patches) {
+      expect(isSandAt(a.labelAt)).toBe(true);
+      for (const ring of a.rings) {
+        expect(ring[0]).toEqual(ring[ring.length - 1]); // closed
+        const mid = { lat: (ring[0].lat + ring[2].lat) / 2, lon: (ring[0].lon + ring[2].lon) / 2 };
+        expect(isSandAt(mid)).toBe(true);
+      }
+    }
   });
 });

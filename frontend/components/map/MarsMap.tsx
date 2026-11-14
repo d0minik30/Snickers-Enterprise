@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import OlMap from 'ol/Map';
 import View from 'ol/View';
 import Feature from 'ol/Feature';
-import { LineString, Point, Polygon, type Geometry } from 'ol/geom';
+import { LineString, MultiPolygon, Point, Polygon, type Geometry } from 'ol/geom';
 import { boundingExtent } from 'ol/extent';
 import { defaults as defaultInteractions } from 'ol/interaction/defaults';
 import TileLayer from 'ol/layer/Tile';
@@ -66,6 +66,7 @@ function trekTileLayer(layer: TrekLayer, health: TileHealth, onHealth: () => voi
 
 function overlayGeometry(o: MapOverlay): Geometry {
   switch (o.kind) {
+    case 'area': return new MultiPolygon(o.rings.map(ring => [ring.map(toCoord)]));
     case 'route': return new LineString(o.points.map(toCoord));
     case 'hazard': return new Polygon([groundCircle(o.hazard.center, o.hazard.radiusM)]);
     case 'ring': return new Polygon([groundCircle(o.center, o.radiusM)]);
