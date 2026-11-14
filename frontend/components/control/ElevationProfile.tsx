@@ -41,13 +41,13 @@ export function ElevationProfile({ route }: Props) {
         <svg className={styles.chartSvg} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
           <path className={styles.chartGuide} d={`M0 ${y(hi).toFixed(2)}H${W}M0 ${y(lo).toFixed(2)}H${W}`} />
           {route.waypoints.slice(0, -1).map(w => (
-            <path key={w.name} className={styles.chartTick} d={`M${x(w.distM).toFixed(1)} 0V${H}`} />
+            <path key={w.distM} className={styles.chartTick} d={`M${x(w.distM).toFixed(1)} 0V${H}`} />
           ))}
           <path className={styles.chartArea} d={area} />
           <path className={styles.chartLine} d={line} />
         </svg>
         {route.waypoints.slice(0, -1).map((w, i) => (
-          <span key={w.name} className={styles.chartWaypoint} style={{ left: pct(w.distM) }}>{i + 1}</span>
+          <span key={w.distM} className={styles.chartWaypoint} style={{ left: pct(w.distM) }}>{i + 1}</span>
         ))}
         <span className={styles.chartElevation} style={{ top: `${y(hi)}%` }}>{elevationText(hi)}</span>
         <span className={styles.chartElevation} style={{ top: `${y(lo)}%` }}>{elevationText(lo)}</span>
