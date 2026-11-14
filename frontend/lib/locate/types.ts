@@ -1,21 +1,38 @@
-// Shapes exchanged with the skyline API (backend/skyline) and the engine. Draft until
-// backend/CONTRACTS.md exists; the checks below reject anything that does not look like them.
+// Shapes exchanged with the engine server, following backend/CONTRACTS.md (contract_version 0.1):
+// section 2 (one photo of the POST /locate body), section 3 (its result), plus the skyline API's own
+// extras (diagnostics, trace). The checks below reject anything that does not look like them, so the
+// app never draws a malformed answer.
+
+export const CONTRACT_VERSION = '0.1';
 
 export type Sample = { az_offset_deg: number; elev_deg: number; weight: number };
 
-export type Skyline = {
-  format: string;
+/** CONTRACTS.md section 2: one photo of the POST /locate body, without its id. */
+export type ContractPhoto = {
   camera: {
-    model: 'pinhole' | 'cahvore';
-    width: number; height: number; hfov_deg: number; vfov_deg: number;
-    pitch_deg: number; roll_deg: number; source: string;
+    hfov_deg: number; vfov_deg: number; width_px: number; height_px: number;
+    lens_model: 'rectilinear' | 'fisheye_equidistant' | 'cylindrical' | 'other';
   };
-  level_source: 'label' | 'sensor' | 'manual' | 'assumed';
   eye_height_m: number;
-  time_utc: string | null;
-  sun: { az_offset_deg: number; elev_deg: number } | null;
-  az_step_deg: number;
+  horizon_uncertainty_deg: number;
+  relative_heading_deg: number | null;
+  time_utc?: string;
+  sun?: { az_offset_deg: number; elev_deg?: number };
   samples: Sample[];
+};
+
+/** How the skyline API set the camera up: for the app, not sent to the engine. */
+export type Diagnostics = {
+  camera_model: 'pinhole' | 'cahvore';
+  camera_source: string;
+  level_source: 'label' | 'sensor' | 'manual' | 'assumed';
+  pitch_deg: number;
+  roll_deg: number;
+  az_step_deg: number;
+  /** Perseverance: the camera's direction from the rover's forward direction (not the answer). */
+  rover_axis_azimuth_deg: number | null;
+  /** Perseverance: the rover pose (site/drive) the photo was taken at. */
+  rover_pose: string | null;
 };
 
 /** Why a stretch of the line is not trusted. 'erased' and 'rock' are the user's own marks. */
@@ -28,9 +45,12 @@ export type Trace = {
   sun_px: [number, number] | null;
 };
 
-export type SkylineResponse = { skyline: Skyline; trace: Trace; debug_image: string };
+export type SkylineResponse = {
+  contract_version: string; photo: ContractPhoto; diagnostics: Diagnostics; trace: Trace; debug_image: string;
+};
+export type ConvertResponse = { contract_version: string; photo: ContractPhoto; diagnostics: Diagnostics };
 
-/** What the user tells us about the camera; sent to the API as the `camera` JSON. */
+/** What the user tells us about the camera; sent to the skyline API as the `camera` JSON. */
 export type CameraSpec = {
   preset?: string;
   hfov_deg?: number;
@@ -41,20 +61,76 @@ export type CameraSpec = {
   time_utc?: string;
 };
 
+// ------------------------------------------------------------------ POST /locate (section 2)
+
+export type LocateRequest = {
+  contract_version: string;
+  photos: (ContractPhoto & { id: string })[];
+  options?: {
+    prior?: { lat: number; lon: number; radius_m: number };
+    top_k?: number;
+    include_likelihood_grid?: boolean;
+    include_residuals?: boolean;
+  };
+};
+
+// ------------------------------------------------------------------ its result (section 3)
+
+export type LatLonEN = { lat: number; lon: number; east_m: number; north_m: number };
+
+export type Candidate = LatLonEN & { rank: number; heading_deg: number; score: number; probability: number };
+
+export type LocateResult = {
+  contract_version: string;
+  status: 'ok' | 'ambiguous' | 'no_match';
+  warnings: string[];
+  best: LatLonEN & {
+    ground_elevation_m: number; heading_deg: number; score: number; probability: number;
+    uncertainty_m: number; uncertainty_95_m: number;
+  };
+  candidates: Candidate[];
+  likelihood_grid: null | {
+    bounds: [[number, number], [number, number]];
+    rows: number; cols: number;
+    cell_size_m: { north_south: number; east_west: number };
+    scale: number;
+    values: number[][];
+  };
+  dominant_feature: null | (LatLonEN & {
+    name: string | null; elevation_m: number; distance_m: number; distance_check_m: number;
+    azimuth_deg: number; elev_angle_deg: number; prominence_deg: number; photo_id: string; az_offset_deg: number;
+  });
+  photos: {
+    id: string; heading_deg: number; horizon_shift_deg: number; rms_residual_deg: number;
+    median_abs_residual_deg: number; inlier_fraction: number;
+    residuals?: { az_offset_deg: number; observed_elev_deg: number; model_elev_deg: number; residual_deg: number; distance_m: number; used: boolean }[];
+  }[];
+  engine: { version: string; terrain_sources: string[]; candidate_spacing_m: number; timing_ms: Record<string, number> };
+};
+
+// ------------------------------------------------------------------ checks
+
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const numArray = (v: unknown, n?: number) => Array.isArray(v) && v.every(isNum) && (n === undefined || v.length === n);
+const isSample = (s: unknown) => isObj(s) && isNum(s.az_offset_deg) && isNum(s.elev_deg) && isNum(s.weight);
 
-export function isSkyline(v: unknown): v is Skyline {
+export function isContractPhoto(v: unknown): v is ContractPhoto {
   if (!isObj(v) || !isObj(v.camera) || !Array.isArray(v.samples)) return false;
   const c = v.camera;
-  return typeof v.format === 'string'
-    && (c.model === 'pinhole' || c.model === 'cahvore')
-    && [c.width, c.height, c.hfov_deg, c.vfov_deg, c.pitch_deg, c.roll_deg].every(isNum)
-    && isNum(v.eye_height_m) && isNum(v.az_step_deg)
-    && (v.time_utc === null || typeof v.time_utc === 'string')
-    && (v.sun === null || (isObj(v.sun) && isNum(v.sun.az_offset_deg) && isNum(v.sun.elev_deg)))
-    && v.samples.every(s => isObj(s) && isNum(s.az_offset_deg) && isNum(s.elev_deg) && isNum(s.weight));
+  return [c.hfov_deg, c.vfov_deg, c.width_px, c.height_px].every(isNum) && typeof c.lens_model === 'string'
+    && isNum(v.eye_height_m) && isNum(v.horizon_uncertainty_deg)
+    && (v.relative_heading_deg === null || isNum(v.relative_heading_deg))
+    && (v.time_utc === undefined || typeof v.time_utc === 'string')
+    && (v.sun === undefined || (isObj(v.sun) && isNum(v.sun.az_offset_deg)))
+    && v.samples.every(isSample);
+}
+
+export function isDiagnostics(v: unknown): v is Diagnostics {
+  return isObj(v) && (v.camera_model === 'pinhole' || v.camera_model === 'cahvore')
+    && typeof v.level_source === 'string' && isNum(v.pitch_deg) && isNum(v.roll_deg)
+    && (v.rover_axis_azimuth_deg === null || isNum(v.rover_axis_azimuth_deg))
+    && (v.rover_pose === null || typeof v.rover_pose === 'string');
 }
 
 export function isTrace(v: unknown): v is Trace {
@@ -66,7 +142,33 @@ export function isTrace(v: unknown): v is Trace {
     && (v.sun_px === null || numArray(v.sun_px, 2));
 }
 
+export function isConvertResponse(v: unknown): v is ConvertResponse {
+  return isObj(v) && typeof v.contract_version === 'string' && isContractPhoto(v.photo) && isDiagnostics(v.diagnostics);
+}
+
 export function isSkylineResponse(v: unknown): v is SkylineResponse {
-  return isObj(v) && isSkyline(v.skyline) && isTrace(v.trace)
-    && typeof v.debug_image === 'string' && v.debug_image.startsWith('data:image/');
+  return isConvertResponse(v) && isTrace((v as Record<string, unknown>).trace)
+    && typeof (v as Record<string, unknown>).debug_image === 'string'
+    && ((v as Record<string, unknown>).debug_image as string).startsWith('data:image/');
+}
+
+const isLatLonEN = (v: unknown): v is LatLonEN => isObj(v) && [v.lat, v.lon, v.east_m, v.north_m].every(isNum);
+
+export function isLocateResult(v: unknown): v is LocateResult {
+  if (!isObj(v) || !isObj(v.best) || !Array.isArray(v.candidates) || !Array.isArray(v.photos)) return false;
+  const b = v.best;
+  const bestOk = [b.heading_deg, b.score, b.probability, b.uncertainty_m, b.uncertainty_95_m].every(isNum);
+  const grid = v.likelihood_grid;
+  const gridOk = grid === null || grid === undefined || (isObj(grid) && Array.isArray(grid.bounds) && isNum(grid.rows)
+    && isNum(grid.cols) && isNum(grid.scale) && Array.isArray(grid.values) && grid.values.length === grid.rows
+    && grid.values.every(r => numArray(r, grid.cols as number)));
+  const f = v.dominant_feature;
+  const featureOk = f === null || f === undefined || (isLatLonEN(f) && isNum((f as Record<string, unknown>).distance_m)
+    && isNum((f as Record<string, unknown>).azimuth_deg));
+  return (v.status === 'ok' || v.status === 'ambiguous' || v.status === 'no_match')
+    && Array.isArray(v.warnings) && v.warnings.every(w => typeof w === 'string')
+    && bestOk && isLatLonEN(b) && isObj(v.engine)
+    && v.candidates.every(c => isLatLonEN(c) && isNum((c as Record<string, unknown>).heading_deg))
+    && v.photos.every(p => isObj(p) && typeof p.id === 'string' && isNum(p.heading_deg))
+    && gridOk && featureOk;
 }

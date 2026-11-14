@@ -37,10 +37,16 @@ def test_post_skyline_returns_skyline_trace_and_debug_image(phone_photo):
     r = client.post('/skyline', files={'photo': ('p.png', phone_photo, 'image/png')}, data={'camera': json.dumps(camera)})
     assert r.status_code == 200, r.text
     body = r.json()
-    sk = body['skyline']
-    assert sk['level_source'] == 'sensor' and sk['time_utc'] == '2026-11-15T10:00:00Z'
-    assert sk['eye_height_m'] == 1.7 and sk['camera']['source'] == 'manual'
-    assert len(sk['samples']) > 400 and set(sk['samples'][0]) == {'az_offset_deg', 'elev_deg', 'weight'}
+    assert body['contract_version'] == '0.1'
+    ph, dg = body['photo'], body['diagnostics']
+    # One photo of the engine's POST /locate body (CONTRACTS.md section 2), without its id.
+    assert set(ph) == {'camera', 'eye_height_m', 'horizon_uncertainty_deg', 'relative_heading_deg', 'time_utc', 'samples'}
+    assert ph['camera'] == {'hfov_deg': pytest.approx(60, abs=1e-3), 'vfov_deg': pytest.approx(46.83, abs=0.01),
+                            'width_px': 640, 'height_px': 480, 'lens_model': 'rectilinear'}
+    assert ph['time_utc'] == '2026-11-15T10:00:00Z' and ph['eye_height_m'] == 1.7 and ph['relative_heading_deg'] is None
+    assert ph['horizon_uncertainty_deg'] == 1.0
+    assert 20 <= len(ph['samples']) <= 5000 and set(ph['samples'][0]) == {'az_offset_deg', 'elev_deg', 'weight'}
+    assert dg['level_source'] == 'sensor' and dg['camera_source'] == 'manual' and dg['pitch_deg'] == pytest.approx(3)
     assert len(body['trace']['x']) == 640 and body['trace']['width'] == 640
     head, data = body['debug_image'].split(',', 1)
     assert head == 'data:image/jpeg;base64' and Image.open(io.BytesIO(base64.b64decode(data))).size == (640, 480)
@@ -52,10 +58,10 @@ def test_post_skyline_with_a_perseverance_label():
     label = json.dumps({'image': [navcam_record()]}).encode()  # the feed's by-id reply, as saved
     r = client.post('/skyline', files={'photo': ('p.png', photo, 'image/png'), 'label': ('l.json', label, 'application/json')})
     assert r.status_code == 200, r.text
-    sk = r.json()['skyline']
-    assert sk['camera']['model'] == 'cahvore' and sk['level_source'] == 'label'
-    assert sk['time_utc'] == '2021-04-08T02:34:41.015Z'
-    assert 'heading' not in json.dumps(sk) and 'xyz' not in json.dumps(sk)
+    ph, dg = r.json()['photo'], r.json()['diagnostics']
+    assert dg['camera_model'] == 'cahvore' and dg['level_source'] == 'label'
+    assert ph['time_utc'] == '2021-04-08T02:34:41.015Z'
+    assert 'xyz' not in json.dumps(r.json()['photo']) and ph['relative_heading_deg'] is None
 
 
 def test_convert_an_edited_trace(phone_photo):
@@ -67,7 +73,7 @@ def test_convert_an_edited_trace(phone_photo):
             'trace': {'x': trace['x'], 'y': trace['y'], 'weight': weight}}
     r2 = client.post('/skyline/convert', json=body)
     assert r2.status_code == 200, r2.text
-    s = r2.json()['skyline']['samples']
+    s = r2.json()['photo']['samples']
     x0, x1 = trace['x'][205], trace['x'][295]
     cam = Pinhole.from_fov(640, 480, 60)
     az0 = np.degrees(np.arctan((x0 - cam.cx) / cam.fx))

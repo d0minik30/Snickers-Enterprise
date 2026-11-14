@@ -33,7 +33,7 @@ def run(image_id):
 ])
 def test_clean_rim_horizon(image_id):
     out = run(image_id)
-    s = out.skyline['samples']
+    s = out.photo['samples']
     trusted = [x for x in s if x['weight'] >= 0.5]
     assert len(trusted) > 0.5 * len(s)
     el = np.array([x['elev_deg'] for x in trusted])

@@ -7,7 +7,7 @@ import { CameraPanel, LocateBar, PhotoList } from '@/components/locate/Panels';
 import { SkylineEditor } from '@/components/locate/SkylineEditor';
 import { ENGINE_URL, EngineError, postConvert, postLocate, postSkyline } from '@/lib/locate/engine';
 import { hfovFor } from '@/lib/locate/presets';
-import { emptySession, locateBlocker, reduce, specFor, type PhotoEntry } from '@/lib/locate/session';
+import { buildLocateRequest, emptySession, locateBlocker, reduce, specFor, type PhotoEntry } from '@/lib/locate/session';
 import css from './locate.module.css';
 
 const CONVERT_DELAY_MS = 400; // wait for the user to stop dragging before recomputing angles
@@ -51,7 +51,7 @@ export default function LocateScreen() {
         const { id, rev, trace } = p;
         dispatch({ type: 'convert-start', id });
         postConvert(specFor(p), p.label, trace)
-          .then(skyline => dispatch({ type: 'convert-done', id, skyline, rev }))
+          .then(r => dispatch({ type: 'convert-done', id, photo: r.photo, diagnostics: r.diagnostics, rev }))
           .catch(e => dispatch({ type: 'convert-failed', id, error: message(e) }));
       }
     }, CONVERT_DELAY_MS);
@@ -89,10 +89,10 @@ export default function LocateScreen() {
 
   const blocker = locateBlocker(session);
   const locate = useCallback(() => {
-    const skylines = latest.current.photos.flatMap(p => (p.status === 'traced' && p.skyline ? [p.skyline] : []));
+    const request = buildLocateRequest(latest.current);
     dispatch({ type: 'locate-start' });
-    postLocate(skylines)
-      .then(answer => dispatch({ type: 'locate-done', answer, at: new Date().toISOString() }))
+    postLocate(request)
+      .then(result => dispatch({ type: 'locate-done', result, at: new Date().toISOString() }))
       .catch(e => dispatch({ type: 'locate-failed', error: message(e) }));
   }, []);
 
@@ -153,8 +153,8 @@ function friendlyError(error: string): string {
 function PhotoView({ photo, dispatch }: { photo: PhotoEntry; dispatch: React.Dispatch<Parameters<typeof reduce>[1]> }) {
   const trace = photo.trace;
   // The level guide is for levelling by hand, with a pinhole camera whose field of view we know.
-  const hfov = photo.skyline?.camera.model === 'pinhole'
-    ? photo.skyline.camera.hfov_deg
+  const hfov = photo.diagnostics?.camera_model === 'pinhole' && photo.photo
+    ? photo.photo.camera.hfov_deg
     : trace ? hfovFor(photo.camera, trace.width, trace.height) : null;
   const guide = trace && hfov && photo.label === null && photo.tilt.source === 'manual'
     ? { hfovDeg: hfov, pitchDeg: photo.tilt.pitchDeg, rollDeg: photo.tilt.rollDeg }

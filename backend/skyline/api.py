@@ -8,11 +8,14 @@ POST /skyline           multipart form:
     camera  optional JSON string, see metadata.py (preset, hfov_deg, pitch_deg, roll_deg, ...)
     label   optional file: a Perseverance raw-image record (JSON). Only the camera model and the
             direction of gravity are read from it; the rover heading and position never are.
-    -> {"skyline": {...}, "trace": {...}, "debug_image": "data:image/jpeg;base64,..."}
+    -> {"contract_version": "0.1", "photo": {...}, "diagnostics": {...}, "trace": {...},
+        "debug_image": "data:image/jpeg;base64,..."}
+       photo is one entry of the engine's POST /locate body (CONTRACTS.md section 2) without its id;
+       diagnostics say how the camera was set up (for the app, not the engine).
 
 POST /skyline/convert   JSON: {"camera": {...}, "label": {...} | null, "width": W, "height": H,
                                "trace": {"x": [...], "y": [...], "weight": [...], "sun_px": [x, y] | null}}
-    -> {"skyline": {...}}    (for a trace the user edited in the app)
+    -> {"contract_version": "0.1", "photo": {...}, "diagnostics": {...}}   (a trace edited in the app)
 
 Errors: HTTP 400/413 with {"detail": {"code": "...", "message": "..."}}.
 """
@@ -26,7 +29,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from .metadata import SpecError, camera_setup, load_image, parse_spec
-from .pipeline import convert, process
+from .pipeline import CONTRACT_VERSION, convert, process
 
 MAX_PHOTO_BYTES = 30 * 1024 * 1024
 MAX_LABEL_BYTES = 1024 * 1024
@@ -81,7 +84,8 @@ async def post_skyline(
     except (SpecError, ValueError) as e:
         raise _fail('bad_input', str(e)) from e
     jpeg = base64.b64encode(out.debug_jpeg).decode('ascii')
-    return {'skyline': out.skyline, 'trace': out.trace, 'debug_image': f'data:image/jpeg;base64,{jpeg}'}
+    return {'contract_version': CONTRACT_VERSION, 'photo': out.photo, 'diagnostics': out.diagnostics,
+            'trace': out.trace, 'debug_image': f'data:image/jpeg;base64,{jpeg}'}
 
 
 class TraceIn(BaseModel):
@@ -104,7 +108,7 @@ def post_convert(body: ConvertIn) -> dict:
     label = _parse_label(json.dumps(body.label).encode()) if body.label is not None else None
     try:
         setup = camera_setup(body.width, body.height, body.camera, None, label)
-        skyline = convert(setup, body.trace.x, body.trace.y, body.trace.weight, body.trace.sun_px)
+        photo, diagnostics = convert(setup, body.trace.x, body.trace.y, body.trace.weight, body.trace.sun_px)
     except (SpecError, ValueError) as e:
         raise _fail('bad_input', str(e)) from e
-    return {'skyline': skyline}
+    return {'contract_version': CONTRACT_VERSION, 'photo': photo, 'diagnostics': diagnostics}

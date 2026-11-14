@@ -60,7 +60,8 @@ def test_skyline_never_depends_on_the_labels_answer():
 
     def skyline_for(record):
         setup = camera_setup(1280, 960, {}, None, record)
-        return convert(setup, trace['x'], trace['y'], trace['weight'])
+        photo, diagnostics = convert(setup, trace['x'], trace['y'], trace['weight'])
+        return {**photo, 'diagnostics': diagnostics}
 
     base_rec = navcam_record()
     base = skyline_for(base_rec)
@@ -74,3 +75,16 @@ def test_skyline_never_depends_on_the_labels_answer():
             assert a['az_offset_deg'] == pytest.approx(b['az_offset_deg'], abs=2e-4)
             assert a['elev_deg'] == pytest.approx(b['elev_deg'], abs=2e-4)
             assert a['weight'] == b['weight']
+
+
+def test_rover_axis_azimuth_gives_relative_heading_without_the_answer():
+    """Two cameras on one rover: their axis azimuths in the rover frame differ by their true heading
+    difference, whatever the rover's own heading is, and they don't change with that heading."""
+    base_rec = navcam_record()
+    q = tuple(float(x) for x in base_rec['attitude'].strip('()').split(','))
+    a = camera_setup(1280, 960, {}, None, base_rec)
+    assert a.rover_pose is None  # the fixture has no site/drive
+    turned = camera_setup(1280, 960, {}, None, navcam_record(attitude=quat_mul(yaw_quat(57), q)))
+    assert turned.rover_axis_azimuth_deg == pytest.approx(a.rover_axis_azimuth_deg, abs=1e-9)
+    # This Navcam frame looks about 100 degrees to the right of the rover's forward direction (mastAz 99.8).
+    assert a.rover_axis_azimuth_deg == pytest.approx(99.8, abs=2)
