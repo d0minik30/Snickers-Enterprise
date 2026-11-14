@@ -847,24 +847,47 @@
 }
 
 .log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   flex: 1 1 auto;
   min-height: 0;
+  padding: 10px var(--pad-x);
   overflow-y: auto;
   list-style: none;
 }
 
 .logEmpty {
-  padding: var(--pad-y) var(--pad-x);
   color: var(--muted);
 }
 
+/* Read like a chat: what the field sent sits left on a filled card; what Control sent sits right,
+   outlined, with its delivery state on the right edge (amber in transit, green acknowledged). */
 .entry {
-  padding: 10px var(--pad-x) 10px calc(var(--pad-x) - 3px);
-  border-left: 3px solid transparent;
-  border-bottom: 1px solid var(--rule);
+  flex: none;
+  padding: 9px 12px;
+  border: 1px solid var(--rule);
 }
 
-.entry-in-transit { border-left-color: var(--caution); }
+.entryIn {
+  margin-right: 28px;
+  background: var(--raised);
+  border-left: 3px solid var(--muted);
+}
+
+.entryOut {
+  margin-left: 28px;
+  border-right: 3px solid var(--rule-strong);
+  text-align: right;
+}
+
+.entryOut .entryHead { flex-direction: row-reverse; }
+
+.entryOut.entry-in-transit { border-right-color: var(--caution); }
+.entryOut.entry-acknowledged { border-right-color: var(--nominal); }
+
+.entry-report { border-left-color: var(--text); }
+.entry-report .entryHead { color: var(--text); }
 
 .entryHead {
   display: flex;

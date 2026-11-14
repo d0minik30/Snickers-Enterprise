@@ -39,7 +39,7 @@ export function buildTimeline(view: ControlView, passes: SatellitePass[]): Timel
   for (const d of view.downlinks) {
     signals.push({
       id: d.id, dir: 'down', sentMs: d.sentMs, arrivesMs: d.receivedMs,
-      tone: 'nominal', label: d.kind === 'ack' ? 'ACK' : 'START',
+      tone: 'nominal', label: d.kind === 'ack' ? 'ACK' : d.kind === 'report' ? 'MSG' : 'START',
     });
   }
 

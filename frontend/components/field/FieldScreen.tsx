@@ -1,11 +1,12 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { fieldBars, fieldCamera, fieldCells, fieldCue, fieldOverlays, latestUnacked, nextMoveView } from '@/components/field/fieldModel';
 import { MessageStrip } from '@/components/field/MessageStrip';
 import { NextMoveBand } from '@/components/field/NextMoveBand';
 import { ReadoutBand } from '@/components/field/ReadoutBand';
+import { ReportBar, ReportSheet } from '@/components/field/ReportComposer';
 import { StatusBanner, StatusPanel } from '@/components/field/StatusPanel';
 import { fieldStateAt } from '@/lib/mission/field';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
@@ -27,13 +28,17 @@ export default function FieldScreen() {
   const state = useMemo(() => fieldStateAt(snapshot.log, t), [snapshot.log, t]);
 
   const overlays = useMemo(() => fieldOverlays(state), [state]);
-  const camera = useMemo(() => fieldCamera(state), [state]);
+  const [composing, setComposing] = useState(false);
+  const [sheetHeight, setSheetHeight] = useState(0);
+  // While the message sheet covers the bottom of the map, keep the traveller in the part still showing.
+  const camera = useMemo(() => fieldCamera(state, composing ? sheetHeight : 0), [state, composing, sheetHeight]);
   const cue = fieldCue(state);
   const notice = latestUnacked(state);
   const status = hydrated ? state.status : 'awaiting-route';
 
   const start = () => getMissionStore().append({ type: 'traverse-started', origin: 'field' });
   const ack = (targetId: string) => getMissionStore().append({ type: 'ack', origin: 'field', targetId });
+  const report = (text: string) => getMissionStore().append({ type: 'report', origin: 'field', text });
 
   return (
     <main className={styles.screen} data-testid="field-status" data-status={status}>
@@ -54,7 +59,9 @@ export default function FieldScreen() {
         )}
         {cue.routeChangeId && <div key={cue.routeChangeId} className={styles.routePulse} aria-hidden="true" />}
         {hydrated && <StatusPanel state={state} onStart={start} />}
+        {hydrated && composing && <ReportSheet onSend={report} onClose={() => setComposing(false)} onHeight={setSheetHeight} />}
       </div>
+      {hydrated && <ReportBar state={state} open={composing} onToggle={() => setComposing(o => !o)} />}
       <ReadoutBand cells={fieldCells(state)} bars={fieldBars(state)} fixCue={hydrated && cue.fix} />
     </main>
   );

@@ -11,7 +11,7 @@ export type UplinkStatus = 'in-transit' | 'delivered' | 'acknowledged';
 export type Uplink = {
   event: ControlEvent; sentMs: number; arrivesMs: number; status: UplinkStatus; progress: number; // progress 0..1
 };
-export type Downlink = { id: string; kind: 'traverse-started' | 'ack'; sentMs: number; receivedMs: number };
+export type Downlink = { id: string; kind: 'traverse-started' | 'ack' | 'report'; sentMs: number; receivedMs: number; text?: string };
 export type ControlHazard = Hazard & { atField: boolean };
 export type ControlView = {
   tMs: number; dataAgeMs: number; traveller: TravellerKind | null; received: FieldState;
@@ -63,9 +63,10 @@ export function controlViewAt(log: MissionEvent[], tMs: number, passes: Satellit
 
   const downlinks: Downlink[] = [];
   for (const e of sentEvents) {
-    if ((e.type === 'traverse-started' || e.type === 'ack') && e.tMs + SIGNAL_DELAY_MS <= tMs) {
-      downlinks.push({ id: e.id, kind: e.type, sentMs: e.tMs, receivedMs: e.tMs + SIGNAL_DELAY_MS });
-    }
+    if (e.origin !== 'field' || e.tMs + SIGNAL_DELAY_MS > tMs) continue; // Control cannot see a downlink still in transit
+    const d: Downlink = { id: e.id, kind: e.type, sentMs: e.tMs, receivedMs: e.tMs + SIGNAL_DELAY_MS };
+    if (e.type === 'report') d.text = e.text;
+    downlinks.push(d);
   }
 
   const atField = new Set((newestArrived?.hazards ?? []).map(h => h.id));

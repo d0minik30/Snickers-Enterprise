@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { earthClock, marsClock, uplinkText } from '@/components/control/controlModel';
 import type { ControlView, Downlink, Uplink } from '@/lib/mission/control';
-import { SIGNAL_DELAY_MS, type MissionEvent } from '@/lib/mission/types';
+import { MAX_MESSAGE_LENGTH, SIGNAL_DELAY_MS, type MissionEvent } from '@/lib/mission/types';
 import { formatClock } from '@/lib/nav/format';
 import styles from './control.module.css';
 
@@ -13,8 +13,6 @@ type Props = {
   onOrder: (order: 'hold' | 'proceed') => void;
   onMessage: (text: string) => void;
 };
-
-export const MAX_MESSAGE_LENGTH = 140;
 
 type Entry = { key: string; atMs: number; uplink?: Uplink; downlink?: Downlink };
 
@@ -43,7 +41,7 @@ export function CommsRail({ view, log, onOrder, onMessage }: Props) {
   return (
     <aside className={`${styles.rail} ${styles.rightRail} ${styles.comms}`} aria-label="Comms">
       <h2 className={`${styles.heading} ${styles.commsHeading}`}>
-        <span>Comms · one way {formatClock(SIGNAL_DELAY_MS)}</span>
+        <span>Comms</span>
         <span>{entries.length}</span>
       </h2>
 
@@ -86,7 +84,7 @@ export function CommsRail({ view, log, onOrder, onMessage }: Props) {
 
 function UplinkEntry({ u, nowMs }: { u: Uplink; nowMs: number }) {
   return (
-    <li data-testid="uplink" data-status={u.status} data-id={u.event.id} className={`${styles.entry} ${styles[`entry-${u.status}`]}`}>
+    <li data-testid="uplink" data-status={u.status} data-id={u.event.id} className={`${styles.entry} ${styles.entryOut} ${styles[`entry-${u.status}`]}`}>
       <div className={styles.entryHead}>
         <span>▲ TO FIELD</span>
         <span>{earthClock(u.sentMs)}</span>
@@ -109,14 +107,20 @@ function UplinkEntry({ u, nowMs }: { u: Uplink; nowMs: number }) {
   );
 }
 
+function downlinkText(d: Downlink, targetText: string): string {
+  if (d.kind === 'report') return d.text ?? '';
+  if (d.kind === 'ack') return `Acknowledged${targetText ? `: ${targetText}` : ''}`;
+  return 'Traverse started.';
+}
+
 function DownlinkEntry({ d, targetText }: { d: Downlink; targetText: string }) {
   return (
-    <li data-testid="downlink" className={styles.entry}>
+    <li data-testid="downlink" data-kind={d.kind} className={`${styles.entry} ${styles.entryIn} ${d.kind === 'report' ? styles['entry-report'] : ''}`}>
       <div className={styles.entryHead}>
-        <span>▼ FROM FIELD</span>
+        <span>{d.kind === 'report' ? '▼ MESSAGE FROM FIELD' : '▼ FROM FIELD'}</span>
         <span>{earthClock(d.receivedMs)}</span>
       </div>
-      <p className={styles.entryText}>{d.kind === 'ack' ? `Acknowledged${targetText ? `: ${targetText}` : ''}` : 'Traverse started.'}</p>
+      <p className={styles.entryText}>{downlinkText(d, targetText)}</p>
       <p className={styles.entryState}>SENT FROM MARS {marsClock(d.sentMs).time}</p>
     </li>
   );

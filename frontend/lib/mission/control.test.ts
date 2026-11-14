@@ -59,3 +59,18 @@ describe('controlViewAt', () => {
     expect(v.estimatedNow).toBeNull();
   });
 });
+
+describe('messages from Field', () => {
+  const report: MissionEvent = { id: 'f1', tMs: 900_000, type: 'report', origin: 'field', text: 'Hazard spotted.' };
+  it('reach Control only after the signal delay, carrying their text', () => {
+    expect(controlViewAt([sent, report], 1_579_999, NO).downlinks).toEqual([]);
+    expect(controlViewAt([sent, report], 1_580_000, NO).downlinks[0])
+      .toEqual({ id: 'f1', kind: 'report', sentMs: 900_000, receivedMs: 1_580_000, text: 'Hazard spotted.' });
+  });
+  it('do not change what Control believes about the traverse', () => {
+    const a = controlViewAt([sent, start, report], 2_000_000, NO);
+    const b = controlViewAt([sent, start], 2_000_000, NO);
+    expect({ ...a.received, reports: [] }).toEqual(b.received);
+    expect(a.estimatedNow).toEqual(b.estimatedNow);
+  });
+});

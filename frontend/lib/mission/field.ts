@@ -8,11 +8,13 @@ export type FieldNotice = {
   id: string; kind: 'message' | 'route-changed'; text: string;
   sentMs: number; arrivedMs: number; acked: boolean;
 };
+/** A message Field sent to Control. Field knows the fixed light delay, so it knows when it lands. */
+export type FieldReport = { id: string; text: string; sentMs: number; arrivesMs: number; delivered: boolean };
 export type FieldState = {
   tMs: number; status: FieldStatus; traveller: TravellerKind | null;
   route: Route | null; hazards: Hazard[]; distM: number; pos: LatLon | null; headingDeg: number;
   paceMps: number; startedMs: number | null; lastFixMs: number | null; nextPassMs: number | null;
-  posErrorM: number; notices: FieldNotice[];
+  posErrorM: number; notices: FieldNotice[]; reports: FieldReport[];
 };
 
 /** A moment at which an event takes effect at Field. */
@@ -82,6 +84,8 @@ function apply(w: Walk, { atMs, event }: Moment): void {
       w.status = 'moving';
       w.startedMs = event.tMs;
       return;
+    case 'report':
+      return; // outgoing only; it changes nothing at Field
   }
 }
 
@@ -126,5 +130,9 @@ export function fieldStateAt(log: MissionEvent[], tMs: number, passes: Satellite
     nextPassMs,
     posErrorM: lastFixMs === null ? 1 : positionErrorM(w.distM - distAtFixM),
     notices: w.notices,
+    reports: log
+      .filter((e): e is Extract<MissionEvent, { type: 'report' }> => e.type === 'report' && e.tMs <= tMs)
+      .sort(byTimeThenId)
+      .map(e => ({ id: e.id, text: e.text, sentMs: e.tMs, arrivesMs: e.tMs + SIGNAL_DELAY_MS, delivered: e.tMs + SIGNAL_DELAY_MS <= tMs })),
   };
 }

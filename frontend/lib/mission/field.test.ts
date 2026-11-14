@@ -73,3 +73,18 @@ describe('fieldStateAt', () => {
     expect(s.status).toBe('ready'); expect(s.notices).toHaveLength(1);
   });
 });
+
+describe('messages to Control', () => {
+  const report: MissionEvent = { id: 'f1', tMs: 900_000, type: 'report', origin: 'field', text: 'All nominal.' };
+  it('are listed from the moment they are sent and marked delivered once they land', () => {
+    expect(fieldStateAt([sent, report], 899_999, NO).reports).toEqual([]);
+    expect(fieldStateAt([sent, report], 900_000, NO).reports[0])
+      .toEqual({ id: 'f1', text: 'All nominal.', sentMs: 900_000, arrivesMs: 1_580_000, delivered: false });
+    expect(fieldStateAt([sent, report], 1_580_000, NO).reports[0].delivered).toBe(true);
+  });
+  it('do not change the traverse', () => {
+    const a = fieldStateAt([sent, start, report], 1_500_000, NO);
+    const b = fieldStateAt([sent, start], 1_500_000, NO);
+    expect({ ...a, reports: [] }).toEqual(b);
+  });
+});

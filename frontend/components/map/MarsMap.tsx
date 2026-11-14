@@ -82,14 +82,15 @@ function toFeature(o: MapOverlay): Feature {
   return feature;
 }
 
-/** Heading-up, with the followed position at FOLLOW_ANCHOR of the map; applied without animation. */
+/** Heading-up, with the followed position at FOLLOW_ANCHOR of the uncovered map; applied without animation. */
 function applyFollow(map: OlMap, camera: Extract<MapCamera, { mode: 'follow' }>) {
   const size = map.getSize();
   if (!size) return;
   const view = map.getView();
   view.setRotation((-camera.headingDeg * Math.PI) / 180);
   view.setZoom(camera.zoom);
-  view.centerOn(toCoord(camera.center), size, [size[0] * FOLLOW_ANCHOR[0], size[1] * FOLLOW_ANCHOR[1]]);
+  const visibleH = Math.max(0, size[1] - (camera.insetBottomPx ?? 0));
+  view.centerOn(toCoord(camera.center), size, [size[0] * FOLLOW_ANCHOR[0], visibleH * FOLLOW_ANCHOR[1]]);
 }
 
 function applyFit(map: OlMap, points: LatLon[]) {
@@ -107,7 +108,7 @@ function applyCamera(map: OlMap, camera: MapCamera) {
 /** Changes whenever the camera should be re-applied: every follow update, but a fit only when its points change. */
 function cameraKey(camera: MapCamera): string {
   switch (camera.mode) {
-    case 'follow': return `follow:${camera.center.lat},${camera.center.lon},${camera.headingDeg},${camera.zoom}`;
+    case 'follow': return `follow:${camera.center.lat},${camera.center.lon},${camera.headingDeg},${camera.zoom},${camera.insetBottomPx ?? 0}`;
     case 'fit': return `fit:${camera.points.map(p => `${p.lat},${p.lon}`).join(';')}`;
     case 'free': return 'free';
   }

@@ -10,6 +10,7 @@ export type MapOverlay =
   | { kind: 'label'; id: string; pos: LatLon; text: string; tone: 'plain' | 'route' | 'caution' | 'inverse'; offsetY?: number }; // offsetY in screen px, + is down
 
 export type MapCamera =
-  | { mode: 'follow'; center: LatLon; headingDeg: number; zoom: number } // heading-up, traveller at 65 % of the height
+  // heading-up, traveller at 65 % of the height left uncovered; insetBottomPx = how much a panel covers at the bottom
+  | { mode: 'follow'; center: LatLon; headingDeg: number; zoom: number; insetBottomPx?: number }
   | { mode: 'fit'; points: LatLon[] } // north-up, fitted with padding
   | { mode: 'free' }; // user pans and zooms, limited to DEMO_BOUNDS

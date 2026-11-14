@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldBars, fieldCamera, fieldCells, fieldCue, fieldOverlays, nextMoveView } from '@/components/field/fieldModel';
+import { fieldBars, fieldCamera, fieldCells, fieldCue, fieldOverlays, nextMoveView, reportStatus } from '@/components/field/fieldModel';
 import { fieldStateAt } from '@/lib/mission/field';
 import type { MissionEvent } from '@/lib/mission/types';
 import { straightRoute } from '@/lib/testing/fixtures';
@@ -64,6 +64,8 @@ describe('fieldCells and fieldBars', () => {
 describe('fieldCamera', () => {
   it('follows the traveller heading-up', () =>
     expect(fieldCamera(moving)).toMatchObject({ mode: 'follow', zoom: 15.5, headingDeg: moving.headingDeg }));
+  it('keeps the traveller above a panel covering the bottom of the map', () =>
+    expect(fieldCamera(moving, 120)).toMatchObject({ mode: 'follow', insetBottomPx: 120 }));
   it('fits the demo area before a route arrives', () =>
     expect(fieldCamera(fieldStateAt([sent], 100_000, [])).mode).toBe('fit'));
 });
@@ -92,5 +94,14 @@ describe('fieldCue', () => {
     const change: MissionEvent = { id: 'c', tMs: 800_000, type: 'route-changed', origin: 'control', route: R, hazards: [], reason: 'replan' };
     expect(fieldCue(fieldStateAt([sent, start, change], 1_500_000, [])).routeChanged).toBe(true);
     expect(fieldCue(fieldStateAt([sent, start, change], 1_800_000, [])).routeChanged).toBe(false);
+  });
+});
+
+describe('reportStatus', () => {
+  const report: MissionEvent = { id: 'f1', tMs: 900_000, type: 'report', origin: 'field', text: 'Copy.' };
+  it('is empty before any message, counts down while in transit, then says delivered', () => {
+    expect(reportStatus(fieldStateAt([sent], 900_000, []))).toBeNull();
+    expect(reportStatus(fieldStateAt([sent, report], 1_000_000, []))).toEqual({ text: 'ARRIVES IN 09:40', tone: 'caution' });
+    expect(reportStatus(fieldStateAt([sent, report], 1_580_000, []))).toEqual({ text: 'DELIVERED', tone: 'nominal' });
   });
 });

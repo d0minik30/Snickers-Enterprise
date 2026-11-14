@@ -17,6 +17,12 @@ describe('buildTimeline', () => {
     expect(later.signals.some(s => s.tone === 'telemetry')).toBe(true);
   });
 
+  it('labels a message from the field MSG once it lands', () => {
+    const report: MissionEvent = { id: 'f1', tMs: 900_000, type: 'report', origin: 'field', text: 'Copy.' };
+    const t = buildTimeline(controlViewAt([sent, report], 1_600_000, []), []);
+    expect(t.signals.find(s => s.id === 'f1')).toMatchObject({ dir: 'down', label: 'MSG', arrivesMs: 1_580_000 });
+  });
+
   it('draws an uplink in transit in caution and a delivered one in nominal', () => {
     const t = buildTimeline(controlViewAt([sent], 300_000, []), []);
     expect(t.signals[0]).toMatchObject({ dir: 'up', sentMs: 0, arrivesMs: 680_000, tone: 'caution', label: 'ROUTE' });

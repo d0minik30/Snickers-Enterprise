@@ -49,8 +49,9 @@ export function fieldOverlays(state: FieldState): MapOverlay[] {
   return o;
 }
 
-export function fieldCamera(state: FieldState): MapCamera {
-  if (state.pos) return { mode: 'follow', center: state.pos, headingDeg: state.headingDeg, zoom: FOLLOW_ZOOM };
+/** `insetBottomPx`: how much of the map a panel covers at the bottom; the traveller is kept above it. */
+export function fieldCamera(state: FieldState, insetBottomPx = 0): MapCamera {
+  if (state.pos) return { mode: 'follow', center: state.pos, headingDeg: state.headingDeg, zoom: FOLLOW_ZOOM, insetBottomPx };
   return {
     mode: 'fit',
     points: [{ lat: DEMO_BOUNDS.south, lon: DEMO_BOUNDS.west }, { lat: DEMO_BOUNDS.north, lon: DEMO_BOUNDS.east }],
@@ -147,4 +148,18 @@ export function fieldCue(state: FieldState): { fix: boolean; routeChanged: boole
   const change = [...state.notices].reverse().find(n => n.kind === 'route-changed');
   const routeChanged = change !== undefined && tMs - change.arrivedMs < CUE_MS;
   return { fix, routeChanged, routeChangeId: routeChanged ? change.id : null };
+}
+
+// ---------------------------------------------------------------- messages to Control
+
+export const QUICK_REPORTS = [
+  'Copy.', 'All nominal.', 'Hazard spotted.', 'Holding position.', 'Request reroute.', 'Need assistance.',
+] as const;
+
+/** Where the newest message to Control is: still crossing, or landed. Null before any is sent. */
+export function reportStatus(state: FieldState): { text: string; tone: 'caution' | 'nominal' } | null {
+  const last = state.reports.at(-1);
+  if (!last) return null;
+  if (last.delivered) return { text: 'DELIVERED', tone: 'nominal' };
+  return { text: `ARRIVES IN ${formatClock(Math.max(0, last.arrivesMs - state.tMs))}`, tone: 'caution' };
 }
