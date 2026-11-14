@@ -1,0 +1,34 @@
+{
+  "sources": [
+    {
+      "id": "hirise_1m",
+      "description": "USGS MSR TRN HiRISE DTM (~1 m, Perseverance landing site)",
+      "priority": 30,
+      "cell_size_m": 1.0,
+      "local_file": "backend/data_local/terrain/hirise_1m/jezero_hirise_landing_1m.tif",
+      "file": "hirise_1m/jezero_hirise_landing_1m.tif",
+      "sha256": "595f1f22e4e524e6179442f2ad3c5c629ab44c4dbdc5a71c7e4601bd671c2b46",
+      "vertical_offset_m": 0.0
+    },
+    {
+      "id": "ctx_20m",
+      "description": "MRO CTX Jezero controlled DEM, 20 m/pixel, Mars areoid/MOLA datum",
+      "priority": 20,
+      "cell_size_m": 20.0,
+      "local_file": "backend/data_local/terrain/ctx_20m/jezero_ctx_dem_20m.tif",
+      "file": "ctx_20m/jezero_ctx_dem_20m.tif",
+      "sha256": "46fb2e1e9f9c1fdd02939c2a96f3e173a8731bd146fbeb969b2060e0a3c8e97e",
+      "vertical_offset_m": 0.0
+    },
+    {
+      "id": "mola_200m",
+      "description": "USGS MOLA-HRSC Global DEM Blend (~200 m, 80x80 km regional coverage)",
+      "priority": 10,
+      "cell_size_m": 200.0,
+      "local_file": "backend/data_local/terrain/mola_200m/jezero_mola_hrsc_200m.tif",
+      "file": "mola_200m/jezero_mola_hrsc_200m.tif",
+      "sha256": "28d51d60a0ead2b541c66969cb21933f1852e321a5ad4e1ef13fd8ca0575e5b4",
+      "vertical_offset_m": -1.2
+    }
+  ]
+}

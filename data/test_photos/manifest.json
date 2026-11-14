@@ -1,0 +1,5 @@
+{
+  "contract_version": "0.1",
+  "description": "Perseverance PDS ground-truth validation cases. Images and truth are intentionally absent until individually verified against PDS labels and rover telemetry.",
+  "cases": []
+}

@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "name": "Jezero named landmarks",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Belva",
+        "feature_type": "impact_crater",
+        "name_authority": "IAU Working Group for Planetary System Nomenclature",
+        "elevation_m": -2489.3,
+        "prominence_m": 37.8,
+        "prominence_kind": "crater_depth",
+        "prominence_source": "Local 40 m CTX terrain_features.geojson; depth to lowest rim point, measured 0.4 km from IAU center",
+        "source": "IAU Gazetteer center (18.48°N, 77.38°E); elevation sampled from the controlled CTX DEM",
+        "source_url": "https://planetarynames.wr.usgs.gov/Feature/15872"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [77.38, 18.48]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Perseverance landing site",
+        "feature_type": "landing_site",
+        "name_authority": "NASA Mars 2020 mission",
+        "elevation_m": -2567.2,
+        "prominence_m": 0.0,
+        "prominence_kind": "reference_point",
+        "prominence_source": "Reference point; prominence not applicable",
+        "source": "NASA Mars 2020 landing coordinates; elevation sampled from the controlled CTX DEM",
+        "source_url": "https://science.nasa.gov/mission/mars-2020-perseverance/location-map/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [77.4508, 18.4447]
+      }
+    }
+  ]
+}

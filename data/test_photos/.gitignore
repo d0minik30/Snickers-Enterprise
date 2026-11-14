@@ -1,0 +1,4 @@
+# Full-resolution source products stay out of git. Keep manifest.json committed.
+*
+!manifest.json
+!.gitignore

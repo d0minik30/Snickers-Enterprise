@@ -233,3 +233,63 @@ const legend = await fetch('/data/elevation_legend.json').then(r => r.json());
 Investigations Map 3464, https://doi.org/10.3133/sim3464
 (`raw/sim3464_database.zip`; the script reads layer `GeoUnits_v1` straight from the ZIP).
 Places from the NASA Mars Trek "Jezero Crater Features and Landforms" bookmark.
+
+## Localization terrain inputs
+
+`scripts/fetch_terrain.py` installs only rasters whose source and SHA-256 are pinned
+in `scripts/terrain_sources.json`; it writes `terrain.json` and the listed GeoTIFFs
+to `backend/data_local/terrain/`, which is ignored by git. Run it from the repository
+root after adding each authoritative source raster and its verified checksum:
+
+```powershell
+python data/scripts/fetch_terrain.py
+python backend/scripts/check_terrain.py
+```
+
+Records may use a repository-relative `local_file`, or an official `url`, and must
+include `id`, `priority`, nominal `cell_size_m`, contract-relative `file`, and the
+64-character SHA-256. The script checks the digest before installing and derives
+rows, columns, nodata, and Mars 2000 bounds from the GeoTIFF header. It does not
+infer vertical offsets: set `vertical_offset_m` only from measured overlap residuals.
+The `terrain_sources.json` currently pins the available CTX mosaic only:
+
+| File | SHA-256 | Extent | Notes |
+|---|---|---|---|
+| `backend/data_local/terrain/ctx_20m/jezero_ctx_dem_20m.tif` | `46fb2e1e9f9c1fdd02939c2a96f3e173a8731bd146fbeb969b2060e0a3c8e97e` | 18.2110274–18.7211945 N, 77.1604655–77.6989752 E | 20 m, controlled MRO CTX, areoid/MOLA datum, 1,512 × 1,596 |
+
+At this checkout, `backend/scripts/check_terrain.py` reports the CTX source loads
+with no nodata and no manifest problems. It reports **no overlap comparison**, because
+the HiRISE and outer-ring rasters are not present. Therefore the 80 × 80 km coverage,
+HiRISE/CTX/MOLA seam measurements, and validated nonzero offsets remain outstanding;
+the current CTX-only manifest cannot cover all 40 km rays.
+
+## Named engine landmarks
+
+`output/features.geojson` is a small GeoJSON FeatureCollection in `[lon, lat]` order.
+It currently includes the IAU Gazetteer center of Belva and the NASA Perseverance
+landing-site reference point. Belva's elevation is sampled from the installed CTX
+tile; its 37.8 m crater depth comes from the local terrain-features extraction and
+is recorded as depth, not positive summit prominence. The landing-site record is a
+reference point and its prominence is not applicable. Source URLs and measurement
+notes travel with each feature. Add further named features only with checked
+coordinates and elevations in the same Mars 2000 / areoid convention.
+
+## Ground-truth photo cases
+
+`test_photos/manifest.json` reserves the v0.1 validation case list. It is empty at
+present: this checkout has no PDS images, PDS labels, camera calibration records, or
+verified rover telemetry linking true coordinates and headings to individual images.
+Do not treat a landing-site coordinate as the truth for later sols. Before adding
+cases, preserve the full source PDS product link and image calibration metadata;
+put truth coordinates and headings only in the validation manifest, never in a
+photo request sent to `/locate`. Keep full-resolution image products outside git.
+
+## Data status and provenance
+
+All geospatial coordinates use east-positive longitude and the Mars 2000 sphere
+(3,396,190 m); terrain heights use metres above the Mars areoid. The original six
+processing scripts and outputs listed above remain the map-layer pipeline. The new
+`fetch_terrain.py`, `terrain_sources.json`, and `test_photos/manifest.json` are
+committed data-side assets. Terrain GeoTIFFs and full-resolution rover images remain
+in ignored/local or shared storage; only their checksums and manifest metadata belong
+in git.
