@@ -1,0 +1,22 @@
+# --- System / editor files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.log
+node_modules/
+
+# --- Keep map data OUT of the repo ---
+# All map images and datasets must load live from NASA.
+# These rules stop them from being committed by mistake.
+# (If you really need an image, e.g. a logo, add an exception like: !logo.png)
+*.jpg
+*.jpeg
+*.png
+*.tif
+*.tiff
+*.img
+*.geojson
+*.zip
