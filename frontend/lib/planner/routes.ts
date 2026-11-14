@@ -1,11 +1,14 @@
+import jezero from '@/lib/planner/jezeroTerrain.json';
 import type { Hazard, LatLon, Risk, Route, RouteProfile, Waypoint } from '@/lib/planner/types';
 import { cumulativeM, distanceM, pointAlong, slicePath } from '@/lib/nav/geo';
-import { findPath, type Weighting } from '@/lib/planner/astar';
-import jezero from '@/lib/planner/jezeroTerrain.json';
+import { findPath, lowestConnectingSlope, type Weighting } from '@/lib/planner/astar';
 import { elevationAt, fromLocalM, isSandAt, slopeAt, toLocalM, type LocalM } from '@/lib/planner/terrain';
 
-export const DEFAULT_START: LatLon = { lat: 18.4446, lon: 77.4509 }; // Perseverance landing site
-export const DEFAULT_END: LatLon = { lat: 18.4890, lon: 77.4080 }; // about 3.56 km away in a straight line
+/** Real places from data/output/places.geojson, via scripts/extract-terrain.mjs. */
+export const START_PLACE = { name: jezero.start.name, elevationM: jezero.start.elevation_m };
+export const DESTINATION = { name: jezero.destination.name, elevationM: jezero.destination.elevation_m };
+export const DEFAULT_START: LatLon = { lat: jezero.start.lat, lon: jezero.start.lon }; // Perseverance landing site
+export const DEFAULT_END: LatLon = { lat: jezero.destination.lat, lon: jezero.destination.lon }; // Western Delta Deposit, about 9.6 km away
 export const MIN_ROUTE_M = 40;
 export const FLAG_RADIUS_M = 60;
 
@@ -169,6 +172,10 @@ function buildRoute(profile: RouteProfile, start: LatLon, end: LatLon, hazards: 
     avoided: hazards.filter(h => p.avoidsSurvey || h.source === 'control'),
     marginM: p.marginM,
   };
+  if (profile === 'flattest') {
+    // Stay under the gentlest slope that still gets through, with a degree of slack for the smoothing.
+    weighting.slopeCapDeg = lowestConnectingSlope(start, end, weighting.avoided, weighting.marginM + 20) + 1;
+  }
   const points = shapePath(findPath(start, end, weighting), start, end, weighting.avoided, weighting.marginM);
   const lengthM = cumulativeM(points).at(-1) ?? 0;
   const slope = maxSlopeDeg(points);

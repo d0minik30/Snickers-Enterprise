@@ -2,7 +2,7 @@ import type { LatLon } from '@/lib/planner/types';
 import { MARS_RADIUS_M } from '@/lib/nav/geo';
 import jezero from '@/lib/planner/jezeroTerrain.json';
 
-export const DEMO_BOUNDS = { south: 18.415, west: 77.380, north: 18.500, east: 77.480 };
+export const DEMO_BOUNDS = { south: 18.425, west: 77.340, north: 18.525, east: 77.475 }; // landing site to the Western Delta Deposit; keep in step with scripts/extract-terrain.mjs
 
 const M_PER_DEG_LAT = (MARS_RADIUS_M * Math.PI) / 180;
 const M_PER_DEG_LON = M_PER_DEG_LAT * Math.cos((((DEMO_BOUNDS.south + DEMO_BOUNDS.north) / 2) * Math.PI) / 180);

@@ -39,7 +39,7 @@ describe('mock planner', () => {
   it('flattest is no steeper than shortest', () =>
     expect(flattest.maxSlopeDeg).toBeLessThanOrEqual(shortest.maxSlopeDeg));
   it('slopes are believable', () => routes.forEach(r => {
-    expect(r.maxSlopeDeg).toBeGreaterThan(0); expect(r.maxSlopeDeg).toBeLessThan(30); }));
+    expect(r.maxSlopeDeg).toBeGreaterThan(0); expect(r.maxSlopeDeg).toBeLessThanOrEqual(35); })); // real DEM: steepest cell in the area is 33°
   it('all three avoid a hazard flagged by Control', () => {
     const flagged: Hazard = { id: 'c1', center: pointAlong(shortest.points, shortest.lengthM / 3).pos,
                               radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' };
@@ -86,10 +86,11 @@ describe('mock planner', () => {
       Math.max(...a.points.map(p => Math.min(...b.points.map(q => distanceM(p, q)))));
     const pairs = (r: Route[]): [Route, Route][] => [[r[0], r[1]], [r[0], r[2]], [r[1], r[2]]];
 
-    it('default pair: every two routes are at least 300 m apart', () =>
+    // On the real DEM safest and shortest share the one easy gap up the delta front, so they stay closer than on made-up terrain.
+    it('default pair: every two routes are at least 250 m apart somewhere', () =>
       pairs(routes).forEach(([a, b]) => {
-        expect(separationM(a, b)).toBeGreaterThanOrEqual(300);
-        expect(separationM(b, a)).toBeGreaterThanOrEqual(300);
+        expect(separationM(a, b)).toBeGreaterThanOrEqual(250);
+        expect(separationM(b, a)).toBeGreaterThanOrEqual(250);
       }));
     it('default pair: slopes step down from shortest to safest to flattest', () => {
       expect(flattest.maxSlopeDeg).toBeLessThanOrEqual(safest.maxSlopeDeg - 2);
