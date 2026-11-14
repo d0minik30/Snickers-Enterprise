@@ -25,6 +25,8 @@ type Props = {
   camera: MapCamera;
   onMapClick?: (p: LatLon) => void;
   armed?: boolean;
+  /** Let the user pan and zoom even while the camera is 'fit' (it is always allowed in 'free'). */
+  interactive?: boolean;
   className?: string;
 };
 
@@ -111,7 +113,7 @@ function cameraKey(camera: MapCamera): string {
   }
 }
 
-export default function MarsMap({ overlays, camera, onMapClick, armed = false, className }: Props) {
+export default function MarsMap({ overlays, camera, onMapClick, armed = false, interactive = false, className }: Props) {
   const targetRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OlMap | null>(null);
   const sourceRef = useRef<VectorSource | null>(null);
@@ -189,7 +191,7 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, c
     if (map) applyCamera(map, cameraRef.current);
   }, [key]);
 
-  const free = camera.mode === 'free';
+  const free = camera.mode === 'free' || interactive;
   useEffect(() => {
     mapRef.current?.getInteractions().forEach(i => i.setActive(free));
   }, [free]);

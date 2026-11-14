@@ -88,7 +88,7 @@ function line(color: string | Color, width: number, lineDash?: number[]): Stroke
 type ChipTone = Overlay<'label'>['tone'];
 
 /** Hard-edged upright text chip: uppercase Barlow Condensed on a solid block. */
-function chip(text: string, tone: ChipTone, theme: MapTheme, place: Partial<{ offsetX: number; geometry: Point }> = {}): Style {
+function chip(text: string, tone: ChipTone, theme: MapTheme, place: Partial<{ offsetX: number; offsetY: number; geometry: Point }> = {}): Style {
   const inverse = tone === 'inverse';
   const ink = { plain: theme.text, route: theme.route, caution: theme.caution, inverse: theme.surface }[tone];
   return new Style({
@@ -102,6 +102,7 @@ function chip(text: string, tone: ChipTone, theme: MapTheme, place: Partial<{ of
       textAlign: place.offsetX ? 'left' : 'center',
       textBaseline: 'middle',
       offsetX: place.offsetX ?? 0,
+      offsetY: place.offsetY ?? 0,
     }),
   });
 }
@@ -198,7 +199,7 @@ export function ringStyle(o: Overlay<'ring'>, { theme, rotation }: StyleContext)
 }
 
 export function labelStyle(o: Overlay<'label'>, { theme }: StyleContext): Style[] {
-  return [chip(o.text, o.tone, theme)];
+  return [chip(o.text, o.tone, theme, { offsetY: o.offsetY })];
 }
 
 export function overlayStyle(o: MapOverlay, ctx: StyleContext): Style[] {

@@ -200,7 +200,14 @@ export function spliceRoute(old: Route, branchDistM: number, tail: Route): Route
   const headElevation = cumulativeM(head).map(d => elevationAtDist(oldCum, old.elevationM, d));
   const points = [...head, ...tail.points.slice(1)];
   const keptWaypoints = old.waypoints.filter(w => w.distM < branchDistM);
-  const tailWaypoints = tail.waypoints.map(w => ({ ...w, distM: w.distM + branchDistM }));
+  // The tail was planned on its own, so its names start the list again; give it names the kept part has not used.
+  const unused = WAYPOINT_NAMES.filter(n => !keptWaypoints.some(w => w.name === n));
+  let next = 0;
+  const tailWaypoints = tail.waypoints.map(w => ({
+    ...w,
+    name: WAYPOINT_NAMES.includes(w.name) ? (unused.length ? unused[next++ % unused.length] : w.name) : w.name,
+    distM: w.distM + branchDistM,
+  }));
   return {
     id: `${old.id}+${tail.id}@${Math.round(branchDistM)}`,
     profile: tail.profile,

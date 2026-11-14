@@ -7,7 +7,7 @@ export type MapOverlay =
   | { kind: 'endpoint'; id: string; pos: LatLon; variant: 'start' | 'end' }
   | { kind: 'traveller'; id: string; pos: LatLon; headingDeg: number; errorM: number; variant: 'solid' | 'ghost' }
   | { kind: 'ring'; id: string; center: LatLon; radiusM: number; label: string }
-  | { kind: 'label'; id: string; pos: LatLon; text: string; tone: 'plain' | 'route' | 'caution' | 'inverse' };
+  | { kind: 'label'; id: string; pos: LatLon; text: string; tone: 'plain' | 'route' | 'caution' | 'inverse'; offsetY?: number }; // offsetY in screen px, + is down
 
 export type MapCamera =
   | { mode: 'follow'; center: LatLon; headingDeg: number; zoom: number } // heading-up, traveller at 65 % of the height

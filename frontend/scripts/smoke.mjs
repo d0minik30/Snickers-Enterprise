@@ -21,7 +21,9 @@ function check(ok, what) {
   if (!ok) failures.push(what);
 }
 
+/** Edge, then Chrome; BROWSER_PATH points at any other Chromium build (for example on Linux or in CI). */
 async function launch() {
+  if (process.env.BROWSER_PATH) return chromium.launch({ executablePath: process.env.BROWSER_PATH });
   let lastError;
   for (const channel of ['msedge', 'chrome']) {
     try {
@@ -34,8 +36,11 @@ async function launch() {
 }
 
 /** Fails the run on anything the page itself reports as wrong. */
-function watch(page, name) {
+function watch(page, name, { allowFailedLoads = false } = {}) {
   page.on('console', msg => {
+    if (allowFailedLoads && msg.text().startsWith('Failed to load resource')) return;
+    // Chrome's timing heuristic for font preloads on the static build; the fonts do load and are used.
+    if (msg.text().includes('was preloaded using link preload but not used')) return;
     if (msg.type() === 'error' || msg.type() === 'warning') failures.push(`${name}: console ${msg.type()}: ${msg.text()}`);
   });
   page.on('pageerror', error => failures.push(`${name}: uncaught ${error.message}`));
@@ -44,6 +49,29 @@ function watch(page, name) {
 const byTestId = (page, id) => page.getByTestId(id);
 const isPressed = async locator => (await locator.getAttribute('aria-pressed')) === 'true';
 const routeSentCount = page => page.evaluate(() => window.__marsMission.getSnapshot().log.filter(e => e.type === 'route-sent').length);
+const setRate = (page, rate) => page.evaluate(r => window.__marsMission.setRate(r), rate);
+const fieldStatus = page => byTestId(page, 'field-status').getAttribute('data-status');
+
+/** Waits until the Field page reports `status`; false after `timeout` ms. */
+const waitForStatus = (page, status, timeout = 15_000) => page
+  .waitForFunction(s => document.querySelector('[data-testid="field-status"]')?.getAttribute('data-status') === s, status, { timeout })
+  .then(() => true, () => false);
+
+/** Waits until the comms entry containing `text` reaches `status`; false after `timeout` ms. */
+const waitForUplink = (control, text, status, timeout = 15_000) => control
+  .waitForFunction(([t, st]) => [...document.querySelectorAll('[data-testid="uplink"]')]
+    .some(e => e.textContent.includes(t) && e.getAttribute('data-status') === st), [text, status], { timeout })
+  .then(() => true, () => false);
+
+/** Runs the mission clock at 600x until `until` resolves, then back to 30x. */
+async function fastForward(control, until) {
+  await setRate(control, 600);
+  try {
+    return await until();
+  } finally {
+    await setRate(control, 30);
+  }
+}
 
 /** Lets the map tiles arrive before a screenshot; the imagery is live from NASA, so this is best effort. */
 async function settle(page) {
@@ -102,11 +130,13 @@ async function sendRoute(page) {
   await byTestId(page, 'send-route').click();
   check(await routeSentCount(page) === 1, 'the log has one route-sent event');
   check((await byTestId(page, 'tab-live').getAttribute('aria-selected')) === 'true', 'Control switches to Live');
-  check((await page.getByTestId('live-placeholder').textContent())?.includes('ARRIVES IN'), 'Live shows the route in transit');
-  await page.screenshot({ path: `${OUT_DIR}live-placeholder.png` });
+  check((await byTestId(page, 'uplink').first().getAttribute('data-status')) === 'in-transit', 'Live shows the route in transit');
+  check((await byTestId(page, 'uplink').first().textContent())?.includes('ARRIVES IN'), 'with a countdown');
+  await settle(page);
+  await page.screenshot({ path: `${OUT_DIR}live-transit.png` });
 
   await page.reload();
-  await byTestId(page, 'live-placeholder').waitFor();
+  await byTestId(page, 'data-age').waitFor();
   check((await byTestId(page, 'tab-live').getAttribute('aria-selected')) === 'true', 'after a reload Control opens on Live');
   check(await routeSentCount(page) === 1, 'the route survives the reload');
 
@@ -154,6 +184,91 @@ async function tooClose(page) {
   await page.screenshot({ path: `${OUT_DIR}plan-too-close.png` });
 }
 
+/** Task 8: the Field HUD from awaiting a route to moving, and a reload mid-traverse (Review Focus 1). */
+async function fieldRun(control, field) {
+  await field.goto(`${BASE_URL}/field/`);
+  await byTestId(field, 'field-status').waitFor();
+  check(await waitForStatus(field, 'awaiting-route', 3000), 'Field waits for a route');
+  await settle(field);
+  await field.screenshot({ path: `${OUT_DIR}field-awaiting.png` });
+
+  await byTestId(control, 'send-route').click();
+  check(await fastForward(control, () => waitForStatus(field, 'ready')), 'the route reaches Field after the delay');
+  await byTestId(field, 'field-start').click();
+  check(await waitForStatus(field, 'moving', 3000), 'Start sets the traveller moving');
+  check(((await byTestId(field, 'field-next-move').textContent()) ?? '').trim().length > 0, 'Field shows the next move');
+  await settle(field);
+  await field.screenshot({ path: `${OUT_DIR}field.png` });
+
+  await field.reload();
+  check(await waitForStatus(field, 'moving', 2000), 'after a reload Field is still moving, without pressing Start');
+
+  for (const width of [360, 390, 430]) {
+    await field.setViewportSize({ width, height: 800 });
+    const fits = await field.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+    check(fits, `Field fits at ${width} px`);
+  }
+  await field.setViewportSize({ width: 390, height: 844 });
+}
+
+/** Task 9: Live mode: a hazard flag and reroute, orders, a message and its acknowledgement. Early in the walk, so all of it lands before arrival. */
+async function liveRun(control, field) {
+  check(((await byTestId(control, 'data-age').textContent()) ?? '').includes('11:20'), 'Live states the field data is 11:20 old');
+
+  // Reduced motion in Field from here, so the route-change cue that follows must not animate.
+  await field.emulateMedia({ reducedMotion: 'reduce' });
+  const before = await control.evaluate(() => window.__marsMission.getSnapshot().log.length);
+  await byTestId(control, 'flag-hazard').click();
+  await byTestId(control, 'mars-map').click();
+  await control.waitForTimeout(300);
+  const log = await control.evaluate(() => window.__marsMission.getSnapshot().log);
+  check(log.length === before + 1 && log.at(-1).type === 'route-changed', 'flagging a hazard early sends a new route');
+  check(await control.locator('[data-testid="uplink"]', { hasText: 'Route changed' }).getAttribute('data-status') === 'in-transit',
+    'the new route is shown in transit');
+  await settle(control);
+  await control.screenshot({ path: `${OUT_DIR}live.png` });
+
+  // Hold first, then the message, so the message is the newest notice when both land.
+  await byTestId(control, 'order-hold').click();
+  const text = 'Sample at next waypoint';
+  await byTestId(control, 'msg-input').fill(text);
+  await byTestId(control, 'msg-send').click();
+  const entry = control.locator('[data-testid="uplink"]', { hasText: text });
+  await entry.waitFor();
+  check((await entry.getAttribute('data-status')) === 'in-transit', 'a new message is in transit');
+
+  check(await fastForward(control, () => waitForStatus(field, 'holding')), 'a hold order stops the traveller when it lands');
+  check(await field.evaluate(() => document.getAnimations().length === 0), 'nothing animates in Field under reduced motion');
+  // The message left a moment after the hold order, so it lands a moment later: wait for it.
+  check(await fastForward(control, () => waitForUplink(control, text, 'delivered')), 'the message is delivered after the delay');
+  const strip = byTestId(field, 'field-message');
+  const shown = await strip.filter({ hasText: text }).waitFor({ timeout: 5000 }).then(() => true, () => false);
+  check(shown, 'Field shows the message');
+  await settle(field);
+  await field.screenshot({ path: `${OUT_DIR}field-live.png` });
+  await strip.click();
+
+  await byTestId(control, 'order-proceed').click();
+  check(await fastForward(control, () => waitForStatus(field, 'moving')), 'a proceed order restarts it');
+  check(await fastForward(control, () => waitForUplink(control, text, 'acknowledged')), 'Control sees the acknowledgement after the delay');
+}
+
+/** Task 10: NASA unreachable (Review Focus 2). Routes and the send button must still work. */
+async function offline(browser) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await context.route('**/trek.nasa.gov/**', r => r.abort());
+  const page = await context.newPage();
+  watch(page, 'offline control', { allowFailedLoads: true });
+  await page.goto(`${BASE_URL}/control/`);
+  const strip = byTestId(page, 'tiles-unavailable');
+  check(await strip.waitFor({ timeout: 15_000 }).then(() => true, () => false), 'offline: the imagery message appears');
+  check(await byTestId(page, 'route-card-safest').count() === 1, 'offline: route cards still there');
+  await page.screenshot({ path: `${OUT_DIR}offline.png` });
+  await byTestId(page, 'send-route').click();
+  check(await routeSentCount(page) === 1, 'offline: sending still works');
+  await context.close();
+}
+
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
   const browser = await launch();
@@ -176,6 +291,22 @@ async function main() {
 
     console.log('Too close');
     await tooClose(control);
+
+    console.log('Field');
+    await control.evaluate(() => window.__marsMission.reset());
+    await control.reload();
+    await byTestId(control, 'send-route').waitFor();
+    const field = await context.newPage();
+    watch(field, 'field');
+    await field.setViewportSize({ width: 390, height: 844 });
+    await fieldRun(control, field);
+
+    console.log('Live');
+    await liveRun(control, field);
+    await context.close();
+
+    console.log('Offline');
+    await offline(browser);
   } finally {
     await browser.close();
   }

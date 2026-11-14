@@ -1,0 +1,351 @@
+/* Field HUD, "Instrument" look: black bands top and bottom, the map between, colour only for meaning.
+   Designed for 360-430 px wide; centred and capped at 480 px on wider windows. */
+
+.screen {
+  --pad-x: 14px;
+  --pad-y: 10px;
+  --track-label: 0.14em;
+  --readout-label-size: 11px;
+  --readout-value-size: 22px;
+  --readout-track-height: 5px;
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  height: 100dvh;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+@media (min-width: 481px) {
+  .screen {
+    border-left: 1px solid var(--rule);
+    border-right: 1px solid var(--rule);
+  }
+}
+
+:where(.screen) button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+:where(.screen) button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+/* ===================================================================== next move band */
+
+.nextMove {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 96px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.move {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: var(--pad-y) var(--pad-x);
+}
+
+.moveTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.arrow {
+  display: flex;
+  color: var(--route);
+}
+
+.moveDistance {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.moveUnit {
+  margin-left: 4px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.moveText {
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.moveWaypoint {
+  font-weight: 600;
+  color: var(--route);
+}
+
+.moveSide {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  border-left: 1px solid var(--rule);
+}
+
+.sideCell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 92px;
+  padding: 6px var(--pad-x);
+}
+
+.sideCell + .sideCell {
+  border-top: 1px solid var(--rule);
+}
+
+.sideLabel {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+}
+
+.sideValue {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ===================================================================== message strip */
+
+.message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px var(--pad-x);
+  text-align: left;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:where(.screen) .message {
+  background: var(--caution);
+  color: var(--surface);
+}
+
+.messageText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messageFrom {
+  font-weight: 600;
+}
+
+.messageAge {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===================================================================== map */
+
+.mapArea {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.north {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 40px;
+  padding: 5px 0 4px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.northNeedle {
+  display: flex;
+  color: var(--text);
+}
+
+.northLabel {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+/* One magenta pulse around the map when Control changes the route. Invisible with no animation,
+   so reduced motion shows nothing here (the message strip still says what happened). */
+.routePulse {
+  position: absolute;
+  inset: 0;
+  border: 4px solid var(--route);
+  opacity: 0;
+  pointer-events: none;
+  animation: pulse 1.8s ease-out 1;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0; }
+  20%, 55% { opacity: 1; }
+}
+
+/* ----- state panels ----- */
+
+.panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px var(--pad-x);
+  background: var(--surface);
+  text-align: center;
+}
+
+.panelDocked {
+  inset: auto 0 0 0;
+  align-items: stretch;
+  gap: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+.panelTitle {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.panelNote {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.panelStats {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.panelLabel {
+  margin-right: 4px;
+  font-size: 11px;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+}
+
+:where(.screen) .startButton {
+  width: 100%;
+  padding: 14px 0;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+}
+
+.banner {
+  padding: 7px var(--pad-x);
+  border-bottom: 1px solid var(--rule);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.bannerHold { color: var(--caution); }
+.bannerDone { color: var(--nominal); }
+
+/* ===================================================================== readout band */
+
+.readouts {
+  border-top: 1px solid var(--rule);
+}
+
+.cells,
+.bars {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bars {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--rule);
+}
+
+.cell {
+  position: relative;
+  min-width: 0;
+  padding: 9px var(--pad-x) 10px;
+}
+
+.cells .cell:nth-child(n + 4) {
+  border-top: 1px solid var(--rule);
+}
+
+.cells .cell:not(:nth-child(3n + 1)),
+.bars .cell + .cell {
+  border-left: 1px solid var(--rule);
+}
+
+.fixCue {
+  position: absolute;
+  top: 7px;
+  right: 6px;
+  padding: 2px 4px 1px;
+  background: var(--nominal);
+  color: var(--surface);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+@media (max-width: 380px) {
+  .screen {
+    --pad-x: 11px;
+    --readout-value-size: 20px;
+  }
+
+  .moveDistance {
+    font-size: 40px;
+  }
+}

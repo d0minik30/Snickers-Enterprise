@@ -1,9 +1,10 @@
 import type { MapOverlay } from '@/components/map/overlays';
 import type { Tone } from '@/components/shared/Readout';
+import { canReroute, predictBranchDistM, type ControlView, type Uplink } from '@/lib/mission/control';
 import { PACE_MPS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
 import { formatClock, formatDistance } from '@/lib/nav/format';
-import { bearingDeg, cumulativeM, destination, distanceM, pointAlong } from '@/lib/nav/geo';
-import { DEMO_BOUNDS, PRESET_HAZARDS, isInsideHazard, positionErrorM, satellitePasses } from '@/lib/planner';
+import { bearingDeg, cumulativeM, destination, distanceM, pointAlong, slicePath } from '@/lib/nav/geo';
+import { DEMO_BOUNDS, PRESET_HAZARDS, isInsideHazard, positionErrorM, replan, satellitePasses, spliceRoute } from '@/lib/planner';
 import type { Hazard, LatLon, Risk, Route, RouteProfile, SatellitePass } from '@/lib/planner/types';
 
 // ---------------------------------------------------------------- route cards
@@ -254,4 +255,125 @@ export function earthClock(missionMs: number): string {
 export function marsClock(missionMs: number): { sol: number; time: string } {
   const ms = MARS_CLOCK_START_MS + missionMs;
   return { sol: MARS_SOL + Math.floor(ms / DAY_MS), time: timeOfDay(ms) };
+}
+
+// ---------------------------------------------------------------- Live mode
+
+const TRAVELLER_LABEL_OFFSET_PX = 28; // label chips sit this far above or below their marker
+
+const routeEvents = (view: ControlView) =>
+  view.uplinks.filter(u => u.event.type === 'route-sent' || u.event.type === 'route-changed');
+
+/** The newest route Control has sent, whether or not it has reached the field yet. */
+export function newestRoute(view: ControlView): Route | null {
+  return view.pendingRoute ?? view.activeRoute;
+}
+
+/** Index of the first point where `b` stops matching `a` (both start the same when one is spliced from the other). */
+function divergence(a: LatLon[], b: LatLon[]): number {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i].lat === b[i].lat && a[i].lon === b[i].lon) i++;
+  return i;
+}
+
+function midpoint(points: LatLon[]): LatLon {
+  return pointAlong(points, (cumulativeM(points).at(-1) ?? 0) / 2).pos;
+}
+
+export function liveOverlays(view: ControlView): MapOverlay[] {
+  const { received, activeRoute, pendingRoute, estimatedNow } = view;
+  const shown = newestRoute(view);
+  const dist = received.route ? received.distM : 0;
+  const pos = received.pos;
+  const o: MapOverlay[] = [];
+  const labels: MapOverlay[] = [];
+
+  for (const h of view.hazards) {
+    const notYet = !h.atField && h.source === 'control';
+    o.push({ kind: 'hazard', id: `hazard:${h.id}`, hazard: h, pending: notYet });
+    labels.push(notYet
+      ? { kind: 'label', id: `label:hazard:${h.id}`, pos: h.center, text: 'FLAGGED · NOT YET AT FIELD', tone: 'inverse', offsetY: 20 }
+      : { kind: 'label', id: `label:hazard:${h.id}`, pos: h.center, text: h.label, tone: 'caution' });
+  }
+
+  if (received.route && pos && dist > 0) {
+    const walked = slicePath(received.route.points, 0, dist);
+    o.push({ kind: 'route', id: 'route:walked', points: [...walked.slice(0, -1), pos], variant: 'walked' });
+  }
+  if (activeRoute && dist < activeRoute.lengthM) {
+    o.push({ kind: 'route', id: 'route:active', points: slicePath(activeRoute.points, dist, activeRoute.lengthM), variant: 'active' });
+  }
+  if (pendingRoute) {
+    const from = activeRoute ? divergence(activeRoute.points, pendingRoute.points) : 0;
+    const part = pendingRoute.points.slice(Math.max(0, from - 1));
+    if (part.length >= 2) {
+      o.push({ kind: 'route', id: 'route:pending', points: part, variant: 'pending' });
+      const uplink = routeEvents(view).filter(u => u.status === 'in-transit').at(-1);
+      const inText = uplink ? ` · ARRIVES IN ${formatClock(Math.max(0, uplink.arrivesMs - view.tMs))}` : '';
+      const name = activeRoute ? 'REROUTE' : `ROUTE ${LETTERS[pendingRoute.profile]}`;
+      labels.push({ kind: 'label', id: 'label:pending', pos: midpoint(part), text: `${name}${inText}`, tone: 'route' });
+    }
+  }
+
+  if (shown) {
+    shown.waypoints.slice(0, -1).forEach((w, i) => {
+      if (w.distM > dist) o.push({ kind: 'waypoint', id: `waypoint:${i + 1}`, pos: w.pos, label: String(i + 1) });
+    });
+    o.push({ kind: 'endpoint', id: 'endpoint:start', pos: shown.points[0], variant: 'start' });
+    o.push({ kind: 'endpoint', id: 'endpoint:end', pos: shown.points[shown.points.length - 1], variant: 'end' });
+  }
+
+  if (pos && received.route) {
+    if (estimatedNow && distanceM(estimatedNow.pos, pos) > 1) {
+      o.push({
+        kind: 'traveller', id: 'traveller:estimated', pos: estimatedNow.pos, variant: 'ghost',
+        headingDeg: pointAlong(received.route.points, estimatedNow.distM).bearingDeg,
+        errorM: received.posErrorM + 0.02 * (estimatedNow.distM - dist),
+      });
+      labels.push({ kind: 'label', id: 'label:estimated', pos: estimatedNow.pos, text: 'ESTIMATED NOW', tone: 'plain', offsetY: -TRAVELLER_LABEL_OFFSET_PX });
+    }
+    o.push({ kind: 'traveller', id: 'traveller:received', pos, headingDeg: received.headingDeg, errorM: received.posErrorM, variant: 'solid' });
+    labels.push({
+      kind: 'label', id: 'label:received', pos, tone: 'plain', offsetY: TRAVELLER_LABEL_OFFSET_PX,
+      text: `LAST RECEIVED · ${formatClock(view.dataAgeMs)} OLD`,
+    });
+  }
+  return [...o, ...labels];
+}
+
+/**
+ * A new route from where the traveller can be when the signal lands, to the same end, around every hazard
+ * Control knows plus `newHazard`. Null when it is too late or nothing can be planned.
+ */
+export function buildReroute(view: ControlView, newHazard: Hazard | null): { route: Route; hazards: Hazard[] } | null {
+  const newest = newestRoute(view);
+  if (!newest || !canReroute(view)) return null;
+  const branchDistM = predictBranchDistM(view);
+  const branch = pointAlong(newest.points, branchDistM).pos;
+  const hazards: Hazard[] = view.hazards.map(({ atField: _atField, ...h }) => h);
+  if (newHazard) hazards.push(newHazard);
+  const tail = replan(branch, newest.points[newest.points.length - 1], hazards, newest.profile);
+  if (!tail) return null;
+  return { route: spliceRoute(newest, branchDistM, tail), hazards };
+}
+
+export function uplinkText(u: Uplink): string {
+  const e = u.event;
+  if (e.type === 'message') return e.text;
+  if (e.type === 'route-sent') return 'Route sent.';
+  return e.reason === 'hazard' ? 'Hazard ahead. Route changed by Control.' : 'Route changed by Control.';
+}
+
+/** Progress along the route the field last reported: '0.65 of 2.00 km', 'LEG 2 OF 4'. */
+export function liveProgress(view: ControlView): { fraction: number; text: string; leg: string } | null {
+  const { route, distM } = view.received;
+  if (!route) return null;
+  const legs = route.waypoints.length;
+  const next = route.waypoints.findIndex(w => w.distM > distM);
+  const km = (m: number) => (m / 1000).toFixed(2);
+  return {
+    fraction: route.lengthM > 0 ? distM / route.lengthM : 0,
+    text: `${km(distM)} of ${km(route.lengthM)} km`,
+    leg: `LEG ${next === -1 ? legs : next + 1} OF ${legs}`,
+  };
 }

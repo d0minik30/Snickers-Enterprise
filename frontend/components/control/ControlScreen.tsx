@@ -1,18 +1,23 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { CommsRail } from '@/components/control/CommsRail';
 import { ElevationProfile } from '@/components/control/ElevationProfile';
+import { LiveRail } from '@/components/control/LiveRail';
 import { PlanDetailRail } from '@/components/control/PlanDetailRail';
 import { PlanRail } from '@/components/control/PlanRail';
+import { SignalTimeline } from '@/components/control/SignalTimeline';
 import { TopBar, type ControlMode } from '@/components/control/TopBar';
-import { earthClock, planFitPoints, planOverlays, routeLetter, routeSentEvent, type RouteSentEvent } from '@/components/control/controlModel';
+import { buildReroute, liveOverlays, newestRoute, planFitPoints, planOverlays, routeSentEvent } from '@/components/control/controlModel';
+import { buildTimeline } from '@/components/control/timelineModel';
 import { usePlanDraft, type PlanDraft } from '@/components/control/usePlanDraft';
 import type { MapCamera } from '@/components/map/overlays';
+import { controlViewAt } from '@/lib/mission/control';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
-import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
-import { formatClock } from '@/lib/nav/format';
-import { PRESET_HAZARDS } from '@/lib/planner';
+import type { MissionEvent } from '@/lib/mission/types';
+import { DEFAULT_END, DEFAULT_START, FLAG_RADIUS_M, PRESET_HAZARDS, satellitePasses } from '@/lib/planner';
+import type { LatLon } from '@/lib/planner/types';
 import styles from './control.module.css';
 
 const MarsMap = dynamic(() => import('@/components/map/MarsMap'), { ssr: false });
@@ -52,7 +57,7 @@ export default function ControlScreen() {
       <TopBar mode={hydrated ? mode : null} onMode={setChosenMode} />
       {hydrated && (mode === 'plan'
         ? <PlanMode draft={draft} inProgress={sent !== undefined} onSend={send} />
-        : <LivePlaceholder sent={sent} />)}
+        : <LiveMode log={snapshot.log} />)}
     </main>
   );
 }
@@ -80,27 +85,88 @@ function PlanMode({ draft, inProgress, onSend }: { draft: PlanDraft; inProgress:
   );
 }
 
-/** Stands in for Live mode until it is built: shows the sent route crossing the delay. */
-function LivePlaceholder({ sent }: { sent: RouteSentEvent | undefined }) {
+const TOO_LATE_SHOW_MS = 6000; // real time the "too late" notice stays up
+const PASSES = satellitePasses();
+
+/** Live mode: the field as last heard, the estimate of now, the comms log and the signal timeline. */
+function LiveMode({ log }: { log: MissionEvent[] }) {
   const t = useMissionTime();
-  if (!sent) {
-    return (
-      <section className={styles.live} aria-label="Live">
-        <p className={styles.liveTitle}>NO ROUTE SENT</p>
-        <p className={styles.liveNote}>Plan a route and send it to the field.</p>
-      </section>
-    );
+  const view = useMemo(() => controlViewAt(log, t, PASSES), [log, t]);
+  const timeline = useMemo(() => buildTimeline(view, PASSES), [view]);
+  const overlays = useMemo(() => liveOverlays(view), [view]);
+  const [flagging, setFlagging] = useState(false);
+  const [tooLate, setTooLate] = useState(false);
+  const [userMoved, setUserMoved] = useState(false);
+
+  const newest = newestRoute(view);
+  const fitKey = newest?.id ?? '';
+  const [fittedKey, setFittedKey] = useState(fitKey);
+  if (fittedKey !== fitKey) { // a new route was sent: fit on it again
+    setFittedKey(fitKey);
+    setUserMoved(false);
   }
-  const arrivesMs = sent.tMs + SIGNAL_DELAY_MS;
-  const inTransit = t < arrivesMs;
-  const letter = routeLetter(sent.route.profile);
+  const camera = useMemo<MapCamera>(() => {
+    if (userMoved) return { mode: 'free' };
+    if (!newest) return { mode: 'fit', points: [DEFAULT_START, DEFAULT_END] };
+    return { mode: 'fit', points: planFitPoints(newest, newest.points[0], newest.points[newest.points.length - 1]) };
+  }, [userMoved, newest]);
+
+  useEffect(() => {
+    if (!tooLate) return;
+    const timer = setTimeout(() => setTooLate(false), TOO_LATE_SHOW_MS);
+    return () => clearTimeout(timer);
+  }, [tooLate]);
+
+  useEffect(() => {
+    if (!flagging) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFlagging(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [flagging]);
+
+  /** Works out and sends a new route; reads the view at this moment, not the last render. */
+  const reroute = useCallback((center: LatLon | null) => {
+    const store = getMissionStore();
+    const current = controlViewAt(store.getSnapshot().log, store.now(), PASSES);
+    const hazard = center && { id: `flag-${crypto.randomUUID().slice(0, 8)}`, center, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' as const };
+    const result = buildReroute(current, hazard);
+    if (!result) return setTooLate(true);
+    setTooLate(false);
+    store.append({ type: 'route-changed', origin: 'control', reason: center ? 'hazard' : 'replan', route: result.route, hazards: result.hazards });
+  }, []);
+
+  const onMapClick = (p: LatLon) => {
+    if (!flagging) return;
+    setFlagging(false);
+    reroute(p);
+  };
+
   return (
-    <section className={styles.live} aria-label="Live" data-testid="live-placeholder">
-      <p className={styles.liveTitle}>{inTransit ? `ROUTE ${letter} IN TRANSIT TO FIELD` : `ROUTE ${letter} DELIVERED TO FIELD`}</p>
-      {inTransit
-        ? <p className={styles.liveCountdown}>ARRIVES IN {formatClock(arrivesMs - t)}</p>
-        : <p className={`${styles.liveCountdown} ${styles.liveDelivered}`}>ARRIVED {earthClock(arrivesMs)} UTC</p>}
-      <p className={styles.liveNote}>Sent {earthClock(sent.tMs)} UTC · one-way delay {formatClock(SIGNAL_DELAY_MS)}</p>
-    </section>
+    <>
+      <LiveRail
+        view={view}
+        log={log}
+        flagging={flagging}
+        tooLate={tooLate}
+        onFlag={() => setFlagging(f => !f)}
+        onReplan={() => reroute(null)}
+      />
+      <div className={styles.mapArea} onPointerDown={() => setUserMoved(true)} onWheel={() => setUserMoved(true)}>
+        <MarsMap overlays={overlays} camera={camera} onMapClick={onMapClick} armed={flagging} interactive />
+        {flagging && <div className={styles.mapHint} role="status">CLICK THE MAP TO FLAG A HAZARD · ESC TO CANCEL</div>}
+        {userMoved && newest && (
+          <button type="button" className={styles.fitButton} onPointerDown={e => e.stopPropagation()} onClick={() => setUserMoved(false)}>
+            FIT ROUTE
+          </button>
+        )}
+      </div>
+      <SignalTimeline timeline={timeline} />
+      <CommsRail
+        view={view}
+        log={log}
+        onOrder={order => getMissionStore().append({ type: 'message', origin: 'control', text: order === 'hold' ? 'Hold position' : 'Proceed', order })}
+        onMessage={text => getMissionStore().append({ type: 'message', origin: 'control', text })}
+      />
+    </>
   );
 }
