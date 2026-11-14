@@ -47,20 +47,21 @@ Reconnaissance Orbiter (MRO) data from its CTX and HiRISE cameras.
 
 ## Overlays, cost grid, elevation and places – `output/`
 
-Five scripts make these from the downloads in `raw/` (not in git). Run them from
+Six scripts make these from the downloads in `raw/` (not in git). Run them from
 the repo root, in this order:
 
 ```bash
 pip install -r data/scripts/requirements.txt
-python data/scripts/process_dem.py        # 1. slope.png, slope_bounds.json, cost_grid.json (slope)
-python data/scripts/process_elevation.py  # 2. elevation_grid.json + .bin, terrain_features.geojson
-python data/scripts/process_sand.py       # 3. sand.geojson
-python data/scripts/add_sand_to_grid.py   # 4. adds the sand layer to cost_grid.json
-python data/scripts/make_places.py        # 5. places.geojson, and checks each place on the grid
+python data/scripts/process_dem.py         # 1. slope.png, slope_bounds.json, cost_grid.json (slope)
+python data/scripts/process_elevation.py   # 2. elevation_grid.json + .bin, terrain_features.geojson
+python data/scripts/process_topography.py  # 3. contours.geojson, hillshade.png, elevation.png + legend
+python data/scripts/process_sand.py        # 4. sand.geojson
+python data/scripts/add_sand_to_grid.py    # 5. adds the sand layer to cost_grid.json
+python data/scripts/make_places.py         # 6. places.geojson, and checks each place on the grid
 ```
 
-Steps 4 and 5 read what the earlier steps wrote. Step 1 rewrites `cost_grid.json`
-without sand, so whenever you rerun step 1, run steps 4 and 5 again. Step 2 checks
+Steps 5 and 6 read what the earlier steps wrote. Step 1 rewrites `cost_grid.json`
+without sand, so whenever you rerun step 1, run steps 5 and 6 again. Step 2 checks
 that its grid is still the one in `cost_grid.json`.
 
 They cover the full extent of the Jezero CTX DEM: lon 77.1604655–77.6989752,
@@ -74,6 +75,9 @@ lat 18.2110274–18.7211945 (about 30 × 30 km around the Perseverance landing s
 | `cost_grid.json` | Slope and sand for each 40 m cell | not drawn; for pathfinding later |
 | `elevation_grid.json` + `elevation_grid.bin` | Height, lowest/highest point and local relief of each 40 m cell (same grid as `cost_grid.json`) | profiles, climb/descent costs, "how high/deep" |
 | `terrain_features.geojson` | The biggest highs (mounds, rims, the delta front) and lows (craters, pits), as points | `L.geoJSON(data)` |
+| `contours.geojson` | Contour lines every 10 m | `L.geoJSON(data)` |
+| `hillshade.png` + `slope_bounds.json` | Grey shading, light from the north-west, about 50 % opaque | `L.imageOverlay(png, bounds)` |
+| `elevation.png` + `slope_bounds.json` + `elevation_legend.json` | Colour by height, about 50 % opaque, and its colour stops | `L.imageOverlay(png, bounds)` + a legend |
 
 The frontend's `predev`/`prebuild` script copies `data/map_layers.json` and
 `data/output/*` into `frontend/public/data/`, so the app loads them from `/data/…`:
@@ -188,6 +192,39 @@ fetch('/data/terrain_features.geojson').then(r => r.json())
     onEachFeature: (f, layer) => layer.bindTooltip(f.properties.kind === 'high'
       ? `${f.properties.height_m} m high` : `${f.properties.depth_m} m deep`),
   }).addTo(map));
+```
+
+### Contours and topography overlays
+
+All made from the 20 m DEM by `process_topography.py`; heights above the Mars areoid.
+
+- `contours.geojson`: `LineString` features with one property, `elevation_m` (a
+  multiple of 10 m, from −2,710 to −1,520 m: 120 levels, ~2,850 lines, ~2.8 MB). Lines
+  are simplified by up to 5 m (¼ pixel) to keep the file small; a 20 m interval would
+  halve it. Coordinates are `[lon, lat]`.
+- `hillshade.png` and `elevation.png` are 1596 × 1512 px, one pixel per DEM pixel,
+  and cover exactly `slope_bounds.json`, like `slope.png`.
+  - `hillshade.png`: grey (black = in shadow, white = facing the light), light from the
+    north-west (azimuth 315°) at 45° above the horizon, alpha 128 (~50 %). The DEM's
+    outermost pixels have no gradient and stay clear.
+  - `elevation.png`: colours blend from dark blue (lowest) through green and yellow to
+    brown (highest), alpha 128 (~50 %). The stops sit at the 0/10/25/50/75/90/100 %
+    quantiles of the heights, so the crater floor, the delta and the rim each get
+    their own colours.
+- `elevation_legend.json`: `stops` (rising list of `{"elevation_m", "color": "#rrggbb"}`;
+  colours blend linearly between stops), `units` (`m`), `opacity`, `vertical_datum`,
+  `description`.
+
+```js
+const bounds = await fetch('/data/slope_bounds.json').then(r => r.json());
+L.imageOverlay('/data/elevation.png', bounds).addTo(map);
+L.imageOverlay('/data/hillshade.png', bounds).addTo(map);
+fetch('/data/contours.geojson').then(r => r.json())
+  .then(fc => L.geoJSON(fc, {
+    style: f => ({ weight: f.properties.elevation_m % 50 === 0 ? 1.2 : 0.5, color: '#5a3a1a' }),
+  }).addTo(map));
+const legend = await fetch('/data/elevation_legend.json').then(r => r.json());
+// legend.stops → e.g. a CSS linear-gradient from legend.stops[0].color to the last colour
 ```
 
 **Sources:** slope from "MRO CTX, Jezero DEM, Controlled" (20 m), NASA Mars Trek

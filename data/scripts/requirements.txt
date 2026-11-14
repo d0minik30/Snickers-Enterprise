@@ -5,3 +5,4 @@ geopandas
 numpy
 Pillow
 scipy
+contourpy

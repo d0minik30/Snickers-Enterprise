@@ -119,13 +119,12 @@ def read_with_margin(src, col0, row0, col1, row1):
     return np.pad(z, pad, constant_values=np.nan)
 
 
-def horn_slope_deg(z, dx, dy):
-    """Slope in degrees with Horn's 3x3 method (the one gdaldem slope uses).
+def horn_gradients(z, dx, dy):
+    """Horn's 3x3 gradients (m per m): (rise to the east, rise to the south).
 
-    z: elevations in metres with a 1-pixel margin on every side; the result has
+    z: elevations in metres with a 1-pixel margin on every side; the results have
     2 fewer rows and columns. dx: east-west ground spacing in metres for each
-    result row. dy: north-south ground spacing in metres. Pixels on or next to
-    a gap (NaN) get NaN.
+    result row. dy: north-south ground spacing in metres.
     """
     a, b, c = z[:-2, :-2], z[:-2, 1:-1], z[:-2, 2:]
     d, f = z[1:-1, :-2], z[1:-1, 2:]
@@ -133,6 +132,15 @@ def horn_slope_deg(z, dx, dy):
     dx = np.asarray(dx, dtype="float64")[:, np.newaxis]
     dz_dx = ((c + 2 * f + i) - (a + 2 * d + g)) / (8 * dx)
     dz_dy = ((g + 2 * h + i) - (a + 2 * b + c)) / (8 * dy)
+    return dz_dx, dz_dy
+
+
+def horn_slope_deg(z, dx, dy):
+    """Slope in degrees with Horn's 3x3 method (the one gdaldem slope uses).
+
+    Same inputs as horn_gradients(). Pixels on or next to a gap (NaN) get NaN.
+    """
+    dz_dx, dz_dy = horn_gradients(z, dx, dy)
     slope = np.degrees(np.arctan(np.hypot(dz_dx, dz_dy)))
     slope[np.isnan(z[1:-1, 1:-1])] = np.nan  # Horn skips the centre pixel; a gap there still means no slope
     return slope

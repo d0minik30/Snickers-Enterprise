@@ -1,0 +1,36 @@
+{
+  "description": "Colour stops of elevation.png (same bounds as slope_bounds.json). Colours blend linearly between stops; heights below the first or above the last stop get its colour. Stops sit at the 0, 10, 25, 50, 75, 90 and 100 % quantiles of the heights, rounded to 10 m.",
+  "units": "m",
+  "vertical_datum": "Mars areoid (MOLA topography); see elevation_grid.json",
+  "opacity": 0.502,
+  "stops": [
+    {
+      "elevation_m": -2720.0,
+      "color": "#2c3e8f"
+    },
+    {
+      "elevation_m": -2650.0,
+      "color": "#2a83b8"
+    },
+    {
+      "elevation_m": -2590.0,
+      "color": "#3fb59d"
+    },
+    {
+      "elevation_m": -2450.0,
+      "color": "#a6d96a"
+    },
+    {
+      "elevation_m": -2110.0,
+      "color": "#f6e27f"
+    },
+    {
+      "elevation_m": -1990.0,
+      "color": "#f4a259"
+    },
+    {
+      "elevation_m": -1510.0,
+      "color": "#b5651d"
+    }
+  ]
+}
