@@ -38,12 +38,14 @@ The main server includes it: `from skyline.api import router; app.include_router
 | `camera` | Optional JSON string, below. |
 | `label` | Optional file: a Perseverance raw-image record (JSON, as `fetch_samples.py` saves it, or the feed's by-id reply). |
 
-Returns `{"skyline": {...}, "trace": {...}, "debug_image": "data:image/jpeg;base64,..."}`.
+Returns one photo of the engine's `POST /locate` body (`backend/CONTRACTS.md`, section 2, without its
+`id`), the camera set-up for the app (`diagnostics`, not sent to the engine), the line in photo pixels
+(`trace`) and the debug image. Below.
 
 **`POST /skyline/convert`**, JSON `{"camera": {...}, "label": {...} | null, "width": W, "height": H,
 "trace": {"x": [...], "y": [...], "weight": [...], "sun_px": [x, y] | null}}` returns
-`{"skyline": {...}}`. The app sends a trace the user has fixed (moved points, erased stretches as
-weight 0) and gets the angles back, so the camera maths lives in one place.
+`{"contract_version", "photo", "diagnostics"}`. The app sends a trace the user has fixed (moved points,
+erased stretches as weight 0) and gets the angles back, so the camera maths lives in one place.
 
 Errors: HTTP 400 (413 for a photo that is too large) with `{"detail": {"code", "message"}}`.
 
@@ -58,34 +60,47 @@ Errors: HTTP 400 (413 for a photo that is too large) with `{"detail": {"code", "
 | `time_utc` | ISO 8601. From the label for Perseverance; from EXIF only when it carries a time-zone offset. |
 
 Which camera wins: label, then `hfov_deg`, then `preset`, then EXIF 35 mm-equivalent focal length.
-Without `pitch_deg`/`roll_deg` a phone photo is treated as level and the output says
-`"level_source": "assumed"`.
+Without `pitch_deg`/`roll_deg` a phone photo is treated as level and `diagnostics.level_source` says
+`"assumed"`.
 
-## The skyline JSON (draft until `backend/CONTRACTS.md` exists)
+## The output (`backend/CONTRACTS.md` 0.1)
 
 Real output for the sol 48 sample photo:
 
 ```json
 {
-  "format": "skyline/draft-1",
-  "camera": {"model": "cahvore", "width": 1280, "height": 960, "hfov_deg": 96.464, "vfov_deg": 73.024,
-             "pitch_deg": -3.984, "roll_deg": -1.013, "source": "label"},
-  "level_source": "label",
-  "eye_height_m": 1.973,
-  "time_utc": "2021-04-09T00:56:43.394Z",
-  "sun": null,
-  "az_step_deg": 0.1,
-  "samples": [{"az_offset_deg": -49.0, "elev_deg": 4.1819, "weight": 0.0}, "...", {"az_offset_deg": 0.0, "elev_deg": 3.9524, "weight": 1.0}, "..."]
+  "contract_version": "0.1",
+  "photo": {
+    "camera": {"hfov_deg": 96.537, "vfov_deg": 73.098, "width_px": 1280, "height_px": 960, "lens_model": "other"},
+    "eye_height_m": 1.973,
+    "horizon_uncertainty_deg": 0.3,
+    "relative_heading_deg": null,
+    "time_utc": "2021-04-09T00:56:43.394Z",
+    "samples": [{"az_offset_deg": -49.0, "elev_deg": 4.1819, "weight": 0.0}, "...", {"az_offset_deg": 0.0, "elev_deg": 3.9524, "weight": 1.0}, "..."]
+  },
+  "diagnostics": {"camera_model": "cahvore", "camera_source": "label", "level_source": "label", "pitch_deg": -3.984, "roll_deg": -1.013, "az_step_deg": 0.1, "rover_axis_azimuth_deg": 99.2772, "rover_pose": "3/1708"},
+  "trace": {"...": "the line in photo pixels"},
+  "debug_image": "data:image/jpeg;base64,..."
 }
 ```
 
-- **`az_offset_deg`**: azimuth of the viewing direction minus the azimuth of the optical axis, both
-  flattened onto the horizontal plane, positive to the right. Samples run left to right at `az_step_deg`.
-- **`elev_deg`**: above the local horizontal, with pitch and roll already removed.
-- **`weight`**: 0–1, 0 for stretches not to trust. Between a trusted and an untrusted point the
-  sample gets 0, so a bad stretch never leaks into its neighbours.
-- **`sun`**: where the sun is in the photo (`az_offset_deg`, `elev_deg`), when a sun disc is visible.
-  With `time_utc` it pins down the absolute heading.
+`photo` follows the contract, section 2:
+
+- **`camera`**: full field of view (outer pixel edge to outer pixel edge) and size. `lens_model` is
+  `rectilinear` for phone cameras and `other` for CAHVORE; the samples are true ray angles either way.
+- **`horizon_uncertainty_deg`**: how far "level" may be off, by where the tilt came from: label 0.3,
+  sensor 1.0, manual 1.0, assumed 5.0 (`pipeline.HORIZON_UNCERTAINTY_DEG`; to calibrate on the test photos).
+- **`relative_heading_deg`**: always `null` here; the app sets it for photos that turn together
+  (Perseverance photos at one rover pose, from `diagnostics.rover_axis_azimuth_deg`).
+- **`samples`**: `az_offset_deg` is the azimuth of the viewing ray minus that of the optical axis, in
+  the horizontal plane, positive to the right; `elev_deg` is above the local horizontal with pitch and
+  roll removed. Every 0.1° (`diagnostics.az_step_deg`), left to right. `weight` 0–1, 0 = do not use;
+  between a trusted and an untrusted point a sample gets 0, so a bad stretch never leaks.
+- **`sun`** (only when a sun disc is visible) and **`time_utc`** (only when known).
+
+`diagnostics`: camera model and where it came from, where the tilt came from, the pitch and roll that
+were removed, and for Perseverance the camera's direction from the rover's forward direction and the
+rover pose (site/drive). Neither of those last two is the answer: the rover's own heading is not in them.
 
 The **trace** (for the app) has the line in the photo's own pixels: `x`, `y`, `weight` and `reason`
 per column, plus `sun_px`.
@@ -147,4 +162,5 @@ On the ten sample photos:
   test photos show which form they come in.
 - **Cropped (subframe) Perseverance images** that don't start at the sensor's corner are refused for
   now.
-- **The format** above is a draft: `backend/CONTRACTS.md` wins once it exists.
+- **The contract** (`backend/CONTRACTS.md`) is still a draft (0.1); my review is in
+  [`CONTRACT_REVIEW.md`](CONTRACT_REVIEW.md).

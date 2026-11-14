@@ -97,15 +97,31 @@ If the venue has no internet, the map shows "MAP IMAGERY UNAVAILABLE" and the ro
 | Camera presets (keep in step with `backend/skyline/metadata.py`) | `lib/locate/presets.ts` |
 | Engine address | `NEXT_PUBLIC_ENGINE_URL` at build time; `lib/locate/engine.ts` |
 
-## How to plug in real data
+## Where the data comes from
 
-Terrain is **real**: elevation, slope and sand for Jezero come from the data team's grids (`data/output/`), cut to the demo area by `scripts/extract-terrain.mjs` on every `dev` and `build`. Hazard circles are found in the same data (steep cores over 25° and deep pits). Waypoints are named from the ground under them (crater floor, steep ground, delta front, delta top, sand). Satellite passes are still **made up** for the demo. They all sit behind one
-file: `lib/planner/index.ts`. The rest of the app imports only from there.
+Everything on screen comes from real data, except the simulated traveller and the few model numbers listed below.
 
-To use real data, replace what is behind that file and keep the function names and types the same
-(`planRoutes`, `replan`, `spliceRoute`, `elevationAt`, `satellitePasses`, `positionErrorM`,
-`PRESET_HAZARDS`, `DEMO_BOUNDS` and so on; the types are in `lib/planner/types.ts`).
-`lib/planner/planner.test.ts` says what the app expects from them.
+| What | Source |
+|---|---|
+| Start and destination | `data/output/places.geojson`: the base (Perseverance landing site) and the Western Delta Deposit |
+| Elevation, slope, sand | the data team's 40 m grids (`cost_grid.json`, `elevation_grid.bin`; MRO CTX Jezero DEM, USGS SIM 3464), cut to the demo area by `scripts/extract-terrain.mjs` on every `dev` and `build` |
+| Hazard circles | found in the same grids: steep cores over 25° and deep pits (`terrain_features.geojson`) |
+| Waypoint names | the ground under each waypoint: crater floor, steep ground, delta front, delta top, sand |
+| Earth and Mars clocks | real UTC from the moment the mission starts; real local mean solar time at Jezero and Perseverance's sol (Mars24 algorithm, `lib/mission/marsTime.ts`) |
+| Map imagery | live NASA Mars Trek tiles |
+| Field readouts | elevation, slope underfoot and climb left, from the terrain grids |
+
+**Model assumptions** (no real data exists for these; tune them in one place): walking and driving pace
+(`lib/mission/types.ts`); the signal delay (11:20, a typical value); position drift between fixes, 2 % of
+distance walked, and the accuracy of a photo fix, 15 m (`lib/planner/drift.ts`).
+
+**Position fixes.** There is no GPS on Mars. Field's **PHOTO FIX** button stands for sending skyline photos to
+the localization engine (`backend/marsloc`, the `/locate` screen): position error drops back to the fix's
+accuracy and grows again with distance. Control's Plan view says how often a fix is needed to stay within ±25 m.
+
+All terrain and route data reaches the app through one file, `lib/planner/index.ts`. To swap in other data,
+replace what is behind it and keep the function names and types (`planRoutes`, `replan`, `spliceRoute`,
+`elevationAt`, `slopeAt`, `positionErrorM`, `PRESET_HAZARDS`, `DEMO_BOUNDS`; types in `lib/planner/types.ts`).
 
 ## How it works, briefly
 

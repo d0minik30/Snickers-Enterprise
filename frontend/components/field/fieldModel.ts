@@ -3,14 +3,14 @@ import type { FieldNotice, FieldState } from '@/lib/mission/field';
 import { formatClock, formatDistance } from '@/lib/nav/format';
 import { cumulativeM, slicePath } from '@/lib/nav/geo';
 import { MANEUVER_TEXT, nextMove, type Maneuver } from '@/lib/nav/instructions';
-import { DEMO_BOUNDS } from '@/lib/planner';
+import { DEMO_BOUNDS, elevationAt, slopeAt } from '@/lib/planner';
 import type { Route } from '@/lib/planner/types';
 
 export type Cell = { label: string; value: string; unit?: string; tone: 'plain' | 'nominal' | 'caution' };
 export type BarCell = { label: string; value: string; unit: string; fraction: number };
 
-export const FIX_STALE_MS = 180_000;
-export const ERROR_OK_M = 10;
+export const FIX_STALE_MS = 8 * 60_000; // about 500 m on foot: a photo fix is due (FIX_TARGET_M in controlModel)
+export const ERROR_OK_M = 25; // the error the crew aims to stay within
 export const CUE_MS = 4 * 60_000; // how long the "fix acquired" and "route changed" cues stay up
 export const RANGE_RING_M = 100;
 export const FOLLOW_ZOOM = 15.5;
@@ -20,7 +20,6 @@ const MIN_LEVEL = 0.05;
 const MAX_TILT_DEG = 30;
 
 const remainingM = (s: FieldState) => (s.route ? Math.max(0, s.route.lengthM - s.distM) : 0);
-const missionMinutes = (s: FieldState) => (s.startedMs === null ? 0 : Math.max(0, s.tMs - s.startedMs) / 60_000);
 
 // ---------------------------------------------------------------- map
 
@@ -76,35 +75,30 @@ export function fieldCells(state: FieldState): Cell[] {
       value: fixAge === null ? NO_TIME : formatClock(fixAge),
       tone: fixAge !== null && fixAge > FIX_STALE_MS ? 'caution' : 'plain',
     },
-    { label: 'Next pass', value: state.nextPassMs === null ? NO_TIME : formatClock(state.nextPassMs - state.tMs), tone: 'plain' },
+    { label: 'Elevation', value: state.pos ? Math.round(elevationAt(state.pos)).toLocaleString('en-US') : '--', unit: state.pos ? 'm' : undefined, tone: 'plain' },
   ];
 }
 
-function level(label: string, startPct: number, lossPerMin: number, minutes: number): BarCell {
-  const fraction = Math.max(MIN_LEVEL, (startPct - lossPerMin * minutes) / 100);
-  return { label, value: String(Math.round(fraction * 100)), unit: '%', fraction };
-}
-
-/** Steepest slope of the route segment the traveller is on, in degrees. */
-function slopeAt(route: Route, distM: number): number {
+/** Metres still to climb on the route ahead (sum of the rises), and the total climb of the route. */
+function climb(route: Route, distM: number): { leftM: number; totalM: number } {
   const cum = cumulativeM(route.points);
-  let i = 1;
-  while (i < cum.length - 1 && cum[i] < distM) i++;
-  const run = cum[i] - cum[i - 1];
-  if (run <= 0) return 0;
-  return (Math.atan(Math.abs(route.elevationM[i] - route.elevationM[i - 1]) / run) * 180) / Math.PI;
+  let leftM = 0, totalM = 0;
+  for (let i = 1; i < cum.length; i++) {
+    const rise = Math.max(0, route.elevationM[i] - route.elevationM[i - 1]);
+    totalM += rise;
+    if (cum[i] > distM) leftM += rise * Math.min(1, (cum[i] - distM) / Math.max(1e-9, cum[i] - cum[i - 1]));
+  }
+  return { leftM, totalM };
 }
 
+/** Real terrain under and ahead of the traveller: slope underfoot (from the 20 m DEM) and the climb still to come. */
 export function fieldBars(state: FieldState): BarCell[] {
-  const minutes = missionMinutes(state);
-  if (state.traveller === 'rover') {
-    const tilt = state.route ? slopeAt(state.route, state.distM) : 0;
-    return [
-      level('Battery', 96, 0.5, minutes),
-      { label: 'Tilt', value: String(Math.round(tilt)), unit: '°', fraction: Math.max(MIN_LEVEL, tilt / MAX_TILT_DEG) },
-    ];
-  }
-  return [level('O₂', 96, 0.5, minutes), level('Power', 92, 0.25, minutes)];
+  const slope = state.pos ? slopeAt(state.pos) : 0;
+  const c = state.route ? climb(state.route, state.distM) : { leftM: 0, totalM: 0 };
+  return [
+    { label: state.traveller === 'rover' ? 'Tilt' : 'Slope', value: String(Math.round(slope)), unit: '°', fraction: Math.max(MIN_LEVEL, slope / MAX_TILT_DEG) },
+    { label: 'Climb left', value: String(Math.round(c.leftM)), unit: 'm', fraction: c.totalM > 0 ? Math.max(MIN_LEVEL, c.leftM / c.totalM) : MIN_LEVEL },
+  ];
 }
 
 // ---------------------------------------------------------------- next move band
@@ -145,7 +139,7 @@ export function latestUnacked(state: FieldState): FieldNotice | null {
 
 export function fieldCue(state: FieldState): { fix: boolean; routeChanged: boolean; routeChangeId: string | null } {
   const { lastFixMs, startedMs, tMs } = state;
-  const fix = lastFixMs !== null && lastFixMs !== startedMs && tMs - lastFixMs < CUE_MS;
+  const fix = state.lastFixKind === 'photo' && lastFixMs !== null && tMs - lastFixMs < CUE_MS;
   const change = [...state.notices].reverse().find(n => n.kind === 'route-changed');
   const routeChanged = change !== undefined && tMs - change.arrivedMs < CUE_MS;
   return { fix, routeChanged, routeChangeId: routeChanged ? change.id : null };

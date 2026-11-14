@@ -18,7 +18,7 @@ import type { MapCamera } from '@/components/map/overlays';
 import { controlViewAt } from '@/lib/mission/control';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
 import type { MissionEvent } from '@/lib/mission/types';
-import { DEFAULT_END, DEFAULT_START, FLAG_RADIUS_M, PRESET_HAZARDS, satellitePasses } from '@/lib/planner';
+import { DEFAULT_END, DEFAULT_START, FLAG_RADIUS_M, PRESET_HAZARDS } from '@/lib/planner';
 import type { LatLon } from '@/lib/planner/types';
 import styles from './control.module.css';
 
@@ -88,13 +88,12 @@ function PlanMode({ draft, inProgress, onSend }: { draft: PlanDraft; inProgress:
 }
 
 const TOO_LATE_SHOW_MS = 6000; // real time the "too late" notice stays up
-const PASSES = satellitePasses();
 
 /** Live mode: the field as last heard, the estimate of now, the comms log and the signal timeline. */
 function LiveMode({ log }: { log: MissionEvent[] }) {
   const t = useMissionTime();
-  const view = useMemo(() => controlViewAt(log, t, PASSES), [log, t]);
-  const timeline = useMemo(() => buildTimeline(view, PASSES), [view]);
+  const view = useMemo(() => controlViewAt(log, t), [log, t]);
+  const timeline = useMemo(() => buildTimeline(view), [view]);
   const overlays = useMemo(() => liveOverlays(view), [view]);
   const [flagging, setFlagging] = useState(false);
   const [notice, setNotice] = useState<RerouteBlocker | null>(null);
@@ -129,7 +128,7 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
   /** Works out and sends a new route; reads the view at this moment, not the last render. */
   const reroute = useCallback((center: LatLon | null) => {
     const store = getMissionStore();
-    const current = controlViewAt(store.getSnapshot().log, store.now(), PASSES);
+    const current = controlViewAt(store.getSnapshot().log, store.now());
     const hazard = center && { id: `flag-${crypto.randomUUID().slice(0, 8)}`, center, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' as const };
     const blocked = rerouteBlocker(current, hazard);
     const result = blocked ? null : buildReroute(current, hazard);

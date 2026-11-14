@@ -1,11 +1,12 @@
 import { sandOverlays, type MapOverlay } from '@/components/map/overlays';
 import type { Tone } from '@/components/shared/Readout';
+import { hhmmss, lmstMs, perseveranceSol } from '@/lib/mission/marsTime';
 import { canReroute, predictBranchDistM, type ControlView, type Uplink } from '@/lib/mission/control';
 import { PACE_MPS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
 import { formatClock, formatDistance } from '@/lib/nav/format';
 import { bearingDeg, cumulativeM, destination, distanceM, pointAlong, slicePath } from '@/lib/nav/geo';
-import { DEMO_BOUNDS, PRESET_HAZARDS, isInsideHazard, positionErrorM, replan, satellitePasses, spliceRoute } from '@/lib/planner';
-import type { Hazard, LatLon, Risk, Route, RouteProfile, SatellitePass } from '@/lib/planner/types';
+import { DEMO_BOUNDS, DRIFT_PER_M, PHOTO_FIX_ERROR_M, PRESET_HAZARDS, isInsideHazard, positionErrorM, replan, spliceRoute } from '@/lib/planner';
+import type { Hazard, LatLon, Risk, Route, RouteProfile } from '@/lib/planner/types';
 
 // ---------------------------------------------------------------- route cards
 
@@ -99,21 +100,22 @@ export function recommendationText(routes: Route[], traveller: TravellerKind = '
   return extraM >= 1 ? `${fair} Route A is ${summary}.` : fair;
 }
 
-// ---------------------------------------------------------------- satellite passes
+// ---------------------------------------------------------------- photo fixes
+
+/** The position error the crew should stay within; a photo fix is due before drift passes it. */
+export const FIX_TARGET_M = 25;
 
 /**
- * Passes strictly inside the traverse window [startMs, startMs + length / pace]. The start counts as a fix,
- * and the stretch from the last pass to the end counts as a gap.
+ * How often the crew needs a photo fix on a route to stay within FIX_TARGET_M, and how far drift would grow
+ * with none. No GPS on Mars: between fixes the crew dead-reckons (lib/planner/drift.ts).
  */
-export function passesDuring(
-  route: Route, traveller: TravellerKind, startMs: number, schedule: SatellitePass[] = satellitePasses(),
-): { passes: SatellitePass[]; longestGapMs: number; worstDriftM: number } {
-  const endMs = startMs + traverseMs(route, traveller);
-  const passes = schedule.filter(p => p.tMs > startMs && p.tMs < endMs);
-  const fixes = [startMs, ...passes.map(p => p.tMs), endMs];
-  let longestGapMs = 0;
-  for (let i = 1; i < fixes.length; i++) longestGapMs = Math.max(longestGapMs, fixes[i] - fixes[i - 1]);
-  return { passes, longestGapMs, worstDriftM: positionErrorM((PACE_MPS[traveller] * longestGapMs) / 1000) };
+export function fixPlan(route: Route, targetM: number = FIX_TARGET_M): { everyM: number; fixes: number; noFixErrorM: number } {
+  const everyM = Math.max(1, (targetM - PHOTO_FIX_ERROR_M) / DRIFT_PER_M);
+  return {
+    everyM,
+    fixes: Math.max(0, Math.ceil(route.lengthM / everyM) - 1),
+    noFixErrorM: positionErrorM(route.lengthM),
+  };
 }
 
 // ---------------------------------------------------------------- waypoint table
@@ -237,26 +239,28 @@ export function routeSentEvent(log: MissionEvent[]): RouteSentEvent | undefined 
   return log.find((e): e is RouteSentEvent => e.type === 'route-sent');
 }
 
-export const EARTH_CLOCK_START_MS = (14 * 3600 + 1 * 60 + 12) * 1000; // 14:01:12 UTC
-export const MARS_SOL = 1284;
-export const MARS_CLOCK_START_MS = (9 * 3600 + 18 * 60) * 1000; // 09:18:00 local Mars time on sol 1284
+/**
+ * Real clocks. Mission time 0 is the real UTC moment the mission was started (the snapshot epoch, set by
+ * useMission through setClockEpoch); mission time runs at the demo speed from there. Mars time is the real
+ * local mean solar time at Jezero for that instant, and the sol is Perseverance's mission sol (Mars24).
+ */
+let clockEpochUtcMs = Date.UTC(2026, 10, 14, 14, 0, 0);
 
-const DAY_MS = 86_400_000;
-
-/** 'HH:MM:SS' of the time of day `ms` after midnight, wrapping at 24 h. */
-export function timeOfDay(ms: number): string {
-  const total = Math.floor((((ms % DAY_MS) + DAY_MS) % DAY_MS) / 1000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+export function setClockEpoch(utcMs: number): void {
+  clockEpochUtcMs = utcMs;
 }
 
+export const timeOfDay = hhmmss;
+
+/** UTC 'HH:MM:SS' at a mission time. */
 export function earthClock(missionMs: number): string {
-  return timeOfDay(EARTH_CLOCK_START_MS + missionMs);
+  return hhmmss(clockEpochUtcMs + missionMs);
 }
 
+/** Perseverance sol and LMST 'HH:MM:SS' at Jezero at a mission time. */
 export function marsClock(missionMs: number): { sol: number; time: string } {
-  const ms = MARS_CLOCK_START_MS + missionMs;
-  return { sol: MARS_SOL + Math.floor(ms / DAY_MS), time: timeOfDay(ms) };
+  const utc = clockEpochUtcMs + missionMs;
+  return { sol: perseveranceSol(utc), time: hhmmss(lmstMs(utc)) };
 }
 
 // ---------------------------------------------------------------- Live mode

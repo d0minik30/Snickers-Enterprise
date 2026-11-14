@@ -3,7 +3,7 @@
 // statuses ask for ('queued' -> trace it, angles 'stale' -> convert it).
 
 import type { CameraChoice } from '@/lib/locate/presets';
-import type { CameraSpec, Skyline, SkylineResponse, Trace } from '@/lib/locate/types';
+import { CONTRACT_VERSION, type CameraSpec, type ContractPhoto, type Diagnostics, type LocateRequest, type LocateResult, type SkylineResponse, type Trace } from '@/lib/locate/types';
 
 export type Tilt = { source: 'assumed' | 'manual' | 'sensor'; pitchDeg: number; rollDeg: number };
 
@@ -22,19 +22,20 @@ export type PhotoEntry = {
   response: SkylineResponse | null; // as first traced (the original line, for restore)
   trace: Trace | null; // as edited now
   history: Trace[]; // for undo
-  skyline: Skyline | null; // angles for the current trace and camera info
+  photo: ContractPhoto | null; // the engine's view of it: angles for the current trace and camera info
+  diagnostics: Diagnostics | null; // how the skyline API set the camera up
   angles: 'fresh' | 'stale' | 'updating' | 'failed';
   anglesError: string | null;
   rev: number; // bumped by every change that makes the angles stale
 };
 
-export type LocateRequest =
+export type LocateState =
   | { status: 'idle' }
   | { status: 'sending' }
-  | { status: 'answered'; answer: unknown; at: string }
+  | { status: 'answered'; result: LocateResult; at: string }
   | { status: 'failed'; error: string };
 
-export type Session = { photos: PhotoEntry[]; selected: string | null; locate: LocateRequest };
+export type Session = { photos: PhotoEntry[]; selected: string | null; locate: LocateState };
 
 export type Action =
   | { type: 'add'; photo: Pick<PhotoEntry, 'id' | 'name' | 'file' | 'url'> & Partial<Pick<PhotoEntry, 'tilt' | 'timeUtc' | 'camera'>> }
@@ -51,10 +52,10 @@ export type Action =
   | { type: 'undo'; id: string }
   | { type: 'reset-edits'; id: string }
   | { type: 'convert-start'; id: string }
-  | { type: 'convert-done'; id: string; skyline: Skyline; rev: number }
+  | { type: 'convert-done'; id: string; photo: ContractPhoto; diagnostics: Diagnostics; rev: number }
   | { type: 'convert-failed'; id: string; error: string }
   | { type: 'locate-start' }
-  | { type: 'locate-done'; answer: unknown; at: string }
+  | { type: 'locate-done'; result: LocateResult; at: string }
   | { type: 'locate-failed'; error: string };
 
 export const MAX_UNDO = 50;
@@ -70,7 +71,7 @@ export function newPhoto(p: Action & { type: 'add' }): PhotoEntry {
     timeUtc: photo.timeUtc ?? '',
     label: null, labelName: null,
     status: 'queued', error: null, response: null, trace: null, history: [],
-    skyline: null, angles: 'fresh', anglesError: null, rev: 0,
+    photo: null, diagnostics: null, angles: 'fresh', anglesError: null, rev: 0,
   };
 }
 
@@ -126,7 +127,7 @@ export function reduce(s: Session, a: Action): Session {
     case 'trace-done':
       return update(s, a.id, p => ({
         ...p, status: 'traced', response: a.response, trace: a.response.trace, history: [],
-        skyline: a.response.skyline, angles: 'fresh', anglesError: null,
+        photo: a.response.photo, diagnostics: a.response.diagnostics, angles: 'fresh', anglesError: null,
       }));
     case 'trace-failed':
       return update(s, a.id, p => ({ ...p, status: 'error', error: a.error }));
@@ -146,13 +147,13 @@ export function reduce(s: Session, a: Action): Session {
       return update(s, a.id, p => ({ ...p, angles: 'updating' }));
     case 'convert-done':
       // Only accept the angles if nothing changed meanwhile (otherwise they are stale already).
-      return update(s, a.id, p => (p.rev === a.rev ? { ...p, skyline: a.skyline, angles: 'fresh', anglesError: null } : p));
+      return update(s, a.id, p => (p.rev === a.rev ? { ...p, photo: a.photo, diagnostics: a.diagnostics, angles: 'fresh', anglesError: null } : p));
     case 'convert-failed':
       return update(s, a.id, p => (p.angles === 'updating' ? { ...p, angles: 'failed', anglesError: a.error } : p));
     case 'locate-start':
       return { ...s, locate: { status: 'sending' } };
     case 'locate-done':
-      return { ...s, locate: { status: 'answered', answer: a.answer, at: a.at } };
+      return { ...s, locate: { status: 'answered', result: a.result, at: a.at } };
     case 'locate-failed':
       return { ...s, locate: { status: 'failed', error: a.error } };
   }
@@ -166,6 +167,38 @@ export function locateBlocker(s: Session): string | null {
   if (s.photos.some(p => p.angles === 'stale' || p.angles === 'updating')) return 'Updating angles…';
   if (traced.length === 0) return 'No photo has a skyline yet.';
   if (traced.some(p => p.angles === 'failed')) return 'Angles failed for a photo: fix it or remove it.';
-  if (traced.every(p => (p.skyline?.samples ?? []).every(x => x.weight < 0.5))) return 'No part of any skyline is trusted.';
+  if (traced.every(p => (p.photo?.samples ?? []).every(x => x.weight < 0.5))) return 'No part of any skyline is trusted.';
+  if (traced.length > MAX_PHOTOS) return `At most ${MAX_PHOTOS} photos per request.`;
+  if (traced.some(p => (p.photo?.samples.length ?? 0) < MIN_SAMPLES)) return 'A photo has too little skyline: fix it or remove it.';
   return null;
+}
+
+export const MAX_PHOTOS = 8; // CONTRACTS.md section 2
+export const MIN_SAMPLES = 20;
+
+/**
+ * Photos taken at the same rover pose turn together: their heading difference is known from the
+ * camera models (relative_heading_deg). Any other photo is matched at its own free heading (null).
+ */
+export function relativeHeadings(photos: { diagnostics: Diagnostics | null }[]): (number | null)[] {
+  const first = photos[0]?.diagnostics;
+  const shared = first && first.rover_pose !== null && first.rover_axis_azimuth_deg !== null
+    && photos.every(p => p.diagnostics?.rover_pose === first.rover_pose && p.diagnostics.rover_axis_azimuth_deg !== null);
+  if (!shared || photos.length < 2) return photos.map(() => null);
+  const base = first.rover_axis_azimuth_deg as number;
+  return photos.map(p => {
+    const d = ((p.diagnostics!.rover_axis_azimuth_deg as number) - base) % 360;
+    return Math.round((((d + 540) % 360) - 180) * 1e4) / 1e4; // -180..180
+  });
+}
+
+/** The POST /locate body (CONTRACTS.md section 2) for the traced photos, in the order shown. */
+export function buildLocateRequest(s: Session): LocateRequest {
+  const traced = s.photos.filter((p): p is PhotoEntry & { photo: ContractPhoto } => p.status === 'traced' && p.photo !== null);
+  const rel = relativeHeadings(traced);
+  return {
+    contract_version: CONTRACT_VERSION,
+    photos: traced.map((p, k) => ({ ...p.photo, id: `photo_${k + 1}`, relative_heading_deg: rel[k] })),
+    options: { top_k: 5, include_likelihood_grid: true, include_residuals: true },
+  };
 }

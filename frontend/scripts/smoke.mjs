@@ -281,7 +281,11 @@ async function liveRun(control, field) {
   await entry.waitFor();
   check((await entry.getAttribute('data-status')) === 'in-transit', 'a new message is in transit');
 
+  // A photo fix in Field reaches Control as a downlink after the delay.
+  await byTestId(field, 'field-photo-fix').click();
+  check(await field.getByTestId('field-fix-cue').waitFor({ timeout: 3000 }).then(() => true, () => false), 'Field shows FIX ACQUIRED after a photo fix');
   check(await fastForward(control, () => waitForStatus(field, 'holding')), 'a hold order stops the traveller when it lands');
+  check(await control.locator('[data-testid="downlink"][data-kind="photo-fix"]').count() === 1, 'Control receives the photo fix after the delay');
   check(await field.evaluate(() => document.getAnimations().length === 0), 'nothing animates in Field under reduced motion');
   // The message left a moment after the hold order, so it lands a moment later: wait for it.
   check(await fastForward(control, () => waitForUplink(control, text, 'delivered')), 'the message is delivered after the delay');

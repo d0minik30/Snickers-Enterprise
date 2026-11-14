@@ -44,8 +44,9 @@ def camera_summary(camera: CameraModel, level: Level) -> dict:
     """Field of view (through the image centre), and the camera's pitch and roll from gravity alone."""
     W, H = camera.width, camera.height
     cy, cx = (H - 1) / 2, (W - 1) / 2
-    lr = camera.pixel_to_ray(np.array([0.0, W - 1.0]), np.array([cy, cy]))
-    tb = camera.pixel_to_ray(np.array([cx, cx]), np.array([0.0, H - 1.0]))
+    # Full field of view: from the outer edge of the first pixel to the outer edge of the last.
+    lr = camera.pixel_to_ray(np.array([-0.5, W - 0.5]), np.array([cy, cy]))
+    tb = camera.pixel_to_ray(np.array([cx, cx]), np.array([-0.5, H - 0.5]))
     angle = lambda a, b: float(np.degrees(np.arccos(np.clip(a @ b, -1, 1))))  # noqa: E731
     fwd = camera.forward
     if isinstance(camera, Pinhole):

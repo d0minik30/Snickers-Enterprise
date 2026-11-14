@@ -14,4 +14,5 @@ export type MissionEvent =
   | (Base & { type: 'message'; origin: 'control'; text: string; order?: 'hold' | 'proceed' })
   | (Base & { type: 'ack'; origin: 'field'; targetId: string })
   | (Base & { type: 'traverse-started'; origin: 'field' })
-  | (Base & { type: 'report'; origin: 'field'; text: string }); // free-text message from Field to Control
+  | (Base & { type: 'report'; origin: 'field'; text: string }) // free-text message from Field to Control
+  | (Base & { type: 'photo-fix'; origin: 'field' }); // skyline photos matched by the localization engine: position known again

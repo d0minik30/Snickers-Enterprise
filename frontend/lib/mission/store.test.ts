@@ -49,7 +49,7 @@ describe('mission store', () => {
     a.append(ev);
     const late = createMissionStore(storage, bus.connect(), () => 50_000);
     expect(late.getSnapshot()).toEqual(a.getSnapshot());
-    expect(fieldStateAt(late.getSnapshot().log, 1_000_000, [])).toEqual(fieldStateAt(a.getSnapshot().log, 1_000_000, []));
+    expect(fieldStateAt(late.getSnapshot().log, 1_000_000)).toEqual(fieldStateAt(a.getSnapshot().log, 1_000_000));
   });
   it('keeps both events when two windows append at once', () => {
     const base = freshSnapshot(5);

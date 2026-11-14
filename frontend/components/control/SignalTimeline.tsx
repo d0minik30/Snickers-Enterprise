@@ -41,11 +41,6 @@ export function SignalTimeline({ timeline }: { timeline: Timeline }) {
           <line x1="0" x2="100%" y1={`${EARTH_Y}%`} y2={`${EARTH_Y}%`} className={styles.tlLane} />
           <line x1="0" x2="100%" y1={`${MARS_Y}%`} y2={`${MARS_Y}%`} className={styles.tlLane} />
 
-          {timeline.passes.map(p => (
-            <svg key={p.tMs} x={x(p.tMs)} y={`${MARS_Y}%`} overflow="visible">
-              <rect x="-4" y="-4" width="8" height="8" className={p.past ? styles.tlPassPast : styles.tlPass} />
-            </svg>
-          ))}
 
           {/* A nested svg clips signals that started before the window to the plot area. */}
           <svg x="0" y="0" width="100%" height="100%" overflow="hidden">

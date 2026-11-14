@@ -37,6 +37,7 @@ export default function FieldScreen() {
   const status = hydrated ? state.status : 'awaiting-route';
 
   const start = () => getMissionStore().append({ type: 'traverse-started', origin: 'field' });
+  const photoFix = () => getMissionStore().append({ type: 'photo-fix', origin: 'field' });
   const ack = (targetId: string) => getMissionStore().append({ type: 'ack', origin: 'field', targetId });
   const report = (text: string) => getMissionStore().append({ type: 'report', origin: 'field', text });
 
@@ -47,6 +48,12 @@ export default function FieldScreen() {
       {hydrated && <StatusBanner status={state.status} />}
       <div className={styles.mapArea}>
         {hydrated && <MarsMap overlays={overlays} camera={camera} />}
+        {hydrated && (state.status === 'moving' || state.status === 'holding') && (
+          <button type="button" data-testid="field-photo-fix" className={styles.fixButton} onClick={photoFix}>
+            PHOTO FIX
+            <span className={styles.fixButtonNote}>skyline → position</span>
+          </button>
+        )}
         {hydrated && state.pos && (
           <div className={styles.north} aria-label={`North is ${Math.round(state.headingDeg)} degrees to the left`}>
             <span className={styles.northNeedle} style={{ transform: `rotate(${-state.headingDeg}deg)` }}>

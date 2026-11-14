@@ -42,6 +42,8 @@ export type Weighting = {
   /** Hazards this search treats as expensive, with their radius already widened by the margin. */
   avoided: Hazard[];
   marginM: number;
+  /** Cells steeper than this cost as much as a hazard (used by the flattest profile). */
+  slopeCapDeg?: number;
 };
 
 function hazardFactors(avoided: Hazard[], marginM: number): Float64Array {
@@ -140,8 +142,9 @@ export function findPath(start: LatLon, end: LatLon, w: Weighting): LatLon[] {
       const steep = Math.max(0, slopeDeg - STEEP_FROM_DEG);
       const onSand = sand[next] === 1 ? w.sandFactor : 1;
       const terrainCost = 1 + (w.slopeWeight * (slopeDeg + (steep * steep) / 2)) / 10;
+      const capped = w.slopeCapDeg !== undefined && slopeDeg > w.slopeCapDeg ? HAZARD_FACTOR : 1;
       const total =
-        cost[cur] + stepM * terrainCost * factor[next] * onSand + (w.slopeWeight === 0 ? OFF_LINE_COST * offLineM(nx, ny) : 0);
+        cost[cur] + stepM * terrainCost * factor[next] * capped * onSand + (w.slopeWeight === 0 ? OFF_LINE_COST * offLineM(nx, ny) : 0);
       if (total < cost[next]) {
         cost[next] = total;
         cameFrom[next] = cur;
@@ -156,4 +159,44 @@ export function findPath(start: LatLon, end: LatLon, w: Weighting): LatLon[] {
     if (c === from) break;
   }
   return path.reverse();
+}
+
+/**
+ * The lowest slope limit (degrees, in 1 degree steps) under which the start and end cells are still connected
+ * without entering an avoided hazard. Lets the flattest profile be the flattest by its steepest spot, not just
+ * on average. Returns 90 when no limit connects them.
+ */
+export function lowestConnectingSlope(start: LatLon, end: LatLon, avoided: Hazard[], marginM: number): number {
+  const { slope } = terrain();
+  const blocked = hazardFactors(avoided, marginM);
+  const from = cellOf(start);
+  const goal = cellOf(end);
+  const connected = (cap: number) => {
+    const seen = new Uint8Array(COLS * ROWS);
+    const queue = new Int32Array(COLS * ROWS);
+    let head = 0, tail = 0;
+    queue[tail++] = from;
+    seen[from] = 1;
+    while (head < tail) {
+      const cur = queue[head++];
+      if (cur === goal) return true;
+      const cx = cur % COLS, cy = Math.floor(cur / COLS);
+      for (const [dx, dy] of NEIGHBOURS) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+        const n = ny * COLS + nx;
+        if (seen[n] || (n !== goal && (slope[n] > cap || blocked[n] > 1))) continue;
+        seen[n] = 1;
+        queue[tail++] = n;
+      }
+    }
+    return false;
+  };
+  let lo = 0, hi = 90;
+  if (!connected(hi)) return 90;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (connected(mid)) hi = mid; else lo = mid;
+  }
+  return hi;
 }

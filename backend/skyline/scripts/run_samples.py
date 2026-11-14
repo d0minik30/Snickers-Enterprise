@@ -1,7 +1,7 @@
 """Run the skyline step on every downloaded sample photo and write what it found to backend/skyline/out/.
 
 For each photo: <id>.jpg (the traced line on the photo: green trusted, amber doubtful, magenta not
-trusted) and <id>.json (the skyline the engine would get). Prints a one-line summary per photo.
+trusted) and <id>.json (the photo entry the engine would get, plus diagnostics). Prints a one-line summary per photo.
 
 Run from the repo root, after scripts/fetch_samples.py:  py -3.10 backend/skyline/scripts/run_samples.py
 """
@@ -32,8 +32,8 @@ def main() -> int:
         label = json.loads(png.with_suffix('.json').read_text())
         result = process(img, camera_setup(img.shape[1], img.shape[0], {}, exif, label))
         (out_dir / f'{png.stem}.jpg').write_bytes(result.debug_jpeg)
-        (out_dir / f'{png.stem}.json').write_text(json.dumps(result.skyline, indent=1))
-        s = result.skyline['samples']
+        (out_dir / f'{png.stem}.json').write_text(json.dumps({'photo': result.photo, 'diagnostics': result.diagnostics}, indent=1))
+        s = result.photo['samples']
         trusted = sum(1 for x in s if x['weight'] >= 0.5)
         reasons = Counter(r for r in result.trace['reason'] if r)
         print(f'{png.stem[:28]}  {trusted:4d}/{len(s)} samples trusted  cut: {dict(reasons)}')

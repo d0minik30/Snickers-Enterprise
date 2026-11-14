@@ -14,7 +14,7 @@ export function Readout({ label, value, unit, tone = 'plain' }: Props) {
       <span className={styles.label}>{label}</span>
       <span className={`${styles.value} ${styles[tone]}`}>
         {value}
-        {unit && <span className={styles.unit}>{unit}</span>}
+        {unit && <span className={`${styles.unit} ${unit === '°' ? styles.degree : ''}`}>{unit}</span>}
       </span>
     </span>
   );

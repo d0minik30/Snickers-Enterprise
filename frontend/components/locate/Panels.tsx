@@ -61,7 +61,8 @@ const fromInput = (v: string) => (v ? `${v.length === 16 ? `${v}:00` : v}Z` : ''
 export function CameraPanel({ photo, dispatch }: { photo: PhotoEntry; dispatch: Dispatch<Action> }) {
   const ids = useId();
   const [labelError, setLabelError] = useState<string | null>(null);
-  const cam = photo.skyline?.camera;
+  const cam = photo.photo?.camera;
+  const diag = photo.diagnostics;
   const fromLabel = photo.label !== null;
   const set = (tilt: Partial<PhotoEntry['tilt']>) => dispatch({ type: 'tilt', id: photo.id, tilt: { ...photo.tilt, ...tilt } });
 
@@ -108,10 +109,10 @@ export function CameraPanel({ photo, dispatch }: { photo: PhotoEntry; dispatch: 
           </span>
         </label>
       )}
-      {cam && (
+      {cam && diag && (
         <p className={css.note} data-testid="camera-in-use">
-          In use: {cam.hfov_deg.toFixed(1)}° × {cam.vfov_deg.toFixed(1)}°, {cam.model === 'cahvore' ? 'CAHVORE model' : 'pinhole'}
-          {' '}({cam.source})
+          In use: {cam.hfov_deg.toFixed(1)}° × {cam.vfov_deg.toFixed(1)}°, {diag.camera_model === 'cahvore' ? 'CAHVORE model' : 'pinhole'}
+          {' '}({diag.camera_source})
         </p>
       )}
 
@@ -159,8 +160,8 @@ export function CameraPanel({ photo, dispatch }: { photo: PhotoEntry; dispatch: 
         <input id={`${ids}-time`} className={css.input} type="datetime-local" step={1} value={toInput(photo.timeUtc)}
           onChange={e => dispatch({ type: 'time', id: photo.id, timeUtc: fromInput(e.target.value) })} />
       </label>
-      {!photo.timeUtc && photo.skyline?.time_utc && (
-        <p className={css.note}>In use: {photo.skyline.time_utc.slice(0, 19).replace('T', ' ')} UTC, from the {fromLabel ? 'label' : 'photo'}.</p>
+      {!photo.timeUtc && photo.photo?.time_utc && (
+        <p className={css.note}>In use: {photo.photo.time_utc.slice(0, 19).replace('T', ' ')} UTC, from the {fromLabel ? 'label' : 'photo'}.</p>
       )}
 
       <h2 className={css.panelTitle}>PERSEVERANCE LABEL</h2>

@@ -110,6 +110,7 @@ function UplinkEntry({ u, nowMs }: { u: Uplink; nowMs: number }) {
 function downlinkText(d: Downlink, targetText: string): string {
   if (d.kind === 'report') return d.text ?? '';
   if (d.kind === 'ack') return `Acknowledged${targetText ? `: ${targetText}` : ''}`;
+  if (d.kind === 'photo-fix') return 'Position fix from skyline photos.';
   return 'Traverse started.';
 }
 

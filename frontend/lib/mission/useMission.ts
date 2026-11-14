@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { setClockEpoch } from '@/components/control/controlModel';
 import { CHANNEL_NAME, createMissionStore, freshSnapshot, type ChannelLike, type MissionSnapshot, type MissionStore } from '@/lib/mission/store';
 
 declare global {
@@ -16,7 +17,11 @@ export function getMissionStore(): MissionStore {
       get onmessage() { return handler; },
       set onmessage(h) { handler = h; bc.onmessage = h && (e => h({ data: e.data })); },
     };
-    window.__marsMission = createMissionStore(window.localStorage, channel);
+    const store = createMissionStore(window.localStorage, channel);
+    // Clocks show real UTC and Mars time from the moment this mission was started (the snapshot epoch).
+    setClockEpoch(store.getSnapshot().epoch);
+    store.subscribe(() => setClockEpoch(store.getSnapshot().epoch));
+    window.__marsMission = store;
   }
   return window.__marsMission;
 }

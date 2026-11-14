@@ -662,18 +662,8 @@
   font-weight: 500;
 }
 
-.passName {
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
 
-.passGood {
-  color: var(--nominal);
-}
 
-.passLow {
-  color: var(--muted);
-}
 
 .pair {
   display: grid;
@@ -1042,8 +1032,6 @@
   text-anchor: middle;
 }
 
-.tlPass { fill: var(--surface); stroke: var(--text); stroke-width: 1.5; }
-.tlPassPast { fill: var(--text); }
 
 .tlTelemetry { stroke: var(--muted); stroke-width: 1; opacity: 0.7; }
 .tlNominal { stroke: var(--nominal); stroke-width: 1.6; }

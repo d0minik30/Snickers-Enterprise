@@ -1,6 +1,6 @@
 import { pointAlong } from '@/lib/nav/geo';
-import { positionErrorM, satellitePasses } from '@/lib/planner';
-import type { Hazard, LatLon, Route, SatellitePass } from '@/lib/planner/types';
+import { BASE_ERROR_M, PHOTO_FIX_ERROR_M, positionErrorM } from '@/lib/planner';
+import type { Hazard, LatLon, Route } from '@/lib/planner/types';
 import { PACE_MPS, SIGNAL_DELAY_MS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
 
 export type FieldStatus = 'awaiting-route' | 'ready' | 'moving' | 'holding' | 'arrived';
@@ -13,7 +13,9 @@ export type FieldReport = { id: string; text: string; sentMs: number; arrivesMs:
 export type FieldState = {
   tMs: number; status: FieldStatus; traveller: TravellerKind | null;
   route: Route | null; hazards: Hazard[]; distM: number; pos: LatLon | null; headingDeg: number;
-  paceMps: number; startedMs: number | null; lastFixMs: number | null; nextPassMs: number | null;
+  paceMps: number; startedMs: number | null;
+  /** When the position was last known: the traverse start (on the base) or the latest photo fix. */
+  lastFixMs: number | null; lastFixKind: 'start' | 'photo' | null;
   posErrorM: number; notices: FieldNotice[]; reports: FieldReport[];
 };
 
@@ -86,6 +88,8 @@ function apply(w: Walk, { atMs, event }: Moment): void {
       return;
     case 'report':
       return; // outgoing only; it changes nothing at Field
+    case 'photo-fix':
+      return; // read directly from the log in fieldStateAt
   }
 }
 
@@ -103,16 +107,19 @@ function walk(moments: Moment[], upToMs: number): Walk {
   return w;
 }
 
-export function fieldStateAt(log: MissionEvent[], tMs: number, passes: SatellitePass[] = satellitePasses()): FieldState {
+export function fieldStateAt(log: MissionEvent[], tMs: number): FieldState {
   const moments = momentsOf(log);
   const w = walk(moments, tMs);
 
-  const lastPassMs = passes.reduce((best, p) => (p.tMs <= tMs && p.tMs > best ? p.tMs : best), -Infinity);
-  const nextPassMs = w.route === null
-    ? null
-    : passes.reduce<number | null>((best, p) => (p.tMs > tMs && (best === null || p.tMs < best) ? p.tMs : best), null);
-  const lastFixMs = w.startedMs === null ? null : Math.max(w.startedMs, lastPassMs);
+  // A photo fix counts once the traverse has started; before that the traveller stands on the surveyed base.
+  const lastPhotoMs = log.reduce(
+    (best, e) => (e.type === 'photo-fix' && e.tMs <= tMs && w.startedMs !== null && e.tMs >= w.startedMs && e.tMs > best ? e.tMs : best),
+    -Infinity,
+  );
+  const lastFixKind = w.startedMs === null ? null : lastPhotoMs > -Infinity ? 'photo' : 'start';
+  const lastFixMs = lastFixKind === null ? null : lastFixKind === 'photo' ? lastPhotoMs : w.startedMs;
   const distAtFixM = lastFixMs === null ? 0 : walk(moments, lastFixMs).distM;
+  const fixErrorM = lastFixKind === 'photo' ? PHOTO_FIX_ERROR_M : BASE_ERROR_M;
 
   const there = w.route ? pointAlong(w.route.points, w.distM) : null;
   return {
@@ -127,8 +134,8 @@ export function fieldStateAt(log: MissionEvent[], tMs: number, passes: Satellite
     paceMps: paceOf(w),
     startedMs: w.startedMs,
     lastFixMs,
-    nextPassMs,
-    posErrorM: lastFixMs === null ? 1 : positionErrorM(w.distM - distAtFixM),
+    lastFixKind,
+    posErrorM: lastFixMs === null ? BASE_ERROR_M : positionErrorM(w.distM - distAtFixM, fixErrorM),
     notices: w.notices,
     reports: log
       .filter((e): e is Extract<MissionEvent, { type: 'report' }> => e.type === 'report' && e.tMs <= tMs)

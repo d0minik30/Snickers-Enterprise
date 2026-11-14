@@ -7,12 +7,13 @@
 //   ../data/output/elevation_grid.json   metadata for elevation_grid.bin
 //   ../data/output/elevation_grid.bin    int16 decimetres, first layer = mean elevation
 //   ../data/output/terrain_features.geojson  lows (pits) used as hazards
+//   ../data/output/places.geojson            the base (start) and the destination
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Keep in step with DEMO_BOUNDS in lib/planner/terrain.ts (a test checks the extract covers it).
-const DEMO_BOUNDS = { south: 18.415, west: 77.380, north: 18.500, east: 77.480 };
+const DEMO_BOUNDS = { south: 18.425, west: 77.340, north: 18.525, east: 77.475 }; // landing site to the Western Delta Deposit
 const MARGIN_CELLS = 3;
 
 const frontend = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -62,8 +63,17 @@ const MIN_SHOWN_RADIUS_M = 90; // smaller cores are left to the slope cost; as c
 const PIT_MIN_DEPTH_M = 9;
 const PIT_MAX_SIZE_M = 600;
 const KEEP_CLEAR_M = 200; // no hazard this close to the default start or end (lib/planner/routes.ts)
-const DEFAULT_START = { lat: 18.4446, lon: 77.4509 };
-const DEFAULT_END = { lat: 18.4890, lon: 77.4080 };
+// Start and destination are real places from the data team's places.geojson.
+const places = JSON.parse(readFileSync(resolve(output, 'places.geojson'), 'utf8')).features;
+const place = name => {
+  const f = places.find(p => p.properties.name.startsWith(name));
+  if (!f) throw new Error(`places.geojson has no "${name}"`);
+  return { name: f.properties.name, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], elevation_m: f.properties.elevation_m };
+};
+const START_PLACE = place('Base');
+const END_PLACE = place('Western Delta Deposit');
+const DEFAULT_START = { lat: START_PLACE.lat, lon: START_PLACE.lon };
+const DEFAULT_END = { lat: END_PLACE.lat, lon: END_PLACE.lon };
 const M_PER_DEG = (3396190 * Math.PI) / 180;
 const groundM = (a, b) => Math.hypot((a.lat - b.lat) * M_PER_DEG, (a.lon - b.lon) * M_PER_DEG * Math.cos((a.lat * Math.PI) / 180));
 const inDemo = p => p.lat >= DEMO_BOUNDS.south && p.lat <= DEMO_BOUNDS.north && p.lon >= DEMO_BOUNDS.west && p.lon <= DEMO_BOUNDS.east;
@@ -129,6 +139,8 @@ const out = {
   slopeDegTimes5: b64(slope), // uint8
   sand: b64(sand), // uint8, 1 = sand
   hazards: kept, // survey hazards: steep cores (> 25 degrees) and deep pits
+  start: START_PLACE, // from places.geojson
+  destination: END_PLACE,
 };
 writeFileSync(target, JSON.stringify(out) + '\n');
 console.log(`extract-terrain: ${rows} x ${cols} cells, ${kept.length} hazards -> lib/planner/jezeroTerrain.json`);

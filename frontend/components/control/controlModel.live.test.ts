@@ -15,7 +15,7 @@ describe('buildReroute', () => {
   it('builds a reroute that starts where the traveller can be on arrival and avoids the new hazard', () => {
     const [safest] = planRoutes(DEFAULT_START, DEFAULT_END, PRESET_HAZARDS);
     const s2: MissionEvent = { ...sent, route: safest, hazards: PRESET_HAZARDS };
-    const view = controlViewAt([s2, start], 700_000, []);
+    const view = controlViewAt([s2, start], 700_000);
     const hz: Hazard = { id: 'hz', center: pointAlong(safest.points, safest.lengthM - 300).pos, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' };
     const r = buildReroute(view, hz)!;
     const branch = predictBranchDistM(view);
@@ -27,17 +27,17 @@ describe('buildReroute', () => {
   });
 
   it('offers no reroute when it is too late', () => // Review Focus 4
-    expect(buildReroute(controlViewAt([sent, start], 2_380_000, []), null)).toBeNull());
+    expect(buildReroute(controlViewAt([sent, start], 2_380_000), null)).toBeNull());
 
   it('offers no reroute before a route has been sent', () =>
-    expect(buildReroute(controlViewAt([], 100_000, []), null)).toBeNull());
+    expect(buildReroute(controlViewAt([], 100_000), null)).toBeNull());
 });
 
 describe('liveOverlays', () => {
   it('shows two travellers and marks an undelivered hazard as pending', () => {
     const hz: Hazard = { id: 'hz', center: ORIGIN, radiusM: 60, label: 'Flagged', source: 'control' };
     const change: MissionEvent = { id: 'c', tMs: 1_400_000, type: 'route-changed', origin: 'control', route: divertedRoute(R, 1500), hazards: [hz], reason: 'hazard' };
-    const o = liveOverlays(controlViewAt([sent, start, change], 1_500_000, []));
+    const o = liveOverlays(controlViewAt([sent, start, change], 1_500_000));
     expect(o.filter(x => x.kind === 'traveller').map(x => x.kind === 'traveller' && x.variant).sort()).toEqual(['ghost', 'solid']);
     expect(o.find(x => x.kind === 'hazard' && x.id === 'hazard:hz')).toMatchObject({ pending: true });
     expect(o.some(x => x.kind === 'label' && x.text === 'FLAGGED · NOT YET AT FIELD')).toBe(true);
@@ -48,21 +48,21 @@ describe('liveOverlays', () => {
   it('draws only the part of a pending route that differs from the active one', () => {
     const r2 = divertedRoute(R, 1500);
     const change: MissionEvent = { id: 'c', tMs: 1_400_000, type: 'route-changed', origin: 'control', route: r2, hazards: [], reason: 'replan' };
-    const o = liveOverlays(controlViewAt([sent, start, change], 1_500_000, []));
+    const o = liveOverlays(controlViewAt([sent, start, change], 1_500_000));
     const pending = o.find(x => x.kind === 'route' && x.variant === 'pending');
     expect(pending && pending.kind === 'route' && pending.points.length).toBeLessThan(r2.points.length);
     expect(pending && pending.kind === 'route' && pending.points.length).toBeGreaterThanOrEqual(2);
   });
 
   it('draws a route still on its way to the field as pending, with no traveller yet', () => {
-    const o = liveOverlays(controlViewAt([sent], 300_000, []));
+    const o = liveOverlays(controlViewAt([sent], 300_000));
     const routes = o.filter(x => x.kind === 'route' && x.id !== 'reroute:earliest'); // the tick across the route is not a route
     expect(routes.map(x => x.kind === 'route' && x.variant)).toEqual(['pending']);
     expect(o.some(x => x.kind === 'traveller')).toBe(false);
   });
 
   it('draws one traveller when the field is not moving', () => {
-    const o = liveOverlays(controlViewAt([sent], 1_500_000, [])); // ready at the field, never started
+    const o = liveOverlays(controlViewAt([sent], 1_500_000)); // ready at the field, never started
     expect(o.filter(x => x.kind === 'traveller')).toHaveLength(1);
   });
 });
@@ -71,7 +71,7 @@ describe('hazards Control cannot route around', () => {
   // Default safest route, traveller moving: received 325 m, estimated now 1062 m, earliest reroute 1798 m.
   const [safest] = planRoutes(DEFAULT_START, DEFAULT_END, PRESET_HAZARDS);
   const sentSafest: MissionEvent = { ...sent, route: safest, hazards: PRESET_HAZARDS };
-  const view = controlViewAt([sentSafest, start], 700_000 + 680_000 + 300_000, []);
+  const view = controlViewAt([sentSafest, start], 700_000 + 680_000 + 300_000);
   const flagAt = (distM: number): Hazard =>
     ({ id: 'hz', center: pointAlong(safest.points, distM).pos, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' });
   const branch = predictBranchDistM(view);
@@ -90,7 +90,7 @@ describe('hazards Control cannot route around', () => {
   });
 
   it('says too late near the end, with or without a new hazard', () => {
-    const late = controlViewAt([sent, start], 2_380_000, []);
+    const late = controlViewAt([sent, start], 2_380_000);
     expect(rerouteBlocker(late, null)).toBe('too-late');
     expect(rerouteBlocker(late, { id: 'x', center: ORIGIN, radiusM: 60, label: 'Flagged', source: 'control' })).toBe('too-late');
   });
@@ -110,7 +110,7 @@ describe('hazards Control cannot route around', () => {
     expect(distanceM(tick.points[0], at)).toBeCloseTo(distanceM(tick.points[1], at), 3);
     expect(distanceM(tick.points[0], tick.points[1])).toBeGreaterThan(50);
     expect(o.find(x => x.id === 'label:reroute:earliest')).toMatchObject({ kind: 'label', text: 'EARLIEST REROUTE', tone: 'route', pos: at });
-    const late = liveOverlays(controlViewAt([sent, start], 2_380_000, []));
+    const late = liveOverlays(controlViewAt([sent, start], 2_380_000));
     expect(late.some(x => x.id === 'reroute:earliest' || x.id === 'label:reroute:earliest')).toBe(false);
   });
 });
@@ -121,12 +121,12 @@ describe('uplinkText and liveProgress', () => {
       sent,
       { id: 'm', tMs: 10, type: 'message', origin: 'control', text: 'Sample at WP 2' },
       { id: 'c', tMs: 20, type: 'route-changed', origin: 'control', route: R, hazards: [], reason: 'hazard' },
-    ], 100, []);
+    ], 100);
     expect(view.uplinks.map(uplinkText)).toEqual(['Route sent.', 'Sample at WP 2', 'Hazard ahead. Route changed by Control.']);
   });
 
   it('reports distance and leg along the received route', () => {
-    const view = controlViewAt([sent, start], 1_380_000 + 600_000, []); // received 600 s after the start
+    const view = controlViewAt([sent, start], 1_380_000 + 600_000); // received 600 s after the start
     const p = liveProgress(view)!;
     expect(p.fraction).toBeCloseTo((PACE_MPS.astronaut * 600) / 2000, 5);
     expect(p.text).toBe('0.65 of 2.00 km');

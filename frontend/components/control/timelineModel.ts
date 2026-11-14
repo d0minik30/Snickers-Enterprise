@@ -1,6 +1,5 @@
 import type { ControlView, Uplink } from '@/lib/mission/control';
 import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
-import type { SatellitePass } from '@/lib/planner/types';
 
 export type TimelineSignal = {
   id: string; dir: 'up' | 'down'; sentMs: number; arrivesMs: number;
@@ -8,7 +7,6 @@ export type TimelineSignal = {
 };
 export type Timeline = {
   fromMs: number; toMs: number; nowMs: number; signals: TimelineSignal[];
-  passes: { tMs: number; past: boolean }[];
 };
 
 export const TIMELINE_BACK_MS = 40 * 60_000;
@@ -24,7 +22,7 @@ function uplinkLabel(u: Uplink): string {
   return 'MSG';
 }
 
-export function buildTimeline(view: ControlView, passes: SatellitePass[]): Timeline {
+export function buildTimeline(view: ControlView): Timeline {
   const nowMs = view.tMs;
   const fromMs = nowMs - TIMELINE_BACK_MS;
   const toMs = nowMs + TIMELINE_AHEAD_MS;
@@ -39,7 +37,7 @@ export function buildTimeline(view: ControlView, passes: SatellitePass[]): Timel
   for (const d of view.downlinks) {
     signals.push({
       id: d.id, dir: 'down', sentMs: d.sentMs, arrivesMs: d.receivedMs,
-      tone: 'nominal', label: d.kind === 'ack' ? 'ACK' : d.kind === 'report' ? 'MSG' : 'START',
+      tone: 'nominal', label: d.kind === 'ack' ? 'ACK' : d.kind === 'report' ? 'MSG' : d.kind === 'photo-fix' ? 'FIX' : 'START',
     });
   }
 
@@ -56,6 +54,5 @@ export function buildTimeline(view: ControlView, passes: SatellitePass[]): Timel
     toMs,
     nowMs,
     signals: signals.filter(s => s.arrivesMs >= fromMs && s.sentMs <= toMs),
-    passes: passes.filter(p => p.tMs >= fromMs && p.tMs <= toMs).map(p => ({ tMs: p.tMs, past: p.tMs <= nowMs })),
   };
 }

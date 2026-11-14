@@ -1,19 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { emptySession, locateBlocker, reduce, specFor, type Action, type Session } from '@/lib/locate/session';
-import type { Skyline, SkylineResponse, Trace } from '@/lib/locate/types';
-
-const trace: Trace = { width: 4, height: 3, x: [0, 1, 2, 3], y: [1, 1, 1, 1], weight: [1, 1, 1, 1], reason: [null, null, null, null], sun_px: null };
-const skyline = (w = 1): Skyline => ({
-  format: 'skyline/draft-1',
-  camera: { model: 'pinhole', width: 4, height: 3, hfov_deg: 60, vfov_deg: 47, pitch_deg: 0, roll_deg: 0, source: 'preset' },
-  level_source: 'assumed', eye_height_m: 1.7, time_utc: null, sun: null, az_step_deg: 0.1,
-  samples: [{ az_offset_deg: 0, elev_deg: 1, weight: w }],
-});
-const response: SkylineResponse = { skyline: skyline(), trace, debug_image: 'data:image/jpeg;base64,' };
+import {
+  buildLocateRequest, emptySession, locateBlocker, reduce, relativeHeadings, specFor, type Action, type Session,
+} from '@/lib/locate/session';
+import { contractPhoto, diagnostics, skylineResponse, trace } from '@/lib/testing/locateFixtures';
 
 const run = (actions: Action[], s: Session = emptySession) => actions.reduce(reduce, s);
 const add = (id: string): Action => ({ type: 'add', photo: { id, name: `${id}.jpg`, file: new Blob(), url: `blob:${id}` } });
-const traced = (id: string) => run([add(id), { type: 'trace-start', id }, { type: 'trace-done', id, response }]);
+const done = (id: string, response = skylineResponse()): Action[] => [add(id), { type: 'trace-start', id }, { type: 'trace-done', id, response }];
+const traced = (id: string) => run(done(id));
 
 describe('session', () => {
   it('queues a new photo for tracing and selects the first one', () => {
@@ -28,8 +22,10 @@ describe('session', () => {
     expect(s.photos[0].angles).toBe('stale');
     expect(s.photos[0].status).toBe('traced');
     let f = run([add('b'), { type: 'trace-start', id: 'b' }, { type: 'trace-failed', id: 'b', error: 'no field of view' }]);
+    const rev = f.photos[0].rev;
     f = reduce(f, { type: 'camera', id: 'b', camera: { kind: 'fov', hfovDeg: 60 } });
     expect(f.photos[0].status).toBe('queued');
+    expect(f.photos[0].rev).toBe(rev + 1); // a retry is a new request
   });
 
   it('edits are undoable and make the angles stale', () => {
@@ -47,12 +43,12 @@ describe('session', () => {
     const rev = s.photos[0].rev;
     s = reduce(s, { type: 'convert-start', id: 'a' });
     s = reduce(s, { type: 'tilt', id: 'a', tilt: { source: 'manual', pitchDeg: 4, rollDeg: 0 } }); // changed meanwhile
-    s = reduce(s, { type: 'convert-done', id: 'a', skyline: skyline(0.9), rev });
+    s = reduce(s, { type: 'convert-done', id: 'a', photo: contractPhoto(0.9), diagnostics: diagnostics(), rev });
     expect(s.photos[0].angles).toBe('stale');
     s = reduce(s, { type: 'convert-start', id: 'a' });
-    s = reduce(s, { type: 'convert-done', id: 'a', skyline: skyline(0.9), rev: s.photos[0].rev });
+    s = reduce(s, { type: 'convert-done', id: 'a', photo: contractPhoto(0.9), diagnostics: diagnostics(), rev: s.photos[0].rev });
     expect(s.photos[0].angles).toBe('fresh');
-    expect(s.photos[0].skyline?.samples[0].weight).toBe(0.9);
+    expect(s.photos[0].photo?.samples[0].weight).toBe(0.9);
   });
 
   it('a label sets the camera, and its tilt replaces the manual one', () => {
@@ -71,12 +67,44 @@ describe('session', () => {
     expect(locateBlocker(ok)).toBeNull();
     const stale = reduce(ok, { type: 'time', id: 'a', timeUtc: '2026-11-15T10:00:00Z' });
     expect(locateBlocker(stale)).toMatch(/Updating angles/);
-    const untrusted = run([add('b'), { type: 'trace-done', id: 'b', response: { ...response, skyline: skyline(0) } }]);
-    expect(locateBlocker(untrusted)).toMatch(/No part of any skyline is trusted/);
+    expect(locateBlocker(run(done('b', skylineResponse(0))))).toMatch(/No part of any skyline is trusted/);
+    const short = { ...skylineResponse(), photo: contractPhoto(1, 5) };
+    expect(locateBlocker(run(done('c', short)))).toMatch(/too little skyline/);
+    const nine = run(Array.from({ length: 9 }, (_, k) => done(`p${k}`)).flat());
+    expect(locateBlocker(nine)).toMatch(/At most 8 photos/);
   });
 
   it('removing the selected photo selects the next', () => {
     const s = run([add('a'), add('b'), { type: 'remove', id: 'a' }]);
     expect(s.selected).toBe('b');
+  });
+});
+
+describe('relativeHeadings', () => {
+  const at = (pose: string | null, az: number | null) => ({ diagnostics: diagnostics({ rover_pose: pose, rover_axis_azimuth_deg: az }) });
+
+  it('turns photos from one rover pose together, first photo 0, clockwise positive, -180..180', () => {
+    expect(relativeHeadings([at('3/1708', 100), at('3/1708', 160), at('3/1708', 20), at('3/1708', 300)])).toEqual([0, 60, -80, -160]);
+  });
+  it('leaves headings free when the poses differ, are unknown, or there is one photo', () => {
+    expect(relativeHeadings([at('3/1708', 100), at('3/1416', 160)])).toEqual([null, null]);
+    expect(relativeHeadings([at(null, null), at(null, null)])).toEqual([null, null]);
+    expect(relativeHeadings([at('3/1708', 100)])).toEqual([null]);
+  });
+});
+
+describe('buildLocateRequest', () => {
+  it('builds the CONTRACTS.md section 2 body from the traced photos, in order', () => {
+    const s = run([
+      ...done('a', skylineResponse(1, { rover_pose: '3/1708', rover_axis_azimuth_deg: 100 })),
+      ...done('b', skylineResponse(1, { rover_pose: '3/1708', rover_axis_azimuth_deg: 130 })),
+      add('c'), // still tracing: left out
+    ]);
+    const body = buildLocateRequest(s);
+    expect(body.contract_version).toBe('0.1');
+    expect(body.photos.map(p => [p.id, p.relative_heading_deg])).toEqual([['photo_1', 0], ['photo_2', 30]]);
+    expect(body.photos[0].samples).toHaveLength(30);
+    expect(body.options).toEqual({ top_k: 5, include_likelihood_grid: true, include_residuals: true });
+    expect(JSON.stringify(body)).not.toMatch(/diagnostics|rover_pose|trace/); // only contract fields go out
   });
 });

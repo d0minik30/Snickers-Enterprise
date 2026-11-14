@@ -13,4 +13,3 @@ export type Route = {
   maxSlopeDeg: number;
   risk: Risk;
 };
-export type SatellitePass = { satellite: string; tMs: number; quality: 'overhead' | 'low' };

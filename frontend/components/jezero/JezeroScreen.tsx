@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { SiteNav } from '@/components/shared/SiteNav';
 import { useState } from 'react';
 import type { MapStatus, OverlayState } from './JezeroMap';
 import { SLOPE_CLASSES } from './mapData';
@@ -27,6 +28,7 @@ export default function JezeroScreen() {
       <header className={css.topBar}>
         <Link href="/" className={css.home}>MARS MAP</Link>
         <span className={css.place}>JEZERO CRATER · PERSEVERANCE LANDING SITE</span>
+        <SiteNav />
         <span className={css.spacer} />
         <span className={css.readout}>
           <span className={css.readoutLabel}>ZOOM</span> {status.zoom}

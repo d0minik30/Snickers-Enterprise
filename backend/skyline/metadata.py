@@ -55,6 +55,12 @@ class CameraSetup:
     eye_height_m: float
     time_utc: str | None
     camera_source: str  # 'label' | 'manual' | 'preset' | 'exif'
+    # Perseverance only: where the camera points relative to the ROVER's forward direction (levelled,
+    # clockwise), and which rover pose (site/drive) the photo was taken at. Not the answer: the rover's
+    # own heading is not involved. Two photos from the same pose differ in heading by exactly the
+    # difference of these, which is the contract's relative_heading_deg.
+    rover_axis_azimuth_deg: float | None = None
+    rover_pose: str | None = None
 
 
 # ------------------------------------------------------------------ images and EXIF
@@ -149,7 +155,18 @@ def setup_from_m2020_record(record: dict, width: int, height: int, spec: dict) -
     time_utc = spec.get('time_utc') or record.get('date_taken_utc')
     if time_utc and not str(time_utc).endswith('Z'):
         time_utc = f'{time_utc}Z'
-    return CameraSetup(model, level, float(eye), time_utc, 'label')
+    site, drive = record.get('site'), record.get('drive')
+    pose = f'{site}/{drive}' if site is not None and drive is not None else None
+    return CameraSetup(model, level, float(eye), time_utc, 'label', _rover_axis_azimuth(gravity, model.forward), pose)
+
+
+def _rover_axis_azimuth(gravity: np.ndarray, forward: np.ndarray) -> float:
+    """Azimuth of the optical axis from the rover's levelled forward direction, clockwise, 0-360."""
+    z = gravity / np.linalg.norm(gravity)
+    x = np.array([1.0, 0.0, 0.0]) - z[0] * z  # rover forward (rover frame x), flattened
+    x = x / np.linalg.norm(x)
+    y = np.cross(z, x)
+    return float(np.degrees(np.arctan2(forward @ y, forward @ x)) % 360)
 
 
 # ------------------------------------------------------------------ the general entry point
