@@ -9,6 +9,9 @@ The app has two screens that stay in sync across two browser windows, with the
 - **Field** – phone-sized HUD for the astronaut or rover.
 - **Control** – laptop-sized view for the planners on Earth.
 
+A third screen, **Jezero** (`/map/`), is an interactive map of Mars that zooms into Jezero Crater
+and the Perseverance landing site, with slope and sand overlays made from NASA and USGS data.
+
 ## Try it
 
 You need Node.js 20 or newer.
@@ -29,7 +32,8 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000, then open **Control** in a wide window and **Field** in a narrow one.
+Open http://localhost:3000, then open **Control** in a wide window and **Field** in a narrow one
+(or **Jezero** for the map).
 The step-by-step demo script is in [`frontend/README.md`](frontend/README.md).
 
 ## Folders
@@ -50,5 +54,6 @@ plain-HTML version and does not show the new app.
 
 ## Credits
 
-Imagery and data: NASA / JPL-Caltech / USGS, via [NASA Mars Trek](https://trek.nasa.gov/mars/).
-Map library: [OpenLayers](https://openlayers.org/).
+Imagery and terrain: NASA / JPL-Caltech, via [NASA Mars Trek](https://trek.nasa.gov/mars/) (Viking MDIM 2.1,
+MRO CTX and HiRISE, CTX Jezero DEM). Sand: Sun & Stack (2020), USGS SIM 3464, https://doi.org/10.3133/sim3464.
+Map libraries: [OpenLayers](https://openlayers.org/) (Field, Control) and [Leaflet](https://leafletjs.com/) (Jezero).

@@ -29,8 +29,7 @@ export const SAND_ATTRIBUTION =
   'Sand: <a href="https://doi.org/10.3133/sim3464" target="_blank" rel="noreferrer">USGS SIM 3464 (Sun &amp; Stack, 2020)</a>';
 export const SLOPE_ATTRIBUTION = 'Slope: MRO CTX Jezero DEM (20 m)';
 
-/** Mars radius in metres, so the scale bar and distances are right. */
-export const MARS_RADIUS_M = 3389500;
+export { MARS_RADIUS_M } from '@/lib/nav/geo';
 export const MAX_ZOOM = 19;
 
 /** Slope classes, matching data/scripts/process_dem.py (alpha 128 is about 50 % opaque). */

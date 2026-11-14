@@ -1,6 +1,11 @@
 import type { LatLon } from '@/lib/planner/types';
 
-export const MARS_RADIUS_M = 3389500;
+/**
+ * Radius of the Mars 2000 sphere (IAU 2000), in metres. All map data (NASA Mars Trek tiles, the
+ * Jezero DEM, slope, sand and the cost grid in ../data) is in degrees on this sphere, so distances,
+ * the scale bar and the grid's 40 m cells all agree. The one radius for the whole frontend.
+ */
+export const MARS_RADIUS_M = 3396190;
 
 const toRad = (deg: number) => (deg * Math.PI) / 180;
 const toDeg = (rad: number) => (rad * 180) / Math.PI;

@@ -4,7 +4,7 @@ import { ORIGIN, straightRoute } from '@/lib/testing/fixtures';
 
 describe('geo', () => {
   it('measures one degree of latitude on Mars', () =>
-    expect(distanceM({ lat: 0, lon: 0 }, { lat: 1, lon: 0 })).toBeCloseTo(59157.9, 0));
+    expect(distanceM({ lat: 0, lon: 0 }, { lat: 1, lon: 0 })).toBeCloseTo(59274.7, 0));
   it('bearing is 0 north, 90 east, 270 west', () => {
     expect(bearingDeg(ORIGIN, destination(ORIGIN, 0, 100))).toBeCloseTo(0, 1);
     expect(bearingDeg(ORIGIN, destination(ORIGIN, 90, 100))).toBeCloseTo(90, 1);

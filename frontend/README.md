@@ -1,7 +1,7 @@
 # Mars Map — Field HUD + Control view
 
 A demo of navigation for a Mars traverse across an **11 min 20 s one-way signal delay**.
-It has two screens that stay in sync across two browser windows:
+It has two screens that stay in sync across two browser windows, plus a standalone Jezero map:
 
 - **Field** (`/field/`) — phone-sized HUD for the astronaut or rover: next move, map turned to face
   the direction of travel, position error, messages from Control.
@@ -106,5 +106,14 @@ Map libraries: [OpenLayers](https://openlayers.org/) (Field, Control), [Leaflet]
 ## Map data
 
 `npm run dev` and `npm run build` first run `scripts/copy-data.mjs`, which copies `../data/map_layers.json`
-and `../data/output/{slope.png,slope_bounds.json,sand.geojson}` into `public/data/` (git-ignored, regenerated
-every time). The Jezero map loads them from `/data/...`. Never edit `../data/` from here; it belongs to the data team.
+and every file in `../data/output/` into `public/data/` (git-ignored, emptied and refilled every time), so the
+app can fetch them from `/data/...`. Never edit `../data/` from here; it belongs to the data team.
+
+| File | Used by |
+|---|---|
+| `map_layers.json`, `slope.png`, `slope_bounds.json`, `sand.geojson` | Jezero map |
+| `places.geojson`, `cost_grid.json` | not yet (planned: real places and route finding) |
+
+**Mars radius:** all coordinates are degrees on the Mars 2000 sphere, R = 3 396 190 m (the sphere the
+data scripts and the cost grid's 40 m cells use). The frontend has one constant for it, `MARS_RADIUS_M`
+in `lib/nav/geo.ts`, used for distances, the Leaflet CRS and the scale bar.
