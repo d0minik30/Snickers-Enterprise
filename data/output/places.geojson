@@ -1,0 +1,80 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Base (Perseverance landing site)",
+        "type": "base",
+        "source": "NASA Mars Trek, Jezero Crater Features and Landforms bookmark"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.4508,
+          18.4447
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Western Delta Deposit",
+        "type": "mission_site",
+        "source": "NASA Mars Trek, Jezero Crater Features and Landforms bookmark"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.3643,
+          18.505
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Western Breach",
+        "type": "mission_site",
+        "source": "NASA Mars Trek, Jezero Crater Features and Landforms bookmark"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2874,
+          18.4995
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Northern Delta Deposit",
+        "type": "mission_site",
+        "source": "NASA Mars Trek, Jezero Crater Features and Landforms bookmark"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.5456,
+          18.6314
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Western Inflow Channel",
+        "type": "mission_site",
+        "source": "NASA Mars Trek, Jezero Crater Features and Landforms bookmark"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1995,
+          18.5819
+        ]
+      }
+    }
+  ]
+}
