@@ -1,0 +1,11 @@
+# Python packages for the localization engine. Install with:
+#   python -m venv .venv
+#   .venv\Scripts\python -m pip install -r requirements.txt     (Windows)
+#   .venv/bin/python -m pip install -r requirements.txt         (macOS, Linux)
+numpy
+rasterio
+fastapi
+uvicorn
+pytest
+httpx
+matplotlib
