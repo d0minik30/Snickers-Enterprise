@@ -1,13 +1,20 @@
 """Base and mission sites for route finding, checked against cost_grid.json.
 
 Writes data/output/places.geojson (Points, [lon, lat] degrees on the Mars 2000 sphere,
-for L.geoJSON) and checks that every place lies inside the cost grid on a cell with
-data, so a route can start or end there. It reads the finished grid, so run it last:
+for L.geoJSON; elevation_m is read from the 20 m DEM pixel under each point) and checks
+that every place lies inside the cost grid on a cell with data, so a route can start or
+end there. It reads the finished grid, so run it last:
   python data/scripts/make_places.py
 """
 import json
 import math
 from pathlib import Path
+
+import numpy as np
+import rasterio
+from rasterio.windows import Window
+
+from process_dem import DEM_PATH, to_metres
 
 DATA_DIR = Path(__file__).resolve().parent.parent
 GRID_PATH = DATA_DIR / "output" / "cost_grid.json"
@@ -51,14 +58,25 @@ def locate_places(grid, places):
     return report
 
 
-def places_geojson():
+def dem_elevation(src, lat, lon):
+    """Height (m, 0.1 m steps) of the 20 m DEM pixel that holds the point; None if off the DEM or no data."""
+    t = src.transform
+    col = math.floor((to_metres(lon) - t.c) / t.a)
+    row = math.floor((to_metres(lat) - t.f) / t.e)
+    if not (0 <= row < src.height and 0 <= col < src.width):
+        return None
+    value = src.read(1, window=Window(col, row, 1, 1), masked=True)[0, 0]
+    return None if value is np.ma.masked else round(float(value), 1)
+
+
+def places_geojson(elevations):
     return {
         "type": "FeatureCollection",
         "features": [
             {"type": "Feature",
-             "properties": {"name": name, "type": kind, "source": SOURCE},
+             "properties": {"name": name, "type": kind, "source": SOURCE, "elevation_m": height},
              "geometry": {"type": "Point", "coordinates": [lon, lat]}}
-            for name, kind, lat, lon in PLACES
+            for (name, kind, lat, lon), height in zip(PLACES, elevations)
         ],
     }
 
@@ -70,18 +88,21 @@ def main():
     if "sand" not in grid:
         raise SystemExit("cost_grid.json has no sand layer yet. Run add_sand_to_grid.py first.")
 
+    with rasterio.open(DEM_PATH) as src:
+        elevations = [dem_elevation(src, lat, lon) for _name, _kind, lat, lon in PLACES]
     with open(OUT_PATH, "w", encoding="utf-8", newline="\n") as out:
-        out.write(json.dumps(places_geojson(), indent=2) + "\n")
+        out.write(json.dumps(places_geojson(elevations), indent=2) + "\n")
 
     report = locate_places(grid, PLACES)
-    print("%-34s %5s %5s %7s %5s" % ("place (cost grid cell)", "row", "col", "slope", "sand"))
-    for item in report:
-        print("%-34s %5s %5s %7s %5s" % (
+    print("%-34s %5s %5s %7s %5s %9s" % ("place (cost grid cell)", "row", "col", "slope", "sand", "elev m"))
+    for item, height in zip(report, elevations):
+        print("%-34s %5s %5s %7s %5s %9s" % (
             item["name"],
             "-" if item["row"] is None else item["row"],
             "-" if item["col"] is None else item["col"],
             "-" if item["slope"] is None else "%.1f" % item["slope"],
-            "-" if item["sand"] is None else item["sand"]))
+            "-" if item["sand"] is None else item["sand"],
+            "-" if height is None else "%.1f" % height))
     print("wrote %s (%.1f KB)" % (OUT_PATH.relative_to(DATA_DIR.parent).as_posix(),
                                   OUT_PATH.stat().st_size / 1024))
     problems = ["%s: %s" % (item["name"], item["problem"]) for item in report if item["problem"]]

@@ -1,3 +1,4 @@
 # The scripts write the JSON/GeoJSON in output/ with LF line endings; keep them LF on every OS
 output/*.json text eol=lf
 output/*.geojson text eol=lf
+output/*.bin binary

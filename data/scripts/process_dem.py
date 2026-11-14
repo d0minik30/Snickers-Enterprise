@@ -138,15 +138,21 @@ def horn_slope_deg(z, dx, dy):
     return slope
 
 
-def block_max(values, block):
-    """Steepest value of each block x block group of cells (NaN if any of them is NaN).
+def block_reduce(values, block, reducer):
+    """reducer (np.max, np.min, np.mean) over each block x block group of cells.
 
-    If the size isn't a whole number of blocks, the last blocks are filled up with NaN.
+    A group with a NaN gives NaN. If the size isn't a whole number of blocks, the last
+    blocks are filled up with NaN. process_elevation.py uses this for the same 40 m grid.
     """
     rows, cols = values.shape
     padded = np.pad(values, ((0, -rows % block), (0, -cols % block)), constant_values=np.nan)
     r, c = padded.shape
-    return padded.reshape(r // block, block, c // block, block).max(axis=(1, 3))
+    return reducer(padded.reshape(r // block, block, c // block, block), axis=(1, 3))
+
+
+def block_max(values, block):
+    """Steepest value of each block x block group of cells (NaN if any of them is NaN)."""
+    return block_reduce(values, block, np.max)
 
 
 def slope_colours(slope):

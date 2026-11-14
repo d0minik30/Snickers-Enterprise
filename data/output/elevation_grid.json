@@ -1,0 +1,62 @@
+{
+  "description": "Terrain heights on the cost grid. elevation_grid.bin holds the layers below one after another, each rows x cols little-endian int16 in row-major order (index = row * cols + col; row 0 = northern edge, col 0 = western edge). Metres = value * scale; nodata means no data.",
+  "source": "NASA Mars Trek: MRO CTX Jezero DEM (Controlled), 20 m",
+  "vertical_datum": "Height 0 is the Mars areoid (MOLA topography): the USGS file name is JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m, and the landing site reads about -2,567 m, Jezero's known floor level. USGS's processing note says the intermediate CTX DTMs referred to the Mars 2000 sphere (R = 3396190 m); heights on that sphere would be about 1-2 km lower here.",
+  "vertical_accuracy": "USGS: vertical registration between the CTX DTMs is 3.8 m after aligning the mosaic to the HRSC DTM (whose vertical precision is about 13 m); Mars 2020 TRN required < 20 m. Source: USGS metadata for doi:10.5066/P906QQT8.",
+  "bounds": [
+    [
+      18.2110274,
+      77.1604655
+    ],
+    [
+      18.7211945,
+      77.6989752
+    ]
+  ],
+  "rows": 756,
+  "cols": 798,
+  "cell_size_deg": {
+    "lat": 0.0006748242,
+    "lon": 0.0006748242
+  },
+  "cell_size_m": {
+    "north_south": 40.0,
+    "east_west": 37.94
+  },
+  "data_file": "elevation_grid.bin",
+  "dtype": "int16",
+  "byte_order": "little-endian",
+  "scale": 0.1,
+  "units": "m",
+  "nodata": -32768,
+  "layers": [
+    {
+      "name": "elevation_m",
+      "offset_bytes": 0,
+      "min": -2710.6,
+      "max": -1515.9,
+      "description": "mean height of the cell's 2 x 2 DEM pixels"
+    },
+    {
+      "name": "min_m",
+      "offset_bytes": 1206576,
+      "min": -2710.7,
+      "max": -1516.2,
+      "description": "lowest of the cell's 2 x 2 DEM pixels"
+    },
+    {
+      "name": "max_m",
+      "offset_bytes": 2413152,
+      "min": -2710.6,
+      "max": -1515.5,
+      "description": "highest of the cell's 2 x 2 DEM pixels"
+    },
+    {
+      "name": "relief_m",
+      "offset_bytes": 3619728,
+      "min": -20.7,
+      "max": 32.2,
+      "description": "elevation_m minus the mean elevation_m of the 7 x 7 cells around the cell (~280 m x 266 m, the cell itself left out; smaller near the border): + = stands above its surroundings (mound, ridge, crater rim), - = lies below them (pit, crater floor, channel)"
+    }
+  ]
+}

@@ -4,3 +4,4 @@ rasterio
 geopandas
 numpy
 Pillow
+scipy
