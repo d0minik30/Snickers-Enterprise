@@ -91,7 +91,7 @@ export function recommendationText(routes: Route[], traveller: TravellerKind = '
   const summary = joinClauses(tradeOffs);
 
   if (avoided.length > 0) {
-    const names = joinAnd(avoided.map(h => h.label));
+    const names = joinAnd(avoided.map(h => h.label.charAt(0).toLowerCase() + h.label.slice(1)));
     return `Avoids the ${names} that the shortest route crosses. ${summary[0].toUpperCase()}${summary.slice(1)}.`;
   }
   if (flatter) return `The shortest route crosses no hazard but reaches ${shortestSlope}°. Route A is ${summary}.`;

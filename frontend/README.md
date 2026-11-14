@@ -78,7 +78,7 @@ If the venue has no internet, the map shows "MAP IMAGERY UNAVAILABLE" and the ro
 
 ## How to plug in real data
 
-Terrain is **real**: elevation, slope and sand for Jezero come from the data team's grids (`data/output/`), cut to the demo area by `scripts/extract-terrain.mjs` on every `dev` and `build`. Hazard circles and satellite passes are still **made up** for the demo. They all sit behind one
+Terrain is **real**: elevation, slope and sand for Jezero come from the data team's grids (`data/output/`), cut to the demo area by `scripts/extract-terrain.mjs` on every `dev` and `build`. Hazard circles are found in the same data (steep cores over 25° and deep pits). Satellite passes and waypoint names are still **made up** for the demo. They all sit behind one
 file: `lib/planner/index.ts`. The rest of the app imports only from there.
 
 To use real data, replace what is behind that file and keep the function names and types the same

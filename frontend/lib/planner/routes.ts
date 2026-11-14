@@ -1,6 +1,7 @@
 import type { Hazard, LatLon, Risk, Route, RouteProfile, Waypoint } from '@/lib/planner/types';
 import { cumulativeM, distanceM, pointAlong, slicePath } from '@/lib/nav/geo';
 import { findPath, type Weighting } from '@/lib/planner/astar';
+import jezero from '@/lib/planner/jezeroTerrain.json';
 import { elevationAt, fromLocalM, isSandAt, slopeAt, toLocalM, type LocalM } from '@/lib/planner/terrain';
 
 export const DEFAULT_START: LatLon = { lat: 18.4446, lon: 77.4509 }; // Perseverance landing site
@@ -8,13 +9,11 @@ export const DEFAULT_END: LatLon = { lat: 18.4890, lon: 77.4080 }; // about 3.56
 export const MIN_ROUTE_M = 40;
 export const FLAG_RADIUS_M = 60;
 
-export const PRESET_HAZARDS: Hazard[] = [
-  { id: 'dune-1', center: { lat: 18.4668, lon: 77.4295 }, radiusM: 150, label: 'Dune field', source: 'survey' },
-  { id: 'ridge-1', center: { lat: 18.4560, lon: 77.4300 }, radiusM: 120, label: 'Broken ridge', source: 'survey' },
-  { id: 'boulder-1', center: { lat: 18.4780, lon: 77.4300 }, radiusM: 100, label: 'Boulder field', source: 'survey' },
-  { id: 'crater-1', center: { lat: 18.4520, lon: 77.4150 }, radiusM: 180, label: 'Crater rim', source: 'survey' },
-  { id: 'sand-1', center: { lat: 18.4850, lon: 77.4350 }, radiusM: 120, label: 'Soft sand', source: 'survey' },
-];
+/**
+ * Survey hazards found in the real data by scripts/extract-terrain.mjs: steep cores (clusters of 40 m cells over 25°)
+ * and deep pits from terrain_features.geojson. The biggest, steep-1, is the delta scarp just off the direct line.
+ */
+export const PRESET_HAZARDS: Hazard[] = jezero.hazards.map(h => ({ ...h, source: 'survey' as const }));
 
 const SIMPLIFY_TOLERANCE_M = 15;
 const SMOOTHING_PASSES = 2;

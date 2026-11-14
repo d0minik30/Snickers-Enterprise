@@ -31,7 +31,7 @@ describe('controlModel', () => {
 
   it('explains the recommendation with real numbers', () => {
     const t = recommendationText(routes);
-    expect(t).toContain('Dune field');
+    expect(t).toContain('steep slope 33°'); // steep-1, the delta scarp the shortest route climbs
     expect(t).toContain(formatDistance(routes[0].lengthM - routes[1].lengthM).value);
   });
 
