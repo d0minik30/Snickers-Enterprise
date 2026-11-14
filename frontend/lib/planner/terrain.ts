@@ -20,8 +20,8 @@ export const AREA_WIDTH_M = (DEMO_BOUNDS.east - DEMO_BOUNDS.west) * M_PER_DEG_LO
 export const AREA_HEIGHT_M = (DEMO_BOUNDS.north - DEMO_BOUNDS.south) * M_PER_DEG_LAT;
 
 // Two steep local features on the straight line between the default start and end: a mound and a pit.
-const MOUND = { ...toLocalM({ lat: 18.4557, lon: 77.4402 }), heightM: 22, sigmaM: 50 };
-const PIT = { ...toLocalM({ lat: 18.4779, lon: 77.4187 }), heightM: -20, sigmaM: 45 };
+const MOUND = { ...toLocalM({ lat: 18.4557, lon: 77.4402 }), heightM: 18, sigmaM: 55 };
+const PIT = { ...toLocalM({ lat: 18.4779, lon: 77.4187 }), heightM: -16, sigmaM: 50 };
 
 const bump = (b: typeof MOUND, x: number, y: number) =>
   b.heightM * Math.exp(-((x - b.x) ** 2 + (y - b.y) ** 2) / (2 * b.sigmaM ** 2));
@@ -30,12 +30,12 @@ const bump = (b: typeof MOUND, x: number, y: number) =>
 export function elevationAt(p: LatLon): number {
   const { x, y } = toLocalM(p);
   return (
-    -2515 +
+    -2517 +
     0.0015 * x -
     0.001 * y +
-    14 * Math.sin(x / 110 + 0.6) * Math.sin(y / 95 + 1.3) +
-    9 * Math.sin((x - y) / 160 + 2.1) +
-    5 * Math.sin((x + 2 * y) / 75) +
+    20 * Math.sin(x / 90 + 0.6) * Math.sin(y / 80 + 1.3) +
+    10 * Math.sin((x - y) / 130 + 2.1) +
+    4 * Math.sin((x + 2 * y) / 75) +
     bump(MOUND, x, y) +
     bump(PIT, x, y)
   );
