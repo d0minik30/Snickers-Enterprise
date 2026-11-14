@@ -1,0 +1,6 @@
+# Real photos for development: downloaded by scripts/fetch_samples.py, never committed.
+samples/
+# Debug images written by the sample runner.
+out/
+__pycache__/
+.pytest_cache/

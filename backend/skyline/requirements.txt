@@ -1,0 +1,9 @@
+# Skyline step (photo -> skyline). Install with:  py -3.10 -m pip install -r backend/skyline/requirements.txt
+numpy>=1.26
+Pillow>=10.0
+fastapi>=0.111
+python-multipart>=0.0.9  # FastAPI needs it for file uploads
+
+# Tests only
+pytest>=8.0
+httpx>=0.27  # FastAPI's TestClient
