@@ -23,6 +23,9 @@ py -3.10 backend/skyline/scripts/run_samples.py        # traced photos and skyli
 `samples/` and `out/` are git-ignored (the repo keeps images out). The tests on real photos skip
 themselves when the samples are not downloaded.
 
+Until the main server exists, `py -3.10 backend/skyline/scripts/dev_server.py` serves this router
+on http://localhost:8000 with CORS open to the Next.js dev server, for the app's Locate screen.
+
 ## API (a FastAPI router)
 
 The main server includes it: `from skyline.api import router; app.include_router(router)`.

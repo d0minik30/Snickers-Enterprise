@@ -1,0 +1,669 @@
+/* Locate screen, same "Instrument" look as Control and Jezero: solid surfaces, 1 px rules, square
+   corners, small grey uppercase labels, colour only for meaning. Laptop: photos and camera on the left,
+   the photo being edited on the right, LOCATE along the bottom. Phone: one column, LOCATE pinned below. */
+
+.screen {
+  --raised: color-mix(in srgb, var(--text) 6%, var(--surface));
+  --pad: 16px;
+  --label-size: 12px;
+  --track: 0.14em;
+
+  display: grid;
+  grid-template-rows: 40px minmax(0, 1fr) auto;
+  min-height: 100dvh;
+  font-size: 15px;
+}
+
+@media (min-width: 900px) {
+  .screen {
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
+/* ------------------------------------------------------------------ top bar */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+  padding: 0 var(--pad);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.home {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.home:hover,
+.home:focus-visible {
+  color: var(--route);
+}
+
+.place,
+.engine {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--label-size);
+  font-weight: 600;
+  letter-spacing: var(--track);
+  color: var(--muted);
+}
+
+.spacer {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .engine {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'side' 'work' 'camera';
+  align-content: start;
+  min-height: 0;
+}
+
+.camera {
+  grid-area: camera;
+  min-width: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.work {
+  grid-area: work;
+  min-width: 0;
+  padding: var(--pad);
+  border-top: 1px solid var(--rule);
+}
+
+@media (min-width: 900px) {
+  .main {
+    grid-template-columns: 340px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: 'side work' 'camera work';
+    align-content: stretch;
+  }
+  .side,
+  .camera {
+    border-right: 1px solid var(--rule);
+  }
+  .camera {
+    overflow-y: auto;
+    border-top: 0;
+  }
+  .side {
+    max-height: 45dvh;
+    overflow-y: auto;
+  }
+  .work {
+    overflow-y: auto;
+    border-top: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ panels and controls */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--pad);
+  border-bottom: 1px solid var(--rule);
+}
+
+.panelTitle {
+  margin-top: 6px;
+  font-size: var(--label-size);
+  font-weight: 600;
+  letter-spacing: var(--track);
+  color: var(--muted);
+}
+
+.panelTitle:first-child {
+  margin-top: 0;
+}
+
+.note {
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.addRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.fileButton,
+.smallButton,
+.tool,
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.smallButton {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+.fileButton:hover,
+.smallButton:hover,
+.tool:hover:not(:disabled),
+.segment:hover:not(:disabled) {
+  background: var(--raised);
+}
+
+.fileButton:focus-within,
+.fileButton:focus-visible,
+.smallButton:focus-visible,
+.tool:focus-visible,
+.segment:focus-visible,
+.select:focus-visible,
+.input:focus-visible,
+.number:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.tool:disabled,
+.segment:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.tool[aria-pressed='true'],
+.segment[aria-checked='true'] {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--surface);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: var(--label-size);
+  font-weight: 600;
+  letter-spacing: var(--track);
+  color: var(--muted);
+}
+
+.fieldHint {
+  margin-left: 6px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 500;
+}
+
+.select,
+.input,
+.number {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* 16 px keeps iOS from zooming in */
+  color-scheme: dark;
+}
+
+.number {
+  width: 100px;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.unit {
+  color: var(--muted);
+}
+
+.ellipsis {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.range {
+  flex: 1;
+  accent-color: var(--text);
+}
+
+.rangeValue {
+  width: 56px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.segment {
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.segment + .segment {
+  border-left: 0;
+}
+
+/* ------------------------------------------------------------------ photo list */
+
+.photoList {
+  list-style: none;
+  border-bottom: 1px solid var(--rule);
+}
+
+.photoItem {
+  display: flex;
+  border-left: 3px solid transparent;
+}
+
+.photoItem + .photoItem {
+  border-top: 1px solid var(--rule);
+}
+
+.photoItem[aria-current='true'] {
+  border-left-color: var(--text);
+  background: var(--raised);
+}
+
+.photoPick {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 8px 8px calc(var(--pad) - 3px);
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.thumb {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  flex: none;
+  border: 1px solid var(--rule);
+}
+
+.photoMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.photoName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.status-busy,
+.status-bad,
+.status-ok,
+.status-weak {
+  font-size: var(--label-size);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.status-busy,
+.status-weak { color: var(--caution); }
+.status-bad { color: var(--danger); }
+.status-ok { color: var(--nominal); }
+
+.remove {
+  width: 44px;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.remove:hover,
+.remove:focus-visible {
+  color: var(--danger);
+}
+
+/* ------------------------------------------------------------------ the photo being edited */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+  padding: 40px 0;
+}
+
+.emptyTitle {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.alert,
+.busy {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border: 1px solid currentColor;
+  font-weight: 600;
+}
+
+.alert { color: var(--danger); }
+.busy {
+  color: var(--caution);
+  letter-spacing: 0.1em;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.toolGap {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .tools {
+    gap: 4px;
+  }
+  .tool {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  .toolGap {
+    display: none;
+  }
+}
+
+.toolHint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.photoFrame {
+  display: flex;
+  justify-content: center;
+  background: var(--raised);
+}
+
+.photoBox {
+  position: relative;
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  /* Fit the whole photo in the window: width limited by the height left over. */
+  .photoBox {
+    width: min(100%, calc((100dvh - 250px) * var(--ar, 1.333)));
+  }
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none; /* dragging on the photo edits the line, it does not scroll */
+  cursor: crosshair;
+  filter: drop-shadow(0 0 1.5px rgb(0 0 0 / 0.9));
+}
+
+.overlay[data-tool='move'] {
+  cursor: ns-resize;
+}
+
+.overlay polyline {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.line-trusted { stroke: var(--nominal); }
+.line-doubtful { stroke: var(--caution); }
+.line-unused { stroke: var(--route); stroke-dasharray: 6 4; }
+
+.guide {
+  stroke: var(--text);
+  stroke-dasharray: 10 8;
+  opacity: 0.85;
+}
+
+.band-erase,
+.band-rock { fill: color-mix(in srgb, var(--route) 30%, transparent); }
+.band-restore { fill: color-mix(in srgb, var(--nominal) 30%, transparent); }
+
+.sun {
+  fill: none;
+  stroke: var(--text);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-size: var(--label-size);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.legend i {
+  display: inline-block;
+  width: 18px;
+  height: 0;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-top: 3px solid var(--muted);
+}
+
+/* Two classes, to outrank `.legend i` above. */
+.legend .swTrusted { border-top-color: var(--nominal); }
+.legend .swDoubtful { border-top-color: var(--caution); }
+.legend .swUnused { border-top-style: dashed; border-top-color: var(--route); }
+.legend .swGuide { border-top-style: dashed; border-top-color: var(--text); }
+
+.legendNote {
+  flex: 1 1 220px;
+  text-align: right;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------------ locate bar */
+
+.locateBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px var(--pad) max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--rule);
+  background: var(--surface);
+}
+
+.locateText {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.locateButton {
+  min-height: 48px;
+  padding: 0 32px;
+  border: 0;
+  background: var(--text);
+  color: var(--surface);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.locateButton:disabled {
+  background: var(--rule);
+  color: var(--muted);
+  cursor: default;
+}
+
+.locateButton:focus-visible {
+  outline: 3px solid var(--caution);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ in-app camera */
+
+.capture {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+}
+
+.captureVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.captureHorizon {
+  position: absolute;
+  top: 50%;
+  left: 15%;
+  right: 15%;
+  border-top: 2px dashed var(--text);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.captureTop,
+.captureBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(12px, env(safe-area-inset-top)) var(--pad) 12px;
+  background: rgb(0 0 0 / 0.55);
+}
+
+.captureTop { top: 0; }
+
+.captureBottom {
+  bottom: 0;
+  justify-content: center;
+  padding: 16px var(--pad) max(16px, env(safe-area-inset-bottom));
+}
+
+.captureReadout {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+}
+
+.captureError {
+  position: absolute;
+  top: 72px;
+  left: var(--pad);
+  right: var(--pad);
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.shutter {
+  width: 68px;
+  height: 68px;
+  border: 4px solid var(--text);
+  background: color-mix(in srgb, var(--text) 25%, transparent);
+  cursor: pointer;
+}
+
+.shutter:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

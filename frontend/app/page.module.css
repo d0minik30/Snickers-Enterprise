@@ -29,7 +29,7 @@
 
 .cells {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border: 1px solid var(--rule);
 }
 
@@ -82,6 +82,18 @@
   margin-top: 8px;
   padding-left: 24px;
   font-size: 18px;
+}
+
+@media (max-width: 860px) and (min-width: 561px) {
+  .cells {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cell:nth-child(odd) {
+    border-left: 0;
+  }
+  .cell:nth-child(n + 3) {
+    border-top: 1px solid var(--rule);
+  }
 }
 
 @media (max-width: 560px) {

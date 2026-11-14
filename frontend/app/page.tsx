@@ -25,6 +25,10 @@ export default function Home() {
           <span className={styles.cellLabel}>JEZERO</span>
           <span className={styles.cellHint}>Explore the map: slope and sand</span>
         </Link>
+        <Link href="/locate/" className={styles.cell}>
+          <span className={styles.cellLabel}>LOCATE</span>
+          <span className={styles.cellHint}>Find where photos were taken</span>
+        </Link>
       </nav>
 
       <section className={styles.note} aria-labelledby="present">

@@ -104,6 +104,6 @@ def test_preset_and_exif_cameras():
     s = camera_setup(4032, 3024, {'preset': 'iphone-main'})
     assert s.camera.width == 4032 and s.camera_source == 'preset'
     hfov = np.degrees(2 * np.arctan(2016 / s.camera.fx))
-    assert hfov == pytest.approx(67.4, abs=0.3)  # 26 mm equivalent on a 4:3 sensor
+    assert hfov == pytest.approx(67.30, abs=0.01)  # 26 mm equivalent on 4:3: 2 atan(34.62 / 52)
     e = camera_setup(4032, 3024, {}, {'focal_35mm': 26})
     assert e.camera_source == 'exif' and e.camera.fx == pytest.approx(s.camera.fx)

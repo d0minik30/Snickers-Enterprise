@@ -9,8 +9,26 @@ It has two screens that stay in sync across two browser windows, plus a standalo
   then watch the traverse with data that is always 11:20 old.
 - **Jezero** (`/map/`) — interactive map of Mars that zooms into Jezero Crater and the Perseverance
   landing site, with toggleable **Slope** and **Sand** overlays from the data team's files in `../data/`.
+- **Locate** (`/locate/`) — find where photos were taken from their skyline. Add photos (or take
+  one in the app, which records the phone's tilt), choose the camera, fix the traced skyline by hand,
+  then send it to the engine. Needs the engine server (below).
 
-Everything runs in the browser. There is no server. Map imagery loads live from NASA Mars Trek.
+Field, Control and Jezero run entirely in the browser; map imagery loads live from NASA Mars Trek.
+Locate talks to the engine server, which runs the skyline step (`../backend/skyline/`) and the engine.
+
+## The engine server (Locate)
+
+The site is still a static export; Locate calls the engine from the browser. Its address is fixed at
+build time:
+
+```bash
+NEXT_PUBLIC_ENGINE_URL=https://engine.example.org npm run build
+```
+
+Default `http://localhost:8000`. The server must allow the site's address (CORS). Until the main
+server exists, `py -3.10 ../backend/skyline/scripts/dev_server.py` serves the skyline part on port
+8000; Locate then traces and edits skylines, and says plainly that the engine has no `/locate` yet.
+The in-app camera needs a secure page: `https://`, or `localhost` on the same computer.
 
 ## Run it
 
@@ -75,6 +93,9 @@ If the venue has no internet, the map shows "MAP IMAGERY UNAVAILABLE" and the ro
 | Field layout and type sizes | `components/field/field.module.css` |
 | NASA map layers (Field, Control) | `lib/mars/tiles.ts` |
 | Jezero map (Leaflet), overlays, legend | `components/jezero/` |
+| Locate screen | `components/locate/`; logic in `lib/locate/` |
+| Camera presets (keep in step with `backend/skyline/metadata.py`) | `lib/locate/presets.ts` |
+| Engine address | `NEXT_PUBLIC_ENGINE_URL` at build time; `lib/locate/engine.ts` |
 
 ## How to plug in real data
 
