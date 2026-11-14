@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  EARTH_CLOCK_START_MS,
-  MARS_CLOCK_START_MS,
-  MARS_SOL,
+  earthClock,
+  setClockEpoch,
   marsClock,
   passesDuring,
   planFitPoints,
@@ -84,10 +83,12 @@ describe('controlModel', () => {
   });
 
   it('runs the Earth and Mars clocks on mission time', () => {
-    expect(timeOfDay(EARTH_CLOCK_START_MS)).toBe('14:01:12');
-    expect(timeOfDay(EARTH_CLOCK_START_MS + 61_000)).toBe('14:02:13');
-    expect(marsClock(0)).toEqual({ sol: MARS_SOL, time: '09:18:00' });
-    expect(marsClock(15 * 3_600_000)).toEqual({ sol: MARS_SOL + 1, time: '00:18:00' });
-    expect(timeOfDay(MARS_CLOCK_START_MS)).toBe('09:18:00');
+    setClockEpoch(Date.UTC(2021, 1, 18, 20, 43, 49)); // Perseverance touchdown
+    expect(earthClock(0)).toBe('20:43:49');
+    expect(earthClock(61_000)).toBe('20:44:50');
+    expect(marsClock(0).sol).toBe(0);
+    expect(marsClock(0).time.startsWith('15:5')).toBe(true); // NASA: touchdown about 15:53 LMST
+    expect(marsClock(88_775_244).sol).toBe(1); // one sol later
+    expect(timeOfDay(61_000)).toBe('00:01:01');
   });
 });

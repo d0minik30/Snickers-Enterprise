@@ -1,5 +1,6 @@
 import { sandOverlays, type MapOverlay } from '@/components/map/overlays';
 import type { Tone } from '@/components/shared/Readout';
+import { hhmmss, lmstMs, perseveranceSol } from '@/lib/mission/marsTime';
 import { canReroute, predictBranchDistM, type ControlView, type Uplink } from '@/lib/mission/control';
 import { PACE_MPS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
 import { formatClock, formatDistance } from '@/lib/nav/format';
@@ -237,26 +238,28 @@ export function routeSentEvent(log: MissionEvent[]): RouteSentEvent | undefined 
   return log.find((e): e is RouteSentEvent => e.type === 'route-sent');
 }
 
-export const EARTH_CLOCK_START_MS = (14 * 3600 + 1 * 60 + 12) * 1000; // 14:01:12 UTC
-export const MARS_SOL = 1284;
-export const MARS_CLOCK_START_MS = (9 * 3600 + 18 * 60) * 1000; // 09:18:00 local Mars time on sol 1284
+/**
+ * Real clocks. Mission time 0 is the real UTC moment the mission was started (the snapshot epoch, set by
+ * useMission through setClockEpoch); mission time runs at the demo speed from there. Mars time is the real
+ * local mean solar time at Jezero for that instant, and the sol is Perseverance's mission sol (Mars24).
+ */
+let clockEpochUtcMs = Date.UTC(2026, 10, 14, 14, 0, 0);
 
-const DAY_MS = 86_400_000;
-
-/** 'HH:MM:SS' of the time of day `ms` after midnight, wrapping at 24 h. */
-export function timeOfDay(ms: number): string {
-  const total = Math.floor((((ms % DAY_MS) + DAY_MS) % DAY_MS) / 1000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+export function setClockEpoch(utcMs: number): void {
+  clockEpochUtcMs = utcMs;
 }
 
+export const timeOfDay = hhmmss;
+
+/** UTC 'HH:MM:SS' at a mission time. */
 export function earthClock(missionMs: number): string {
-  return timeOfDay(EARTH_CLOCK_START_MS + missionMs);
+  return hhmmss(clockEpochUtcMs + missionMs);
 }
 
+/** Perseverance sol and LMST 'HH:MM:SS' at Jezero at a mission time. */
 export function marsClock(missionMs: number): { sol: number; time: string } {
-  const ms = MARS_CLOCK_START_MS + missionMs;
-  return { sol: MARS_SOL + Math.floor(ms / DAY_MS), time: timeOfDay(ms) };
+  const utc = clockEpochUtcMs + missionMs;
+  return { sol: perseveranceSol(utc), time: hhmmss(lmstMs(utc)) };
 }
 
 // ---------------------------------------------------------------- Live mode

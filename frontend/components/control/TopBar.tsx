@@ -4,18 +4,29 @@ import { useEffect, useState } from 'react';
 import { earthClock, marsClock } from '@/components/control/controlModel';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
 import { RATES, SIGNAL_DELAY_MS } from '@/lib/mission/types';
+import { distanceM } from '@/lib/nav/geo';
+import { DEFAULT_END, DESTINATION } from '@/lib/planner';
+import { routeSentEvent } from '@/components/control/controlModel';
 import { formatClock } from '@/lib/nav/format';
 import styles from './control.module.css';
 
 export type ControlMode = 'plan' | 'live';
 
-const TRAVERSE = { name: 'TRAVERSE 07', place: 'JEZERO WEST' }; // the place is dropped on narrow screens
 const RESET_CONFIRM_MS = 4000; // the confirm step lapses back to RESET after this long
 
 type Props = { mode: ControlMode | null; onMode: (mode: ControlMode) => void };
 
+/** Where the traverse goes: the real destination's name, unless the planner moved the end elsewhere. */
+function useTraverseName(): string {
+  const { log } = useMissionSnapshot();
+  const sent = routeSentEvent(log);
+  const end = sent?.route.points[sent.route.points.length - 1];
+  return !end || distanceM(end, DEFAULT_END) < 50 ? DESTINATION.name.toUpperCase() : 'CHOSEN POINT';
+}
+
 export function TopBar({ mode, onMode }: Props) {
   const t = useMissionTime();
+  const destination = useTraverseName();
   const mars = marsClock(t);
   const tab = (m: ControlMode, label: string) => (
     <button
@@ -40,7 +51,7 @@ export function TopBar({ mode, onMode }: Props) {
         {tab('live', 'LIVE')}
       </div>
       <div className={styles.traverse}>
-        {TRAVERSE.name}<span className={styles.traversePlace}>&nbsp;· {TRAVERSE.place}</span>
+        <span className={styles.traversePlace}>BASE&nbsp;→&nbsp;</span>{destination}
       </div>
       <div className={styles.clock}>
         <span className={styles.clockLabel}>EARTH UTC</span>
