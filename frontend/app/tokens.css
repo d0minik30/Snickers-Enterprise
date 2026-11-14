@@ -1,0 +1,10 @@
+:root {
+  --surface: #0A0A0B;
+  --rule: #34343A;
+  --text: #FFFFFF;
+  --muted: #8D8D96;
+  --route: #FF5CE1;
+  --caution: #FFB000;
+  --nominal: #5BE37D;
+  --danger: #FF5A4F;
+}
