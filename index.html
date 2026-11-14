@@ -2,81 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Mars Map – Interplanetary Survival Guide</title>
-  <meta name="description" content="A 'Google Maps for Mars' built for NASA Space Apps Challenge 2026. All map data loads live from NASA." />
-  <meta name="theme-color" content="#0b0d16" />
-
-  <!-- Leaflet (the map library) loaded from a CDN. "integrity" makes sure the file was not changed. -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <!-- Our own styles -->
-  <link rel="stylesheet" href="style.css" />
+  <title>Mars Map</title>
+  <!-- The real site lives in frontend/. This page just sends visitors there
+       so the GitHub Pages link keeps working. -->
+  <meta http-equiv="refresh" content="0; url=frontend/" />
 </head>
 <body>
-
-  <!-- The map fills the whole screen. Leaflet draws everything inside this div. -->
-  <div id="map" role="application" aria-label="Map of Mars"></div>
-
-  <!-- Friendly error/info messages appear here (top centre). -->
-  <div id="messages" aria-live="polite"></div>
-
-  <!--
-    The panels below are moved into the map corners by app.js.
-    Keeping them here makes it easy to see and edit the page layout.
-  -->
-
-  <!-- Top-left: title, search box and layer switcher -->
-  <div id="main-panel" class="panel">
-    <div class="brand">
-      <span class="brand-dot" aria-hidden="true"></span>
-      <span class="brand-name">Mars Map</span>
-      <span class="brand-sub">Interplanetary Survival Guide</span>
-    </div>
-
-    <div class="search">
-      <label for="search-input" class="visually-hidden">Search places on Mars</label>
-      <input id="search-input" type="search" autocomplete="off" spellcheck="false"
-             placeholder="Search Mars… e.g. Olympus Mons"
-             role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list" />
-      <ul id="search-results" role="listbox" hidden></ul>
-    </div>
-
-    <div class="layer-switch" role="group" aria-label="Map type">
-      <button type="button" data-layer="color" class="active" aria-pressed="true">Color photo</button>
-      <button type="button" data-layer="elevation" aria-pressed="false">Elevation</button>
-    </div>
-
-    <!-- Only shown when the Elevation map is active -->
-    <div id="elevation-legend" hidden>
-      <div class="legend-bar" aria-hidden="true"></div>
-      <div class="legend-labels"><span>Low ≈ −8 km</span><span>High ≈ +21 km</span></div>
-    </div>
-  </div>
-
-  <!-- Bottom-left: coordinates of the mouse (or last tap on phones) -->
-  <div id="coords-panel" class="panel">
-    <div class="coords-title" id="coords-title">Map centre</div>
-    <div class="coords-row"><span class="coords-key">Lat</span><span id="coords-lat">–</span></div>
-    <div class="coords-row"><span class="coords-key">Lon</span><span id="coords-lon">–</span></div>
-  </div>
-
-  <!-- Bottom-right: "Center on me" button for the simulated astronaut -->
-  <div id="me-panel" class="panel">
-    <button type="button" id="center-me" aria-pressed="false">
-      <span class="me-icon" aria-hidden="true"></span> Center on me
-    </button>
-    <div class="sim-note">Simulated position (demo)</div>
-  </div>
-
-  <!-- Shown only if JavaScript is turned off -->
-  <noscript>
-    <div class="fatal">This map needs JavaScript. Please turn it on and reload the page.</div>
-  </noscript>
-
-  <!-- Leaflet JavaScript from the CDN, then our app code -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js"></script>
+  <p><a href="frontend/">Open the Mars Map</a></p>
 </body>
 </html>

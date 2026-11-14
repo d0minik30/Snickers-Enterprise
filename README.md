@@ -39,14 +39,14 @@ Built by team Snickers Enterprise for the **NASA Space Apps Challenge 2026** –
 **About the route file:** NASA's server allows other websites to load `M20_traverse.json`
 (it sends the `Access-Control-Allow-Origin: *` header), so we load it live and **no copy is
 saved in the repo**. If NASA ever blocks it, you could save that one small file in the repo and
-change `ROUTE_URL` in `app.js` to point to it.
+change `ROUTE_URL` in `frontend/app.js` to point to it.
 
 ### How the map lines up (for the curious)
 
 Google Maps uses the "Web Mercator" projection. NASA Mars Trek tiles use a simple
 latitude/longitude grid (equirectangular): at zoom 0 the whole planet is **2 tiles wide and
 1 tile tall**, starting at the top-left corner (−180°, +90°). Leaflet's built-in `EPSG:4326`
-system works the same way, so `app.js` uses a copy of it with the Mars radius (3,389.5 km)
+system works the same way, so `frontend/app.js` uses a copy of it with the Mars radius (3,389.5 km)
 for correct distances. The global maps go up to zoom 7; past that Leaflet just enlarges the
 zoom-7 images (except around Jezero, where the close-up layers stay sharp).
 
@@ -67,7 +67,7 @@ The page loads data from the internet, so open it through a small local web serv
 2. Go into the folder and start a server. If you have Python:
 
    ```bash
-   cd Snickers-Enterprise
+   cd Snickers-Enterprise/frontend
    python -m http.server 8000
    ```
 
@@ -83,21 +83,31 @@ The page loads data from the internet, so open it through a small local web serv
 3. Select branch **main** and folder **/ (root)**, then click **Save**.
 4. Wait 1–2 minutes. The site will be at https://d0minik30.github.io/Snickers-Enterprise/
 
-## Files
+## Folders
+
+| Folder | What goes there |
+|---|---|
+| `frontend/` | The website (everything built so far) |
+| `backend/` | Server-side code (empty for now) |
+| `data/` | Data files and data scripts (empty for now) |
+
+The `index.html` in the root only redirects to `frontend/`, so the GitHub Pages link keeps working.
+
+## Files in `frontend/`
 
 | File | What it does |
 |---|---|
 | `index.html` | Page layout: the map, search box, layer switch, coordinates box, "Center on me" button |
 | `style.css` | Dark space theme, phone layout, marker styles |
 | `app.js` | All the logic: map setup, NASA layers, search, markers, route, simulated astronaut |
-| `.gitignore` | Stops big files (images, datasets) from being added by mistake |
+| `../.gitignore` | Stops big files (images, datasets) from being added by mistake |
 
 ## Ideas for the team
 
-- **Add a place:** add a line to the `PLACES` list near the top of `app.js` (name, lat, lon, zoom, description).
-- **Add a landing site:** add a line to `LANDING_SITES` in `app.js`.
-- **Change the walking speed:** change `WALK_SPEED_M_PER_S` in `app.js`.
-- **Change colors:** edit the variables at the top of `style.css`.
+- **Add a place:** add a line to the `PLACES` list near the top of `frontend/app.js` (name, lat, lon, zoom, description).
+- **Add a landing site:** add a line to `LANDING_SITES` in `frontend/app.js`.
+- **Change the walking speed:** change `WALK_SPEED_M_PER_S` in `frontend/app.js`.
+- **Change colors:** edit the variables at the top of `frontend/style.css`.
 
 ## Credits
 
