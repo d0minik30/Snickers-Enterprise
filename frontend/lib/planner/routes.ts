@@ -19,7 +19,18 @@ const SIMPLIFY_TOLERANCE_M = 15;
 const SMOOTHING_PASSES = 2;
 const SLOPE_SAMPLE_M = 20;
 const POINT_SPACING_M = 20;
-const WAYPOINT_NAMES = ['Landing flats', 'South ridge', 'Boulder gap', 'Delta scarp', 'Sand ripples', 'North terrace'];
+/**
+ * Waypoints are named from the real ground under them: sand, steep ground, or the part of Jezero they sit in by
+ * height (the crater floor is about -2,570 m here, the delta top about -2,440 m).
+ */
+function groundName(p: LatLon): string {
+  if (isSandAt(p)) return 'Sand';
+  if (slopeAt(p) > STEEP_DEG) return 'Steep ground';
+  const h = elevationAt(p);
+  if (h < -2530) return 'Crater floor';
+  if (h < -2470) return 'Delta front';
+  return 'Delta top';
+}
 
 // sandFactor: how much more a metre of mapped sand costs than firm ground (soft footing, wheel slip).
 type Profile = { slopeWeight: number; sandFactor: number; avoidsSurvey: boolean; marginM: number };
@@ -135,7 +146,8 @@ function makeWaypoints(points: LatLon[], lengthM: number): Waypoint[] {
   const waypoints: Waypoint[] = [];
   for (let i = 1; i <= interior; i++) {
     const distM = (lengthM * i) / (interior + 1);
-    waypoints.push({ name: WAYPOINT_NAMES[i - 1], distM, pos: pointAlong(points, distM).pos });
+    const pos = pointAlong(points, distM).pos;
+    waypoints.push({ name: groundName(pos), distM, pos });
   }
   waypoints.push({ name: 'End', distM: lengthM, pos: points[points.length - 1] });
   return waypoints;
@@ -201,14 +213,7 @@ export function spliceRoute(old: Route, branchDistM: number, tail: Route): Route
   const headElevation = cumulativeM(head).map(d => elevationAtDist(oldCum, old.elevationM, d));
   const points = [...head, ...tail.points.slice(1)];
   const keptWaypoints = old.waypoints.filter(w => w.distM < branchDistM);
-  // The tail was planned on its own, so its names start the list again; give it names the kept part has not used.
-  const unused = WAYPOINT_NAMES.filter(n => !keptWaypoints.some(w => w.name === n));
-  let next = 0;
-  const tailWaypoints = tail.waypoints.map(w => ({
-    ...w,
-    name: WAYPOINT_NAMES.includes(w.name) ? (unused.length ? unused[next++ % unused.length] : w.name) : w.name,
-    distM: w.distM + branchDistM,
-  }));
+  const tailWaypoints = tail.waypoints.map(w => ({ ...w, distM: w.distM + branchDistM }));;
   return {
     id: `${old.id}+${tail.id}@${Math.round(branchDistM)}`,
     profile: tail.profile,
