@@ -3,7 +3,7 @@ import {
   earthClock,
   setClockEpoch,
   marsClock,
-  passesDuring,
+  fixPlan,
   planFitPoints,
   planOverlays,
   recommendationText,
@@ -34,11 +34,11 @@ describe('controlModel', () => {
     expect(t).toContain(formatDistance(routes[0].lengthM - routes[1].lengthM).value);
   });
 
-  it('finds the passes during a traverse and the worst drift', () => {
-    const p = passesDuring(straightRoute(2000), 'astronaut', 0);            // 30:46 long, passes at 6, 19, 31 min
-    expect(p.passes.map(x => x.tMs / 60_000)).toEqual([6, 19]);
-    expect(p.longestGapMs).toBe(13 * 60_000);
-    expect(p.worstDriftM).toBeCloseTo(1 + 0.02 * PACE_MPS.astronaut * 13 * 60, 1);
+  it('plans photo fixes to stay within the target error', () => {
+    const p = fixPlan(straightRoute(2000)); // fix error 15 m, drift 2 %: within ±25 m means a fix every 500 m
+    expect(p.everyM).toBeCloseTo(500, 6);
+    expect(p.fixes).toBe(3); // at 500, 1000 and 1500 m
+    expect(p.noFixErrorM).toBeCloseTo(1 + 0.02 * 2000, 6);
   });
 
   it('draws the selected route in magenta and the others as alternatives', () => {
@@ -61,11 +61,8 @@ describe('controlModel', () => {
     expect(t).toContain('600 m');
   });
 
-  it('counts the fix at the start and the stretch after the last pass', () => {
-    const p = passesDuring(straightRoute(2000), 'astronaut', 20 * 60_000);  // 20:00 to 50:46, passes at 31 and 47 min
-    expect(p.passes.map(x => x.tMs / 60_000)).toEqual([31, 47]);
-    expect(p.longestGapMs).toBe(16 * 60_000);
-  });
+  it('needs no photo fix on a route shorter than one fix interval', () =>
+    expect(fixPlan(straightRoute(400)).fixes).toBe(0));
 
   it('lists each leg with its length and steepest slope', () => {
     const legs = waypointLegs(routes[0]);

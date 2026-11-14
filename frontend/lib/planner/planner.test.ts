@@ -10,7 +10,6 @@ import {
   isInsideHazard,
   planRoutes,
   positionErrorM,
-  satellitePasses,
   spliceRoute,
 } from '@/lib/planner';
 
@@ -74,11 +73,8 @@ describe('mock planner', () => {
   it('position error grows 2 % of distance from a 1 m base', () => {
     expect(positionErrorM(0)).toBe(1); expect(positionErrorM(250)).toBeCloseTo(6, 5);
   });
-  it('satellite passes are sorted and irregular', () => {
-    const p = satellitePasses(); expect(p.length).toBeGreaterThanOrEqual(10);
-    expect(p[0].tMs).toBe(6 * 60_000);
-    expect([...p].sort((a, b) => a.tMs - b.tMs)).toEqual(p);
-  });
+  it('a photo fix starts from its own error', () =>
+    expect(positionErrorM(100, 15)).toBeCloseTo(17, 6));
 
   describe('candidate routes are visibly distinct', () => {
     // greatest distance from any point of a to the nearest point of b

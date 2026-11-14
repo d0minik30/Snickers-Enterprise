@@ -1,6 +1,5 @@
 import { pointAlong } from '@/lib/nav/geo';
-import { satellitePasses } from '@/lib/planner';
-import type { Hazard, LatLon, Route, SatellitePass } from '@/lib/planner/types';
+import type { Hazard, LatLon, Route } from '@/lib/planner/types';
 import { fieldStateAt, type FieldState } from '@/lib/mission/field';
 import { PACE_MPS, SIGNAL_DELAY_MS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
 
@@ -11,7 +10,7 @@ export type UplinkStatus = 'in-transit' | 'delivered' | 'acknowledged';
 export type Uplink = {
   event: ControlEvent; sentMs: number; arrivesMs: number; status: UplinkStatus; progress: number; // progress 0..1
 };
-export type Downlink = { id: string; kind: 'traverse-started' | 'ack' | 'report'; sentMs: number; receivedMs: number; text?: string };
+export type Downlink = { id: string; kind: 'traverse-started' | 'ack' | 'report' | 'photo-fix'; sentMs: number; receivedMs: number; text?: string };
 export type ControlHazard = Hazard & { atField: boolean };
 export type ControlView = {
   tMs: number; dataAgeMs: number; traveller: TravellerKind | null; received: FieldState;
@@ -39,9 +38,9 @@ function uplinkStatus(e: ControlEvent, tMs: number, acks: MissionEvent[]): Uplin
   return acked ? 'acknowledged' : 'delivered';
 }
 
-export function controlViewAt(log: MissionEvent[], tMs: number, passes: SatellitePass[] = satellitePasses()): ControlView {
+export function controlViewAt(log: MissionEvent[], tMs: number): ControlView {
   const sentEvents = log.filter(e => e.tMs <= tMs).sort(byTimeThenId);
-  const received = fieldStateAt(log, tMs - SIGNAL_DELAY_MS, passes);
+  const received = fieldStateAt(log, tMs - SIGNAL_DELAY_MS);
 
   const uplinkEvents = sentEvents.filter(isControlEvent);
   const routeEvents = uplinkEvents.filter(isRouteEvent);

@@ -1,6 +1,6 @@
 'use client';
 
-import { distanceText, marsClock, passesDuring, recommendationText, routeLetter, waypointLegs } from '@/components/control/controlModel';
+import { FIX_TARGET_M, distanceText, fixPlan, marsClock, recommendationText, routeLetter, waypointLegs } from '@/components/control/controlModel';
 import { Readout } from '@/components/shared/Readout';
 import { useMissionTime } from '@/lib/mission/useMission';
 import { SIGNAL_DELAY_MS, type TravellerKind } from '@/lib/mission/types';
@@ -9,10 +9,9 @@ import styles from './control.module.css';
 
 type Props = { routes: Route[]; selected: Route | undefined; traveller: TravellerKind };
 
-const QUALITY_TEXT = { overhead: 'overhead', low: 'low angle' } as const;
 const marsHHMM = (missionMs: number) => marsClock(missionMs).time.slice(0, 5);
 
-/** Right rail in Plan mode: the selected route's legs, its satellite coverage and why route A is recommended. */
+/** Right rail in Plan mode: the selected route's legs, the photo fixes it needs and why route A is recommended. */
 export function PlanDetailRail({ routes, selected, traveller }: Props) {
   // The traverse can start once the route has reached the field.
   const startMs = useMissionTime(1) + SIGNAL_DELAY_MS;
@@ -30,7 +29,7 @@ export function PlanDetailRail({ routes, selected, traveller }: Props) {
 
   const letter = routeLetter(selected.profile);
   const legs = waypointLegs(selected);
-  const coverage = passesDuring(selected, traveller, startMs);
+  const fixes = fixPlan(selected);
 
   return (
     <aside className={`${styles.rail} ${styles.rightRail}`} aria-label="Route details">
@@ -58,33 +57,19 @@ export function PlanDetailRail({ routes, selected, traveller }: Props) {
 
       <section className={styles.section}>
         <h2 className={styles.heading}>
-          <span>Satellite passes</span>
-          <span>Mars time</span>
+          <span>Position fixes</span>
+          <span>within ±{FIX_TARGET_M} m</span>
         </h2>
-        {coverage.passes.length > 0 ? (
-          <table className={styles.table}>
-            <thead className={styles.srOnly}>
-              <tr><th>Satellite</th><th>Time</th><th>Elevation</th></tr>
-            </thead>
-            <tbody>
-              {coverage.passes.map(p => (
-                <tr key={p.tMs}>
-                  <td className={styles.passName}>{p.satellite}</td>
-                  <td className={styles.num}>{marsHHMM(p.tMs)}</td>
-                  <td className={`${styles.num} ${p.quality === 'overhead' ? styles.passGood : styles.passLow}`}>{QUALITY_TEXT[p.quality]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className={styles.note}>No pass during this traverse.</p>
-        )}
         <div className={styles.pair}>
-          <Readout label="Longest gap" value={String(Math.round(coverage.longestGapMs / 60_000))} unit="min" />
-          <Readout label="Worst drift" value={`±${Math.round(coverage.worstDriftM)}`} unit="m" />
+          <Readout label="Photo fix every" value={distanceText(fixes.everyM).split(' ')[0]} unit={distanceText(fixes.everyM).split(' ')[1]} />
+          <Readout label="Fixes on route" value={String(fixes.fixes)} />
         </div>
         <p className={styles.note}>
-          If the traverse starts when the route arrives, at {marsHHMM(startMs)} Mars time.
+          No GPS on Mars. The crew dead-reckons and photographs the skyline; the localization engine matches it to
+          the terrain. With no fixes, error would reach <span className={styles.noteValue}>±{Math.round(fixes.noFixErrorM)} m</span> by the end.
+        </p>
+        <p className={styles.note}>
+          If the traverse starts when the route arrives: {marsHHMM(startMs)} at Jezero (local mean solar time).
         </p>
       </section>
 

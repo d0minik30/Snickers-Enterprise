@@ -1,4 +1,4 @@
-export { DEMO_BOUNDS, SAND_MIN_LABELLED_CELLS, elevationAt, isSandAt, sandAreas, type SandArea } from '@/lib/planner/terrain';
+export { DEMO_BOUNDS, SAND_MIN_LABELLED_CELLS, elevationAt, isSandAt, sandAreas, slopeAt, type SandArea } from '@/lib/planner/terrain';
 export {
   DEFAULT_END,
   DEFAULT_START,
@@ -12,4 +12,4 @@ export {
   replan,
   spliceRoute,
 } from '@/lib/planner/routes';
-export { positionErrorM, satellitePasses } from '@/lib/planner/passes';
+export { BASE_ERROR_M, DRIFT_PER_M, PHOTO_FIX_ERROR_M, positionErrorM } from '@/lib/planner/drift';

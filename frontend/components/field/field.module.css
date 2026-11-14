@@ -208,6 +208,37 @@
   letter-spacing: 0.08em;
 }
 
+/* Photo fix: send skyline photos to the localization engine. Big enough for a gloved thumb. */
+:where(.screen) .fixButton {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+:where(.screen) .fixButton:active {
+  background: var(--text);
+  color: var(--surface);
+}
+
+.fixButtonNote {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 /* One magenta pulse around the map when Control changes the route. Invisible with no animation,
    so reduced motion shows nothing here (the message strip still says what happened). */
 .routePulse {

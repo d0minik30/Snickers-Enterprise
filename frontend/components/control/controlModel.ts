@@ -5,8 +5,8 @@ import { canReroute, predictBranchDistM, type ControlView, type Uplink } from '@
 import { PACE_MPS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
 import { formatClock, formatDistance } from '@/lib/nav/format';
 import { bearingDeg, cumulativeM, destination, distanceM, pointAlong, slicePath } from '@/lib/nav/geo';
-import { DEMO_BOUNDS, PRESET_HAZARDS, isInsideHazard, positionErrorM, replan, satellitePasses, spliceRoute } from '@/lib/planner';
-import type { Hazard, LatLon, Risk, Route, RouteProfile, SatellitePass } from '@/lib/planner/types';
+import { DEMO_BOUNDS, DRIFT_PER_M, PHOTO_FIX_ERROR_M, PRESET_HAZARDS, isInsideHazard, positionErrorM, replan, spliceRoute } from '@/lib/planner';
+import type { Hazard, LatLon, Risk, Route, RouteProfile } from '@/lib/planner/types';
 
 // ---------------------------------------------------------------- route cards
 
@@ -100,21 +100,22 @@ export function recommendationText(routes: Route[], traveller: TravellerKind = '
   return extraM >= 1 ? `${fair} Route A is ${summary}.` : fair;
 }
 
-// ---------------------------------------------------------------- satellite passes
+// ---------------------------------------------------------------- photo fixes
+
+/** The position error the crew should stay within; a photo fix is due before drift passes it. */
+export const FIX_TARGET_M = 25;
 
 /**
- * Passes strictly inside the traverse window [startMs, startMs + length / pace]. The start counts as a fix,
- * and the stretch from the last pass to the end counts as a gap.
+ * How often the crew needs a photo fix on a route to stay within FIX_TARGET_M, and how far drift would grow
+ * with none. No GPS on Mars: between fixes the crew dead-reckons (lib/planner/drift.ts).
  */
-export function passesDuring(
-  route: Route, traveller: TravellerKind, startMs: number, schedule: SatellitePass[] = satellitePasses(),
-): { passes: SatellitePass[]; longestGapMs: number; worstDriftM: number } {
-  const endMs = startMs + traverseMs(route, traveller);
-  const passes = schedule.filter(p => p.tMs > startMs && p.tMs < endMs);
-  const fixes = [startMs, ...passes.map(p => p.tMs), endMs];
-  let longestGapMs = 0;
-  for (let i = 1; i < fixes.length; i++) longestGapMs = Math.max(longestGapMs, fixes[i] - fixes[i - 1]);
-  return { passes, longestGapMs, worstDriftM: positionErrorM((PACE_MPS[traveller] * longestGapMs) / 1000) };
+export function fixPlan(route: Route, targetM: number = FIX_TARGET_M): { everyM: number; fixes: number; noFixErrorM: number } {
+  const everyM = Math.max(1, (targetM - PHOTO_FIX_ERROR_M) / DRIFT_PER_M);
+  return {
+    everyM,
+    fixes: Math.max(0, Math.ceil(route.lengthM / everyM) - 1),
+    noFixErrorM: positionErrorM(route.lengthM),
+  };
 }
 
 // ---------------------------------------------------------------- waypoint table
