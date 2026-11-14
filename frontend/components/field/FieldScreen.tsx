@@ -6,7 +6,7 @@ import { fieldBars, fieldCamera, fieldCells, fieldCue, fieldOverlays, latestUnac
 import { MessageStrip } from '@/components/field/MessageStrip';
 import { NextMoveBand } from '@/components/field/NextMoveBand';
 import { ReadoutBand } from '@/components/field/ReadoutBand';
-import { ReportBar, ReportSheet } from '@/components/field/ReportComposer';
+import { CommsBar, LogSheet, ReportSheet, type FieldPanel } from '@/components/field/ReportComposer';
 import { StatusBanner, StatusPanel } from '@/components/field/StatusPanel';
 import { fieldStateAt } from '@/lib/mission/field';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
@@ -28,10 +28,10 @@ export default function FieldScreen() {
   const state = useMemo(() => fieldStateAt(snapshot.log, t), [snapshot.log, t]);
 
   const overlays = useMemo(() => fieldOverlays(state), [state]);
-  const [composing, setComposing] = useState(false);
+  const [panel, setPanel] = useState<FieldPanel>('none');
   const [sheetHeight, setSheetHeight] = useState(0);
-  // While the message sheet covers the bottom of the map, keep the traveller in the part still showing.
-  const camera = useMemo(() => fieldCamera(state, composing ? sheetHeight : 0), [state, composing, sheetHeight]);
+  // While a sheet covers the bottom of the map, keep the traveller in the part still showing.
+  const camera = useMemo(() => fieldCamera(state, panel === 'none' ? 0 : sheetHeight), [state, panel, sheetHeight]);
   const cue = fieldCue(state);
   const notice = latestUnacked(state);
   const status = hydrated ? state.status : 'awaiting-route';
@@ -59,9 +59,10 @@ export default function FieldScreen() {
         )}
         {cue.routeChangeId && <div key={cue.routeChangeId} className={styles.routePulse} aria-hidden="true" />}
         {hydrated && <StatusPanel state={state} onStart={start} />}
-        {hydrated && composing && <ReportSheet onSend={report} onClose={() => setComposing(false)} onHeight={setSheetHeight} />}
+        {hydrated && panel === 'compose' && <ReportSheet onSend={report} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
+        {hydrated && panel === 'log' && <LogSheet state={state} onAck={ack} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
       </div>
-      {hydrated && <ReportBar state={state} open={composing} onToggle={() => setComposing(o => !o)} />}
+      {hydrated && <CommsBar state={state} panel={panel} onPanel={setPanel} />}
       <ReadoutBand cells={fieldCells(state)} bars={fieldBars(state)} fixCue={hydrated && cue.fix} />
     </main>
   );

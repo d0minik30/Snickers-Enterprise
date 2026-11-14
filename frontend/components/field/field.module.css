@@ -296,15 +296,22 @@
 
 /* ===================================================================== messages to Control */
 
-/* A solid white button so it reads at a glance; when open it flips to an outlined CLOSE. */
+/* One row under the map: MESSAGE CONTROL (solid white, reads at a glance) and a narrower LOG.
+   Whichever is open flips to an outlined ✕. */
+.commsBar {
+  display: flex;
+  gap: 8px;
+  margin: 6px var(--pad-x);
+}
+
 :where(.screen) .reportBar {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  width: auto;
+  min-width: 0;
   min-height: 46px;
-  margin: 6px var(--pad-x);
   padding: 0 14px;
   background: var(--text);
   color: var(--surface);
@@ -315,7 +322,8 @@
   text-align: left;
 }
 
-:where(.screen) .reportBar:focus-visible {
+:where(.screen) .reportBar:focus-visible,
+:where(.screen) .logButton:focus-visible {
   outline: 3px solid var(--caution);
   outline-offset: 2px;
 }
@@ -331,28 +339,120 @@
   line-height: 1;
 }
 
-.reportCaution,
-.reportNominal {
-  flex: none;
-  padding: 4px 7px 3px;
-  background: var(--surface);
-  font-size: 12px;
+.reportBarLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:where(.screen) .logButton {
+  display: flex;
+  flex: 0 0 88px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 46px;
+  border: 2px solid var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
+:where(.screen) .logButtonOpen {
+  border-color: var(--text);
+}
+
+:where(.screen) .logButton .logCaution,
+:where(.screen) .logButton .logNominal {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.logCaution,
+.logNominal {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   font-variant-numeric: tabular-nums;
 }
 
-.reportCaution { color: var(--caution); }
-.reportNominal { color: var(--nominal); }
+.logCaution { color: var(--caution); }
+.logNominal { color: var(--nominal); }
+
+/* ----- message log sheet: newest first; from Control left on a filled card, to Control right, outlined.
+   An amber edge marks what still needs attention (unacknowledged, or still crossing). */
+.logSheet {
+  gap: 0;
+  padding: 8px var(--pad-x);
+  overscroll-behavior: contain;
+}
+
+.logEmpty {
+  padding: 12px 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.logList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+}
+
+:where(.screen) .logEntry {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--rule);
+  text-align: left;
+}
+
+:where(.screen) .logIn {
+  width: calc(100% - 24px);
+  background: color-mix(in srgb, var(--text) 8%, var(--surface));
+  border-left: 3px solid var(--text);
+}
+
+:where(.screen) .logOut {
+  width: calc(100% - 24px);
+  margin-left: 24px;
+  border-right: 3px solid var(--nominal);
+  text-align: right;
+}
+
+:where(.screen) .logIn.logPending { border-left-color: var(--caution); }
+:where(.screen) .logOut.logPending { border-right-color: var(--caution); }
+
+.logHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.logOut .logHead { flex-direction: row-reverse; }
+
+.logText {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
 
 .reportMuted {
   flex: none;
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-}
-
-.reportBarOpen .reportCaution,
-.reportBarOpen .reportNominal {
-  border: 1px solid currentColor;
 }
 
 /* Over the bottom of the map, so the map never resizes. Two rows (~110 px), and never more

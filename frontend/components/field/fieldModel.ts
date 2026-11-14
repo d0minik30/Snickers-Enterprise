@@ -156,10 +156,32 @@ export const QUICK_REPORTS = [
   'Copy.', 'All nominal.', 'Hazard spotted.', 'Holding position.', 'Request reroute.', 'Need assistance.',
 ] as const;
 
-/** Where the newest message to Control is: still crossing, or landed. Null before any is sent. */
-export function reportStatus(state: FieldState): { text: string; tone: 'caution' | 'nominal' } | null {
+/** Where the newest message to Control is, for the LOG button: a countdown while crossing, then DELIVERED. Null before any. */
+export function reportStatusShort(state: FieldState): { text: string; tone: 'caution' | 'nominal' } | null {
   const last = state.reports.at(-1);
   if (!last) return null;
   if (last.delivered) return { text: 'DELIVERED', tone: 'nominal' };
-  return { text: `ARRIVES IN ${formatClock(Math.max(0, last.arrivesMs - state.tMs))}`, tone: 'caution' };
+  return { text: `▲ ${formatClock(Math.max(0, last.arrivesMs - state.tMs))}`, tone: 'caution' };
+}
+
+export type FieldLogEntry = {
+  id: string; dir: 'in' | 'out'; text: string; ageMs: number;
+  state: string; tone: 'caution' | 'nominal'; ackable: boolean;
+};
+
+/** Every message in and out, newest first (as Control's comms log). Incoming ones count from when they reached Field. */
+export function fieldLog(state: FieldState): FieldLogEntry[] {
+  const age = (sentMs: number) => Math.max(0, state.tMs - sentMs);
+  const rows: (FieldLogEntry & { atMs: number })[] = [
+    ...state.notices.map(n => ({
+      id: n.id, dir: 'in' as const, text: n.text, ageMs: age(n.sentMs), atMs: n.arrivedMs,
+      state: n.acked ? 'ACKNOWLEDGED' : 'TAP TO ACKNOWLEDGE', tone: n.acked ? 'nominal' as const : 'caution' as const, ackable: !n.acked,
+    })),
+    ...state.reports.map(r => ({
+      id: r.id, dir: 'out' as const, text: r.text, ageMs: age(r.sentMs), atMs: r.sentMs,
+      state: r.delivered ? 'DELIVERED' : `ARRIVES IN ${formatClock(Math.max(0, r.arrivesMs - state.tMs))}`,
+      tone: r.delivered ? 'nominal' as const : 'caution' as const, ackable: false,
+    })),
+  ];
+  return rows.sort((a, b) => b.atMs - a.atMs).map(({ atMs: _atMs, ...e }) => e);
 }

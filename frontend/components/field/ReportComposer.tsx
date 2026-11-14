@@ -1,34 +1,113 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { QUICK_REPORTS, reportStatus } from '@/components/field/fieldModel';
+import { QUICK_REPORTS, fieldLog, reportStatusShort } from '@/components/field/fieldModel';
 import type { FieldState } from '@/lib/mission/field';
 import { MAX_MESSAGE_LENGTH, SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import { formatClock } from '@/lib/nav/format';
 import styles from './field.module.css';
 
-/** Bar under the map: opens the composer and shows where the newest message to Control is (or the delay, before any). */
-export function ReportBar({ state, open, onToggle }: { state: FieldState; open: boolean; onToggle: () => void }) {
-  const status = reportStatus(state);
+export type FieldPanel = 'none' | 'compose' | 'log';
+
+/** Bar under the map: MESSAGE CONTROL opens the composer, LOG opens the history; the open one turns into its ✕.
+    The LOG button also shows where the newest message to Control is. */
+export function CommsBar({ state, panel, onPanel }: { state: FieldState; panel: FieldPanel; onPanel: (p: FieldPanel) => void }) {
+  const status = reportStatusShort(state);
+  const composing = panel === 'compose';
+  const logging = panel === 'log';
   return (
-    <button
-      type="button"
-      data-testid="field-report-toggle"
-      className={`${styles.reportBar} ${open ? styles.reportBarOpen : ''}`}
-      aria-expanded={open}
-      aria-controls="field-report-sheet"
-      onClick={onToggle}
-    >
-      <span>
-        <span className={styles.reportBarIcon} aria-hidden="true">{open ? '✕' : '▲'}</span>
-        {open ? 'CLOSE' : 'MESSAGE CONTROL'}
-      </span>
-      {status ? (
-        <span data-testid="field-report-status" className={status.tone === 'nominal' ? styles.reportNominal : styles.reportCaution}>
-          {status.text}
+    <div className={styles.commsBar}>
+      <button
+        type="button"
+        data-testid="field-report-toggle"
+        className={`${styles.reportBar} ${composing ? styles.reportBarOpen : ''}`}
+        aria-expanded={composing}
+        aria-controls="field-report-sheet"
+        onClick={() => onPanel(composing ? 'none' : 'compose')}
+      >
+        <span className={styles.reportBarLabel}>
+          <span className={styles.reportBarIcon} aria-hidden="true">{composing ? '✕' : '▲'}</span>
+          {composing ? 'CLOSE' : 'MESSAGE CONTROL'}
         </span>
-      ) : open && <span className={styles.reportMuted}>DELAY {formatClock(SIGNAL_DELAY_MS)}</span>}
-    </button>
+        {composing && <span className={styles.reportMuted}>DELAY {formatClock(SIGNAL_DELAY_MS)}</span>}
+      </button>
+      <button
+        type="button"
+        data-testid="field-log-toggle"
+        className={`${styles.logButton} ${logging ? styles.logButtonOpen : ''}`}
+        aria-expanded={logging}
+        aria-controls="field-log-sheet"
+        aria-label={logging ? 'Close message log' : 'Message log'}
+        onClick={() => onPanel(logging ? 'none' : 'log')}
+      >
+        <span>{logging ? '✕ LOG' : 'LOG'}</span>
+        {status && (
+          <span data-testid="field-report-status" className={status.tone === 'nominal' ? styles.logNominal : styles.logCaution}>
+            {status.text}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
+/** Tells the screen how much of the map a sheet covers, so the traveller stays above it. */
+function useCoverHeight(ref: React.RefObject<HTMLElement | null>, onHeight: (px: number) => void) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => onHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => { ro.disconnect(); onHeight(0); };
+  }, [ref, onHeight]);
+}
+
+/** Message history over the bottom of the map, newest first: from Control on the left, to Control on the right.
+    An unacknowledged message from Control can be acknowledged here by tapping it. */
+export function LogSheet({ state, onAck, onClose, onHeight }: {
+  state: FieldState; onAck: (id: string) => void; onClose: () => void; onHeight: (px: number) => void;
+}) {
+  const sheetRef = useRef<HTMLElement>(null);
+  useCoverHeight(sheetRef, onHeight);
+  const entries = fieldLog(state);
+
+  return (
+    <section
+      ref={sheetRef}
+      id="field-log-sheet"
+      data-testid="field-log-sheet"
+      className={`${styles.reportSheet} ${styles.logSheet}`}
+      aria-label="Message log"
+      onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
+    >
+      {entries.length === 0 && <p className={styles.logEmpty}>No messages yet.</p>}
+      <ol className={styles.logList}>
+        {entries.map(e => {
+          const body = (
+            <>
+              <span className={styles.logHead}>
+                <span>{e.dir === 'in' ? 'CTRL ▸' : '▲ TO CTRL'}</span>
+                <span>−{formatClock(e.ageMs)}</span>
+              </span>
+              <span className={styles.logText}>{e.text}</span>
+              <span className={e.tone === 'nominal' ? styles.logNominal : styles.logCaution}>{e.state}</span>
+            </>
+          );
+          const cls = `${styles.logEntry} ${e.dir === 'in' ? styles.logIn : styles.logOut} ${e.tone === 'caution' ? styles.logPending : ''}`;
+          return (
+            <li key={e.id} data-testid="field-log-entry" data-dir={e.dir}>
+              {e.ackable ? (
+                <button type="button" className={cls} onClick={() => onAck(e.id)} aria-label={`Message from Control: ${e.text}. Tap to acknowledge.`}>
+                  {body}
+                </button>
+              ) : (
+                <div className={cls}>{body}</div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 
@@ -40,15 +119,7 @@ export function ReportSheet({ onSend, onClose, onHeight }: {
   const sheetRef = useRef<HTMLElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ left: false, right: false }); // more replies hidden on that side
-
-  // Tell the screen how much of the map the sheet covers, so the traveller stays above it.
-  useEffect(() => {
-    const el = sheetRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => onHeight(el.offsetHeight));
-    ro.observe(el);
-    return () => { ro.disconnect(); onHeight(0); };
-  }, [onHeight]);
+  useCoverHeight(sheetRef, onHeight);
 
   // Track which ends of the reply row are cut off: drives the arrows and the fades.
   useEffect(() => {

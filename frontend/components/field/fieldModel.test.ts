@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldBars, fieldCamera, fieldCells, fieldCue, fieldOverlays, nextMoveView, reportStatus } from '@/components/field/fieldModel';
+import { fieldBars, fieldCamera, fieldCells, fieldCue, fieldOverlays, nextMoveView, reportStatusShort, fieldLog } from '@/components/field/fieldModel';
 import { fieldStateAt } from '@/lib/mission/field';
 import type { MissionEvent } from '@/lib/mission/types';
 import { straightRoute } from '@/lib/testing/fixtures';
@@ -97,11 +97,26 @@ describe('fieldCue', () => {
   });
 });
 
-describe('reportStatus', () => {
+describe('fieldLog', () => {
+  const msg: MissionEvent = { id: 'm1', tMs: 100_000, type: 'message', origin: 'control', text: 'Check the dunes.' };
   const report: MissionEvent = { id: 'f1', tMs: 900_000, type: 'report', origin: 'field', text: 'Copy.' };
-  it('is empty before any message, counts down while in transit, then says delivered', () => {
-    expect(reportStatus(fieldStateAt([sent], 900_000, []))).toBeNull();
-    expect(reportStatus(fieldStateAt([sent, report], 1_000_000, []))).toEqual({ text: 'ARRIVES IN 09:40', tone: 'caution' });
-    expect(reportStatus(fieldStateAt([sent, report], 1_580_000, []))).toEqual({ text: 'DELIVERED', tone: 'nominal' });
+  const ack: MissionEvent = { id: 'a1', tMs: 950_000, type: 'ack', origin: 'field', targetId: 'm1' };
+  it('lists messages both ways, newest first, with where each one stands', () => {
+    const log = fieldLog(fieldStateAt([sent, msg, report], 1_000_000, []));
+    expect(log.map(e => [e.id, e.dir, e.state])).toEqual([
+      ['f1', 'out', 'ARRIVES IN 09:40'],
+      ['m1', 'in', 'TAP TO ACKNOWLEDGE'],
+    ]);
+    expect(log[1]).toMatchObject({ ackable: true, tone: 'caution', ageMs: 900_000 });
+  });
+  it('marks acknowledged and delivered messages', () => {
+    const log = fieldLog(fieldStateAt([sent, msg, report, ack], 1_600_000, []));
+    expect(log.map(e => e.state)).toEqual(['DELIVERED', 'ACKNOWLEDGED']);
+    expect(log.every(e => !e.ackable && e.tone === 'nominal')).toBe(true);
+  });
+  it('is empty before any message', () => expect(fieldLog(moving)).toEqual([]));
+  it('gives a short status for the LOG button', () => {
+    expect(reportStatusShort(fieldStateAt([sent, report], 1_000_000, []))).toEqual({ text: '▲ 09:40', tone: 'caution' });
+    expect(reportStatusShort(fieldStateAt([sent, report], 1_580_000, []))?.text).toBe('DELIVERED');
   });
 });

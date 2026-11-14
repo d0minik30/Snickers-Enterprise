@@ -181,9 +181,12 @@
 
 /* ----- demo controls: discreet, set apart at the far right ----- */
 
+/* Exactly as wide as the right rail, with the rail's padding, so DEMO lines up over COMMS. */
 .demo {
-  gap: 6px;
-  padding: 0 8px 0 var(--cell-pad);
+  flex: 0 0 var(--rail-width);
+  min-width: 0;
+  gap: 4px;
+  padding: 0 var(--pad-x);
   border-left: 1px solid var(--rule);
   color: var(--muted);
   font-size: var(--type-label);
@@ -196,8 +199,8 @@
 }
 
 .rate {
-  min-width: 26px;
-  padding: 4px 5px;
+  min-width: 24px;
+  padding: 4px 4px;
   letter-spacing: 0.02em;
 }
 
