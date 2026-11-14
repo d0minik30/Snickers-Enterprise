@@ -9,7 +9,9 @@ import { PlanDetailRail } from '@/components/control/PlanDetailRail';
 import { PlanRail } from '@/components/control/PlanRail';
 import { SignalTimeline } from '@/components/control/SignalTimeline';
 import { TopBar, type ControlMode } from '@/components/control/TopBar';
-import { buildReroute, liveOverlays, newestRoute, planFitPoints, planOverlays, routeSentEvent } from '@/components/control/controlModel';
+import {
+  buildReroute, liveOverlays, newestRoute, planFitPoints, planOverlays, rerouteBlocker, routeSentEvent, type RerouteBlocker,
+} from '@/components/control/controlModel';
 import { buildTimeline } from '@/components/control/timelineModel';
 import { usePlanDraft, type PlanDraft } from '@/components/control/usePlanDraft';
 import type { MapCamera } from '@/components/map/overlays';
@@ -95,7 +97,7 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
   const timeline = useMemo(() => buildTimeline(view, PASSES), [view]);
   const overlays = useMemo(() => liveOverlays(view), [view]);
   const [flagging, setFlagging] = useState(false);
-  const [tooLate, setTooLate] = useState(false);
+  const [notice, setNotice] = useState<RerouteBlocker | null>(null);
   const [userMoved, setUserMoved] = useState(false);
 
   const newest = newestRoute(view);
@@ -112,10 +114,10 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
   }, [userMoved, newest]);
 
   useEffect(() => {
-    if (!tooLate) return;
-    const timer = setTimeout(() => setTooLate(false), TOO_LATE_SHOW_MS);
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), TOO_LATE_SHOW_MS);
     return () => clearTimeout(timer);
-  }, [tooLate]);
+  }, [notice]);
 
   useEffect(() => {
     if (!flagging) return;
@@ -129,9 +131,10 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
     const store = getMissionStore();
     const current = controlViewAt(store.getSnapshot().log, store.now(), PASSES);
     const hazard = center && { id: `flag-${crypto.randomUUID().slice(0, 8)}`, center, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' as const };
-    const result = buildReroute(current, hazard);
-    if (!result) return setTooLate(true);
-    setTooLate(false);
+    const blocked = rerouteBlocker(current, hazard);
+    const result = blocked ? null : buildReroute(current, hazard);
+    if (!result) return setNotice(blocked ?? 'too-late');
+    setNotice(null);
     store.append({ type: 'route-changed', origin: 'control', reason: center ? 'hazard' : 'replan', route: result.route, hazards: result.hazards });
   }, []);
 
@@ -147,7 +150,7 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
         view={view}
         log={log}
         flagging={flagging}
-        tooLate={tooLate}
+        notice={notice}
         onFlag={() => setFlagging(f => !f)}
         onReplan={() => reroute(null)}
       />

@@ -260,6 +260,7 @@ export function marsClock(missionMs: number): { sol: number; time: string } {
 // ---------------------------------------------------------------- Live mode
 
 const TRAVELLER_LABEL_OFFSET_PX = 28; // label chips sit this far above or below their marker
+const EARLIEST_REROUTE_TICK_M = 140; // length of the line drawn across the route at the earliest reroute point
 
 const routeEvents = (view: ControlView) =>
   view.uplinks.filter(u => u.event.type === 'route-sent' || u.event.type === 'route-changed');
@@ -321,6 +322,15 @@ export function liveOverlays(view: ControlView): MapOverlay[] {
     });
     o.push({ kind: 'endpoint', id: 'endpoint:start', pos: shown.points[0], variant: 'start' });
     o.push({ kind: 'endpoint', id: 'endpoint:end', pos: shown.points[shown.points.length - 1], variant: 'end' });
+    if (canReroute(view)) { // a hazard flagged before this point cannot be routed around
+      const { pos: at, bearingDeg: heading } = pointAlong(shown.points, predictBranchDistM(view));
+      const half = EARLIEST_REROUTE_TICK_M / 2;
+      o.push({
+        kind: 'route', id: 'reroute:earliest', variant: 'walked',
+        points: [destination(at, heading - 90, half), destination(at, heading + 90, half)],
+      });
+      labels.push({ kind: 'label', id: 'label:reroute:earliest', pos: at, text: 'EARLIEST REROUTE', tone: 'route', offsetY: TRAVELLER_LABEL_OFFSET_PX });
+    }
   }
 
   if (pos && received.route) {
@@ -341,13 +351,34 @@ export function liveOverlays(view: ControlView): MapOverlay[] {
   return [...o, ...labels];
 }
 
+/** A hazard this close to the stretch the traveller covers before a new route lands cannot be routed around. */
+const REROUTE_CLEARANCE_M = 30;
+
+export type RerouteBlocker = 'too-late' | 'too-close';
+
+/**
+ * Why Control cannot send a reroute right now, or null when it can.
+ * 'too-late': the traveller will have arrived before a new route lands.
+ * 'too-close': `hazard` lies on the stretch the traveller walks before a new route lands (from the last
+ * received position to the earliest reroute point), so any new route would still lead through it.
+ */
+export function rerouteBlocker(view: ControlView, hazard: Hazard | null): RerouteBlocker | null {
+  const newest = newestRoute(view);
+  if (!newest || !canReroute(view)) return 'too-late';
+  if (!hazard) return null;
+  const from = view.received.route ? view.received.distM : 0;
+  const committed = slicePath(newest.points, from, predictBranchDistM(view));
+  const reach = hazard.radiusM + REROUTE_CLEARANCE_M;
+  return committed.some(p => distanceM(p, hazard.center) <= reach) ? 'too-close' : null;
+}
+
 /**
  * A new route from where the traveller can be when the signal lands, to the same end, around every hazard
- * Control knows plus `newHazard`. Null when it is too late or nothing can be planned.
+ * Control knows plus `newHazard`. Null when `rerouteBlocker` says no or nothing can be planned.
  */
 export function buildReroute(view: ControlView, newHazard: Hazard | null): { route: Route; hazards: Hazard[] } | null {
   const newest = newestRoute(view);
-  if (!newest || !canReroute(view)) return null;
+  if (!newest || rerouteBlocker(view, newHazard)) return null;
   const branchDistM = predictBranchDistM(view);
   const branch = pointAlong(newest.points, branchDistM).pos;
   const hazards: Hazard[] = view.hazards.map(({ atField: _atField, ...h }) => h);

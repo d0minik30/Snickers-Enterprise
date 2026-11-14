@@ -1,6 +1,6 @@
 'use client';
 
-import { earthClock, liveProgress, marsClock, routeSentEvent } from '@/components/control/controlModel';
+import { earthClock, liveProgress, marsClock, routeSentEvent, type RerouteBlocker } from '@/components/control/controlModel';
 import { fieldBars, fieldCells } from '@/components/field/fieldModel';
 import { Bar } from '@/components/shared/Bar';
 import { Readout } from '@/components/shared/Readout';
@@ -14,7 +14,7 @@ type Props = {
   view: ControlView;
   log: MissionEvent[];
   flagging: boolean;
-  tooLate: boolean;
+  notice: RerouteBlocker | null;
   onFlag: () => void;
   onReplan: () => void;
 };
@@ -36,7 +36,7 @@ const STATUS_TONE: Record<FieldStatus, string> = {
 };
 
 /** Left rail in Live mode: the field as Control last heard it, never as if it were current. */
-export function LiveRail({ view, log, flagging, tooLate, onFlag, onReplan }: Props) {
+export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Props) {
   const { received } = view;
   const sent = routeSentEvent(log);
   const hasRoute = view.activeRoute !== null || view.pendingRoute !== null;
@@ -99,8 +99,13 @@ export function LiveRail({ view, log, flagging, tooLate, onFlag, onReplan }: Pro
       )}
 
       <section className={styles.actions}>
-        {tooLate && (
+        {notice === 'too-late' && (
           <p data-testid="too-late" className={styles.tooLate} role="alert">TOO LATE TO REROUTE · TRAVELLER WILL HAVE ARRIVED</p>
+        )}
+        {notice === 'too-close' && (
+          <p data-testid="too-close" className={styles.tooLate} role="alert">
+            TOO CLOSE TO ROUTE AROUND · TRAVELLER REACHES IT BEFORE A NEW ROUTE · FLAG PAST EARLIEST REROUTE OR SEND HOLD
+          </p>
         )}
         <button
           type="button"

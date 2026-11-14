@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildReroute, liveOverlays, liveProgress, uplinkText } from '@/components/control/controlModel';
+import { buildReroute, liveOverlays, liveProgress, rerouteBlocker, uplinkText } from '@/components/control/controlModel';
 import { controlViewAt, predictBranchDistM } from '@/lib/mission/control';
 import { PACE_MPS, type MissionEvent } from '@/lib/mission/types';
-import { pointAlong, slicePath } from '@/lib/nav/geo';
+import { distanceM, pointAlong, slicePath } from '@/lib/nav/geo';
 import { DEFAULT_END, DEFAULT_START, FLAG_RADIUS_M, PRESET_HAZARDS, isInsideHazard, planRoutes } from '@/lib/planner';
 import type { Hazard } from '@/lib/planner/types';
 import { ORIGIN, divertedRoute, straightRoute } from '@/lib/testing/fixtures';
@@ -56,13 +56,62 @@ describe('liveOverlays', () => {
 
   it('draws a route still on its way to the field as pending, with no traveller yet', () => {
     const o = liveOverlays(controlViewAt([sent], 300_000, []));
-    expect(o.filter(x => x.kind === 'route').map(x => x.kind === 'route' && x.variant)).toEqual(['pending']);
+    const routes = o.filter(x => x.kind === 'route' && x.id !== 'reroute:earliest'); // the tick across the route is not a route
+    expect(routes.map(x => x.kind === 'route' && x.variant)).toEqual(['pending']);
     expect(o.some(x => x.kind === 'traveller')).toBe(false);
   });
 
   it('draws one traveller when the field is not moving', () => {
     const o = liveOverlays(controlViewAt([sent], 1_500_000, [])); // ready at the field, never started
     expect(o.filter(x => x.kind === 'traveller')).toHaveLength(1);
+  });
+});
+
+describe('hazards Control cannot route around', () => {
+  // Default safest route, traveller moving: received 325 m, estimated now 1062 m, earliest reroute 1798 m.
+  const [safest] = planRoutes(DEFAULT_START, DEFAULT_END, PRESET_HAZARDS);
+  const sentSafest: MissionEvent = { ...sent, route: safest, hazards: PRESET_HAZARDS };
+  const view = controlViewAt([sentSafest, start], 700_000 + 680_000 + 300_000, []);
+  const flagAt = (distM: number): Hazard =>
+    ({ id: 'hz', center: pointAlong(safest.points, distM).pos, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' });
+  const branch = predictBranchDistM(view);
+
+  it('says a hazard at the estimated position is too close to route around', () => {
+    expect(rerouteBlocker(view, flagAt(view.estimatedNow!.distM))).toBe('too-close');
+    expect(buildReroute(view, flagAt(view.estimatedNow!.distM))).toBeNull();
+  });
+
+  it('says a hazard just past the earliest reroute point is still too close', () =>
+    expect(rerouteBlocker(view, flagAt(branch + FLAG_RADIUS_M))).toBe('too-close'));
+
+  it('reroutes around a hazard well past the earliest reroute point', () => {
+    expect(rerouteBlocker(view, flagAt(branch + 500))).toBeNull();
+    expect(buildReroute(view, flagAt(branch + 500))).not.toBeNull();
+  });
+
+  it('says too late near the end, with or without a new hazard', () => {
+    const late = controlViewAt([sent, start], 2_380_000, []);
+    expect(rerouteBlocker(late, null)).toBe('too-late');
+    expect(rerouteBlocker(late, { id: 'x', center: ORIGIN, radiusM: 60, label: 'Flagged', source: 'control' })).toBe('too-late');
+  });
+
+  it('rates a reroute high risk when it still has to enter a hazard', () => {
+    const atEnd: Hazard = { id: 'end', center: DEFAULT_END, radiusM: 200, label: 'Flagged', source: 'control' };
+    expect(buildReroute(view, atEnd)!.route.risk).toBe('high');
+  });
+
+  it('marks the earliest reroute point on the map while a reroute is possible', () => {
+    const o = liveOverlays(view);
+    const tick = o.find(x => x.id === 'reroute:earliest');
+    const at = pointAlong(safest.points, branch).pos;
+    expect(tick?.kind).toBe('route');
+    if (tick?.kind !== 'route') return;
+    expect(tick.points).toHaveLength(2); // a short line across the route, centred on the point
+    expect(distanceM(tick.points[0], at)).toBeCloseTo(distanceM(tick.points[1], at), 3);
+    expect(distanceM(tick.points[0], tick.points[1])).toBeGreaterThan(50);
+    expect(o.find(x => x.id === 'label:reroute:earliest')).toMatchObject({ kind: 'label', text: 'EARLIEST REROUTE', tone: 'route', pos: at });
+    const late = liveOverlays(controlViewAt([sent, start], 2_380_000, []));
+    expect(late.some(x => x.id === 'reroute:earliest' || x.id === 'label:reroute:earliest')).toBe(false);
   });
 });
 
