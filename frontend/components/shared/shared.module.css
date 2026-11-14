@@ -39,6 +39,11 @@
   color: var(--muted);
 }
 
+/* A degree sign sits right against its number. */
+.degree {
+  margin-left: 0;
+}
+
 /* ----- level bar ----- */
 
 .track {

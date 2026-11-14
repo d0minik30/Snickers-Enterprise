@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { earthClock, marsClock } from '@/components/control/controlModel';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
@@ -43,9 +44,9 @@ export function TopBar({ mode, onMode }: Props) {
 
   return (
     <header className={styles.topBar}>
-      <div className={styles.brand}>
+      <Link href="/" className={styles.brand} title="All screens">
         MARS MAP <span className={styles.brandView}>/ CONTROL</span>
-      </div>
+      </Link>
       <div role="tablist" aria-label="Mode" className={styles.tabs}>
         {tab('plan', 'PLAN')}
         {tab('live', 'LIVE')}

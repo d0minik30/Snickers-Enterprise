@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { SiteNav } from '@/components/shared/SiteNav';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { CameraCapture, type Captured } from '@/components/locate/CameraCapture';
 import { CameraPanel, LocateBar, PhotoList } from '@/components/locate/Panels';
@@ -103,6 +104,7 @@ export default function LocateScreen() {
       <header className={css.topBar}>
         <Link href="/" className={css.home}>MARS MAP</Link>
         <span className={css.place}>LOCATE · WHERE WAS THIS PHOTO TAKEN?</span>
+        <SiteNav />
         <span className={css.spacer} />
         <span className={css.engine} title="Set NEXT_PUBLIC_ENGINE_URL when building">ENGINE {ENGINE_URL.replace(/^https?:\/\//, '')}</span>
       </header>

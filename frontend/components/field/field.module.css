@@ -652,9 +652,10 @@
 }
 
 .fixCue {
+  /* Sits over the cell's own label for the cue, so it never covers the number or the unit. */
   position: absolute;
   top: 7px;
-  right: 6px;
+  left: calc(var(--pad-x) - 4px);
   padding: 2px 4px 1px;
   background: var(--nominal);
   color: var(--surface);

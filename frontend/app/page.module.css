@@ -1,107 +1,248 @@
+/* Landing page, "Instrument" look: solid surfaces, 1 px rules, labelled cells, colour only for meaning. */
+
 .page {
-  min-height: 100%;
-  max-width: 960px;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 48px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
+  padding: 56px 32px 40px;
 }
 
-.header {
+/* ----- hero ----- */
+
+.hero {
+  padding-bottom: 32px;
   border-bottom: 1px solid var(--rule);
-  padding-bottom: 24px;
 }
 
-.title {
-  font-size: 48px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 1;
-}
-
-.lede {
-  margin-top: 12px;
-  max-width: 560px;
-  font-size: 20px;
+.kicker {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   color: var(--muted);
 }
 
-.cells {
+.title {
+  margin-top: 14px;
+  font-size: clamp(56px, 9vw, 104px);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: 0.04em;
+}
+
+.lede {
+  max-width: 62ch;
+  margin-top: 18px;
+  font-size: 22px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.facts {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 28px;
   border: 1px solid var(--rule);
 }
 
-.cell {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 32px 24px;
-  background: var(--surface);
+.facts > div {
+  padding: 12px 16px;
 }
 
-.cell + .cell {
+.facts > div + div {
   border-left: 1px solid var(--rule);
 }
 
-.cell:hover,
-.cell:focus-visible {
-  outline: 1px solid var(--route);
-  outline-offset: -1px;
+.facts dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.cellLabel {
-  font-size: 40px;
+.facts dd {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.caution {
+  color: var(--caution);
+}
+
+/* ----- screens ----- */
+
+.views {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 32px;
+  border: 1px solid var(--rule);
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 190px;
+  padding: 20px;
+  transition: background-color 120ms ease-out;
+}
+
+.view + .view {
+  border-left: 1px solid var(--rule);
+}
+
+.view:hover {
+  background: color-mix(in srgb, var(--text) 6%, var(--surface));
+}
+
+.view:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.viewNumber {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--route);
+}
+
+.viewLabel {
+  font-size: 34px;
   font-weight: 700;
-  letter-spacing: 0.08em;
   line-height: 1;
+  letter-spacing: 0.06em;
 }
 
-.cellHint {
-  font-size: 14px;
+.viewHint {
+  font-size: 16px;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.viewOpen {
+  margin-top: auto;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.note {
-  border: 1px solid var(--rule);
-  padding: 16px 24px;
+.view:hover .viewOpen {
+  color: var(--text);
 }
 
-.noteTitle {
-  font-size: 14px;
+/* ----- how to present / data ----- */
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  margin-top: 32px;
+  border: 1px solid var(--rule);
+}
+
+.block {
+  padding: 22px 24px;
+}
+
+.block + .block {
+  border-left: 1px solid var(--rule);
+}
+
+.blockTitle {
+  margin-bottom: 14px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-.steps {
-  margin-top: 8px;
-  padding-left: 24px;
-  font-size: 18px;
+.steps,
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 1.3em;
+  font-size: 17px;
+  line-height: 1.35;
 }
 
-@media (max-width: 860px) and (min-width: 561px) {
-  .cells {
-    grid-template-columns: 1fr 1fr;
+.steps li::marker {
+  color: var(--route);
+  font-weight: 700;
+}
+
+.list {
+  list-style: square;
+}
+
+.list li::marker {
+  color: var(--muted);
+}
+
+.steps b,
+.list b {
+  font-weight: 700;
+}
+
+.small {
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.footer {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 32px 18px;
   }
-  .cell:nth-child(odd) {
+
+  .facts,
+  .views {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .facts > div:nth-child(3),
+  .view:nth-child(3) {
     border-left: 0;
   }
-  .cell:nth-child(n + 3) {
+
+  .facts > div:nth-child(n + 3),
+  .view:nth-child(n + 3) {
+    border-top: 1px solid var(--rule);
+  }
+
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .block + .block {
+    border-left: 0;
     border-top: 1px solid var(--rule);
   }
 }
 
-@media (max-width: 560px) {
-  .cells {
-    grid-template-columns: 1fr;
+@media (max-width: 520px) {
+  .facts,
+  .views {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .cell + .cell {
+
+  .facts > div + div,
+  .view + .view {
     border-left: 0;
     border-top: 1px solid var(--rule);
+  }
+
+  .lede {
+    font-size: 19px;
   }
 }

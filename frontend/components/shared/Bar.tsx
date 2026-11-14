@@ -11,7 +11,7 @@ export function Bar({ label, value, unit, fraction, tone = 'plain' }: Props) {
       <span className={styles.label}>{label}</span>
       <span className={`${styles.value} ${styles[tone]}`}>
         {value}
-        <span className={styles.unit}>{unit}</span>
+        <span className={`${styles.unit} ${unit === '°' ? styles.degree : ''}`}>{unit}</span>
       </span>
       <span className={styles.track} role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={1} aria-valuenow={level}>
         <span className={`${styles.fill} ${styles[tone]}`} style={{ width: `${level * 100}%` }} />
