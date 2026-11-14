@@ -153,18 +153,23 @@ export function endpointStyle(o: Overlay<'endpoint'>, { theme }: StyleContext): 
   return [new Style({ image: square })];
 }
 
-/** Triangle pointing along the heading, drawn in screen pixels so it stays sharp at any pixel ratio. */
+/**
+ * Narrow triangle pointing along the heading, drawn in screen pixels so it stays sharp at any pixel ratio.
+ * The vector layer draws into a north-up canvas and OpenLayers rotates that whole canvas with the view
+ * (ol/renderer/canvas/VectorLayer `sourceRotates() ? rotation : 0`), so the heading alone is the right
+ * angle here: adding `state.rotation` would turn the arrow a second time and leave it pointing at north.
+ */
 function travellerArrow(headingDeg: number, ghost: boolean, theme: MapTheme) {
   return (pixel: Coordinate | Coordinate[] | Coordinate[][] | Coordinate[][][], state: State) => {
     const [x, y] = pixel as Coordinate;
     const { context: ctx, pixelRatio: pr } = state;
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate((headingDeg * Math.PI) / 180 + state.rotation);
+    ctx.rotate((headingDeg * Math.PI) / 180);
     ctx.beginPath();
-    ctx.moveTo(0, -13 * pr);
-    ctx.lineTo(10 * pr, 9 * pr);
-    ctx.lineTo(-10 * pr, 9 * pr);
+    ctx.moveTo(0, -14 * pr); // tip
+    ctx.lineTo(7.5 * pr, 9 * pr);
+    ctx.lineTo(-7.5 * pr, 9 * pr);
     ctx.closePath();
     if (!ghost) {
       ctx.fillStyle = theme.surface;

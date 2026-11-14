@@ -80,6 +80,37 @@ async function settle(page) {
   await page.waitForTimeout(500);
 }
 
+/**
+ * Runs in every page before the app: remembers the canvas angle the traveller arrow (a path starting at (0, -tip))
+ * was last drawn at on the map, and on which canvas, so a check can add the canvas's own CSS rotation.
+ */
+function recordTravellerArrow() {
+  const P = CanvasRenderingContext2D.prototype;
+  const moveTo = P.moveTo;
+  P.moveTo = function (x, y) {
+    if (x === 0 && y < 0 && this.canvas.closest?.('[data-testid="mars-map"]')) {
+      const t = this.getTransform();
+      window.__arrow = { canvas: this.canvas, drawnDeg: (Math.atan2(t.b, t.a) * 180) / Math.PI };
+    }
+    return moveTo.call(this, x, y);
+  };
+}
+
+/** The traveller arrow's direction on screen, in degrees clockwise from straight up; null if none was drawn. */
+const arrowScreenDeg = page => page.evaluate(() => {
+  const a = window.__arrow;
+  if (!a) return null;
+  const m = new DOMMatrix(getComputedStyle(a.canvas).transform);
+  const css = (Math.atan2(m.b, m.a) * 180) / Math.PI;
+  return ((((a.drawnDeg + css) % 360) + 540) % 360) - 180; // -180..180, 0 = up the screen
+});
+
+/** The heading the Field HUD shows, in degrees, or null. */
+const fieldHeading = page => page.evaluate(() => {
+  const cell = [...document.querySelectorAll('[data-testid="field-next-move"] ~ * span')].find(s => /^\d{1,3}°$/.test(s.textContent.trim()));
+  return cell ? Number(cell.textContent.trim().slice(0, -1)) : null;
+});
+
 async function noHorizontalOverflow(page) {
   return page.evaluate(() => {
     const bar = document.querySelector('header');
@@ -209,6 +240,19 @@ async function fieldRun(control, field) {
     check(fits, `Field fits at ${width} px`);
   }
   await field.setViewportSize({ width: 390, height: 844 });
+
+  // The map turns to face the heading, so the arrow must point up the screen whatever the heading is.
+  // Walk on until the heading is well away from north, so an arrow stuck on north would show.
+  const offNorth = () => field.waitForFunction(() => {
+    const cell = [...document.querySelectorAll('[data-testid="field-next-move"] ~ * span')].find(s => /^\d{1,3}°$/.test(s.textContent.trim()));
+    const h = cell ? Number(cell.textContent.trim().slice(0, -1)) : NaN;
+    return Math.min(h, 360 - h) > 30;
+  }, null, { timeout: 15_000 }).then(() => true, () => false);
+  check(await fastForward(control, offNorth), 'the heading turns well away from north');
+  await field.waitForTimeout(500);
+  const heading = await fieldHeading(field);
+  const arrow = await arrowScreenDeg(field);
+  check(arrow !== null && Math.abs(arrow) < 5, `the Field arrow points up the screen, along the route (heading ${heading}°, arrow ${arrow?.toFixed(1)}°)`);
 }
 
 /** Task 9: Live mode: a hazard flag and reroute, orders, a message and its acknowledgement. Early in the walk, so all of it lands before arrival. */
@@ -274,6 +318,7 @@ async function main() {
   const browser = await launch();
   try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    await context.addInitScript(recordTravellerArrow);
     const control = await context.newPage();
     watch(control, 'control');
     console.log('Plan mode');
