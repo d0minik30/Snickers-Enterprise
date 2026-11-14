@@ -26,6 +26,19 @@ themselves when the samples are not downloaded.
 Until the main server exists, `py -3.10 backend/skyline/scripts/dev_server.py` serves this router
 on http://localhost:8000 with CORS open to the Next.js dev server, for the app's Locate screen.
 
+**A real engine answer without the server:** `scripts/engine_result.py` traces sample photos, builds
+the `POST /locate` body as the app does, runs Person 1's matcher (`backend/marsloc`, unchanged) and saves
+the answer in the CONTRACTS.md result format. It needs the CTX DEM in `backend/data_local/terrain/` and
+the precomputed horizons (`py -3.10 backend/scripts/build_horizons.py`, about 14 minutes):
+
+```bash
+py -3.10 backend/skyline/scripts/engine_result.py --pose 3/578     --out backend/skyline/out/engine-sol17-18.json --app-copy frontend/lib/locate/fixtures/engine-sol17-18.json
+```
+
+On the six sol 17–18 Navcam photos (one rover pose, no prior): best position 23 m west and 6 m south
+of the landing site, ±13 m (68 %), 93 % of the trusted skyline fits, every heading within 0.8° of the
+label's. The app shows that saved answer at `/locate/?result=saved`, marked as saved.
+
 ## API (a FastAPI router)
 
 The main server includes it: `from skyline.api import router; app.include_router(router)`.
@@ -154,10 +167,10 @@ On the ten sample photos:
 
 ## Open points
 
-- **Attitude quaternion convention.** The code assumes the raw-image feed's `attitude` (w, x, y, z)
-  rotates rover-frame vectors into the local-level site frame (north, east, down), as I understand
-  JPL's convention. A photo with a known heading (Person 2's test set) will confirm it. If it is the
-  other way round, levelling is off by about the rover's tilt (1–2° on the sample photos).
+- ~~Attitude quaternion convention~~ **confirmed.** The raw-image feed's `attitude` (w, x, y, z)
+  rotates rover-frame vectors into the site frame (north, east, down). Checked on the sol 17–18 photos:
+  with that convention the label gives each camera's true heading, and the engine, which never saw it,
+  found all six within 0.8° (`scripts/engine_result.py`, see below).
 - **PDS4 labels.** Only the raw-image feed record is read so far. PDS4 XML can be added once Person 2's
   test photos show which form they come in.
 - **Cropped (subframe) Perseverance images** that don't start at the sensor's corner are refused for

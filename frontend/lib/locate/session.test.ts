@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildLocateRequest, emptySession, locateBlocker, reduce, relativeHeadings, specFor, type Action, type Session,
 } from '@/lib/locate/session';
-import { contractPhoto, diagnostics, skylineResponse, trace } from '@/lib/testing/locateFixtures';
+import { contractPhoto, contractResult, diagnostics, skylineResponse, trace } from '@/lib/testing/locateFixtures';
 
 const run = (actions: Action[], s: Session = emptySession) => actions.reduce(reduce, s);
 const add = (id: string): Action => ({ type: 'add', photo: { id, name: `${id}.jpg`, file: new Blob(), url: `blob:${id}` } });
@@ -106,5 +106,23 @@ describe('buildLocateRequest', () => {
     expect(body.photos[0].samples).toHaveLength(30);
     expect(body.options).toEqual({ top_k: 5, include_likelihood_grid: true, include_residuals: true });
     expect(JSON.stringify(body)).not.toMatch(/diagnostics|rover_pose|trace/); // only contract fields go out
+  });
+});
+
+describe('locate request state', () => {
+  it('keeps the answer with the request that produced it', () => {
+    let s = traced('a');
+    const request = buildLocateRequest(s);
+    s = reduce(s, { type: 'locate-start', request });
+    expect(s.locate).toEqual({ status: 'sending', request });
+    const answered = reduce(s, { type: 'locate-done', result: contractResult, at: '2026-11-15T01:00:00Z' });
+    expect(answered.locate).toMatchObject({ status: 'answered', request, result: contractResult });
+    // Photos edited while the request is out: the answer still lands, paired with what was sent.
+    const edited = reduce(s, { type: 'time', id: 'a', timeUtc: '2026-11-15T10:00:00Z' });
+    expect(reduce(edited, { type: 'locate-done', result: contractResult, at: 'x' }).locate).toMatchObject({ status: 'answered', request });
+    // An answer with no request out (after a new edit reset an earlier answer) is ignored.
+    const idle = reduce(answered, { type: 'time', id: 'a', timeUtc: '2026-11-15T11:00:00Z' });
+    expect(idle.locate.status).toBe('idle');
+    expect(reduce(idle, { type: 'locate-done', result: contractResult, at: 'y' }).locate.status).toBe('idle');
   });
 });

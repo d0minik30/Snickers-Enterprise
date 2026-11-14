@@ -193,7 +193,7 @@ export function LocateBar({ session, blocker, onLocate }: { session: Session; bl
         {locate.status === 'failed' && <span className={css['status-bad']} data-testid="locate-error">{locate.error}</span>}
         {locate.status === 'answered' && (
           <span className={css['status-ok']} data-testid="locate-answer">
-            Engine answered at {locate.at.slice(11, 19)} UTC. The map view of the result comes next.
+            Engine answered at {locate.at.slice(11, 19)} UTC: see RESULT.
           </span>
         )}
         {locate.status === 'idle' && <span className={css.note}>{blocker ?? `${n} photo${n === 1 ? '' : 's'} ready.`}</span>}

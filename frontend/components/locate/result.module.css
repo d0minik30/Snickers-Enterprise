@@ -1,0 +1,220 @@
+/* The engine's answer: numbers on the left, the Jezero map on the right (stacked on a phone: map first). */
+
+.result {
+  --raised: color-mix(in srgb, var(--text) 6%, var(--surface));
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'banner' 'map' 'panel';
+  border: 1px solid var(--rule);
+}
+
+@media (min-width: 900px) {
+  .result {
+    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: 'banner banner' 'panel map';
+    min-height: calc(100dvh - 190px);
+  }
+}
+
+.panel {
+  grid-area: panel;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+@media (min-width: 900px) {
+  .panel {
+    border-top: 0;
+    border-right: 1px solid var(--rule);
+    overflow-y: auto;
+  }
+}
+
+.saved {
+  grid-area: banner;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--caution);
+  background: color-mix(in srgb, var(--caution) 10%, var(--surface));
+  color: var(--caution);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+.verdict {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.tone-ok { color: var(--nominal); }
+.tone-caution { color: var(--caution); }
+.tone-bad { color: var(--danger); }
+
+.note,
+.body {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.note {
+  color: var(--muted);
+}
+
+.facts {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.facts dt,
+.sub,
+.table,
+.toggle,
+.engine,
+.key {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.facts dt,
+.sub,
+.engine {
+  color: var(--muted);
+}
+
+.facts dd {
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sub {
+  margin-top: 10px;
+}
+
+.warnings {
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--caution);
+}
+
+.table {
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.table li {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.rank {
+  font-weight: 700;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.toggle input {
+  accent-color: var(--text);
+}
+
+.engine {
+  letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------------------ map */
+
+.mapBox {
+  grid-area: map;
+  position: relative;
+  min-height: 55dvh;
+  border: 0;
+}
+
+.mapLoading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+
+.key {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 800;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: calc(100% - 70px); /* clear of the zoom buttons */
+  padding: 6px 10px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+}
+
+.key i {
+  display: inline-block;
+  width: 14px;
+  height: 0;
+  margin-right: 5px;
+  vertical-align: middle;
+  border-top: 2px solid var(--text);
+}
+
+.key .kBest { width: 10px; height: 10px; border: 2px solid var(--surface); background: var(--text); border-radius: 50%; }
+.key .k68 { border-top-color: var(--text); }
+.key .k95 { border-top-style: dashed; }
+.key .kCand { width: 10px; height: 10px; border: 2px solid var(--caution); border-radius: 50%; }
+.key .kWedge { height: 8px; border: 1px solid var(--text); background: color-mix(in srgb, var(--text) 15%, transparent); }
+.key .kHeat { height: 8px; border: 0; background: linear-gradient(90deg, transparent, var(--caution)); }
+.key .kFeature { border-top: 2px dashed var(--nominal); }
+
+/* Leaflet adds these outside React, so they are global. */
+:global(.result-heat) {
+  image-rendering: pixelated;
+}
+
+:global(.leaflet-tooltip.result-rank) {
+  padding: 1px 5px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--text);
+  font: 700 12px/1.3 var(--font-barlow), sans-serif;
+  letter-spacing: 0.1em;
+}
+
+:global(.leaflet-tooltip.result-rank)::before {
+  display: none;
+}

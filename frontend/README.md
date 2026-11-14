@@ -30,6 +30,10 @@ server exists, `py -3.10 ../backend/skyline/scripts/dev_server.py` serves the sk
 8000; Locate then traces and edits skylines, and says plainly that the engine has no `/locate` yet.
 The in-app camera needs a secure page: `https://`, or `localhost` on the same computer.
 
+`/locate/?result=saved` shows a saved, real answer of the engine (six Perseverance Navcam photos from
+sols 17–18), marked as saved, so the result view can be seen without the engine running. It is made by
+`../backend/skyline/scripts/engine_result.py` (see `../backend/skyline/README.md`).
+
 ## Run it
 
 You need Node.js 20 or newer.

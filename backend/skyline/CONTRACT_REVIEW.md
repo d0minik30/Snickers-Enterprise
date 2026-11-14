@@ -23,9 +23,9 @@ for me, then a few requests. Numbered so we can refer to them.
   | Levelled by hand in the app | 1.0 |
   | Nothing (assumed level) | 5.0 |
 
-- One caveat on the label value: I assume the raw-image feed's `attitude` quaternion rotates rover
-  vectors into the site frame. If it's the other way round, label-levelled photos are off by the
-  rover's tilt (1–2° on my sample photos). The first test photo with a known heading will settle it.
+- The label's attitude convention is confirmed: your matcher, run on six sol 17–18 Navcam photos
+  from one rover pose, found every camera heading within 0.8° of the label's, and the position 23 m
+  from the landing site (±13 m). See `backend/skyline/README.md`. Nice work on the matcher.
 
 **Q3: heatmap as a JSON grid?** Fine. The app draws it on a canvas and lays it on the map like
 `L.imageOverlay`.

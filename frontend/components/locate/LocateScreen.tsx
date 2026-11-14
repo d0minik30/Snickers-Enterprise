@@ -5,15 +5,41 @@ import { SiteNav } from '@/components/shared/SiteNav';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { CameraCapture, type Captured } from '@/components/locate/CameraCapture';
 import { CameraPanel, LocateBar, PhotoList } from '@/components/locate/Panels';
+import { ResultView } from '@/components/locate/ResultView';
 import { SkylineEditor } from '@/components/locate/SkylineEditor';
 import { ENGINE_URL, EngineError, postConvert, postLocate, postSkyline } from '@/lib/locate/engine';
 import { hfovFor } from '@/lib/locate/presets';
 import { buildLocateRequest, emptySession, locateBlocker, reduce, specFor, type PhotoEntry } from '@/lib/locate/session';
+import { isLocateResult, type LocateRequest, type LocateResult } from '@/lib/locate/types';
 import css from './locate.module.css';
 
 const CONVERT_DELAY_MS = 400; // wait for the user to stop dragging before recomputing angles
 
 const message = (e: unknown) => (e instanceof EngineError || e instanceof Error ? e.message : String(e));
+
+type Saved = { request: LocateRequest; result: LocateResult; note: string };
+
+/**
+ * /locate/?result=saved shows a saved, real answer of the engine (made by
+ * backend/skyline/scripts/engine_result.py), clearly marked, for working on the result view while the
+ * engine server is not running. Loaded only on request, and checked like a live answer.
+ */
+function useSavedResult(): Saved | null {
+  const [saved, setSaved] = useState<Saved | null>(null);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('result') !== 'saved') return;
+    void import('@/lib/locate/fixtures/engine-sol17-18.json').then(m => {
+      const file = m.default as unknown as { source: { photos: string[]; run_utc: string }; request: LocateRequest; result: unknown };
+      if (!isLocateResult(file.result)) return;
+      setSaved({
+        request: file.request,
+        result: file.result,
+        note: `SAVED ENGINE RESPONSE · ${file.source.photos.length} Perseverance Navcam photos, sols 17–18, run ${file.source.run_utc.slice(0, 10)}. Not a live request.`,
+      });
+    });
+  }, []);
+  return saved;
+}
 
 let counter = 0;
 const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `p${Date.now()}-${counter++}`);
@@ -21,6 +47,8 @@ const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? c
 export default function LocateScreen() {
   const [session, dispatch] = useReducer(reduce, emptySession);
   const [capturing, setCapturing] = useState(false);
+  const [tab, setTab] = useState<'photos' | 'result'>('photos');
+  const saved = useSavedResult();
   const latest = useRef(session);
   useEffect(() => {
     latest.current = session;
@@ -91,13 +119,21 @@ export default function LocateScreen() {
   const blocker = locateBlocker(session);
   const locate = useCallback(() => {
     const request = buildLocateRequest(latest.current);
-    dispatch({ type: 'locate-start' });
+    dispatch({ type: 'locate-start', request });
     postLocate(request)
       .then(result => dispatch({ type: 'locate-done', result, at: new Date().toISOString() }))
       .catch(e => dispatch({ type: 'locate-failed', error: message(e) }));
   }, []);
 
   const photo = session.photos.find(p => p.id === session.selected) ?? null;
+  const answer = session.locate.status === 'answered' ? session.locate : null;
+  // A new answer opens on the result; the user can switch back to the photos.
+  const answerAt = answer?.at;
+  useEffect(() => {
+    if (answerAt) setTab('result');
+  }, [answerAt]);
+  const shown = answer ?? (saved ? { request: saved.request, result: saved.result } : null);
+  const showResult = shown !== null && (tab === 'result' || (saved !== null && !answer && session.photos.length === 0));
 
   return (
     <div className={css.screen}>
@@ -129,7 +165,16 @@ export default function LocateScreen() {
         {photo && <div className={css.camera}><CameraPanel photo={photo} dispatch={dispatch} /></div>}
 
         <div className={css.work}>
-          {photo ? <PhotoView photo={photo} dispatch={dispatch} /> : (
+          {shown && (
+            <div className={css.tabs} role="tablist" aria-label="View">
+              <button type="button" role="tab" className={css.tab} aria-selected={!showResult} onClick={() => setTab('photos')}>PHOTOS</button>
+              <button type="button" role="tab" className={css.tab} aria-selected={showResult} onClick={() => setTab('result')}
+                data-testid="tab-result">RESULT</button>
+            </div>
+          )}
+          {showResult && shown ? (
+            <ResultView result={shown.result} request={shown.request} savedNote={answer ? null : saved?.note ?? null} />
+          ) : photo ? <PhotoView photo={photo} dispatch={dispatch} /> : (
             <div className={css.empty}>
               <p className={css.emptyTitle}>NO PHOTOS YET</p>
               <p className={css.note}>Add photos of the horizon. The skyline is traced for you; fix it if it is wrong, then press LOCATE.</p>

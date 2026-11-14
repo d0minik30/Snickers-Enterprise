@@ -31,8 +31,8 @@ export type PhotoEntry = {
 
 export type LocateState =
   | { status: 'idle' }
-  | { status: 'sending' }
-  | { status: 'answered'; result: LocateResult; at: string }
+  | { status: 'sending'; request: LocateRequest }
+  | { status: 'answered'; request: LocateRequest; result: LocateResult; at: string }
   | { status: 'failed'; error: string };
 
 export type Session = { photos: PhotoEntry[]; selected: string | null; locate: LocateState };
@@ -54,7 +54,7 @@ export type Action =
   | { type: 'convert-start'; id: string }
   | { type: 'convert-done'; id: string; photo: ContractPhoto; diagnostics: Diagnostics; rev: number }
   | { type: 'convert-failed'; id: string; error: string }
-  | { type: 'locate-start' }
+  | { type: 'locate-start'; request: LocateRequest }
   | { type: 'locate-done'; result: LocateResult; at: string }
   | { type: 'locate-failed'; error: string };
 
@@ -151,9 +151,12 @@ export function reduce(s: Session, a: Action): Session {
     case 'convert-failed':
       return update(s, a.id, p => (p.angles === 'updating' ? { ...p, angles: 'failed', anglesError: a.error } : p));
     case 'locate-start':
-      return { ...s, locate: { status: 'sending' } };
+      return { ...s, locate: { status: 'sending', request: a.request } };
     case 'locate-done':
-      return { ...s, locate: { status: 'answered', result: a.result, at: a.at } };
+      // The answer belongs to the request that was sent, even if the photos changed meanwhile.
+      return s.locate.status === 'sending'
+        ? { ...s, locate: { status: 'answered', request: s.locate.request, result: a.result, at: a.at } }
+        : s;
     case 'locate-failed':
       return { ...s, locate: { status: 'failed', error: a.error } };
   }
