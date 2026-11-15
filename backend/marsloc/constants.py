@@ -10,4 +10,6 @@ LANDING_SITE_LON = 77.4508
 
 DEFAULT_EYE_HEIGHT_M = 1.7
 
-CONTRACT_VERSION = "0.1"
+CONTRACT_VERSION = "0.2"
+# 0.2 changed the terrain input only, so requests in either version are accepted.
+SUPPORTED_CONTRACT_VERSIONS = ("0.1", "0.2")

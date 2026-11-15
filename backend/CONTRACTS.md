@@ -1,4 +1,4 @@
-# Engine contracts — DRAFT v0.1 (not agreed yet)
+# Engine contracts — DRAFT v0.2 (not agreed yet)
 
 The three file formats around the localization engine in `backend/`:
 
@@ -8,6 +8,10 @@ The three file formats around the localization engine in `backend/`:
 
 Nothing here is final until all three of us agree. After that, a change needs a new
 `contract_version` and a heads-up to the team.
+
+**Changed in 0.2:** section 1 only. Along its edge a source is now blended into the source beneath
+it (`edge_blend_m`) instead of switching hard. Sections 2 and 3 are as in 0.1: a request may say
+`"0.1"` or `"0.2"`, and the result repeats the request's value.
 
 ## 0. Conventions shared by all three
 
@@ -58,9 +62,19 @@ tiles it lists.
 ### Which source wins
 
 At each spot the engine uses the source with the highest `priority` that has data there, and falls
-through to the next one where it is nodata. Suggested: HiRISE 30, CTX 20, coarse ring 10. There is
-no blending. The engine measures the height step where sources join and reports it
-(`backend/scripts/check_terrain.py`); Person 2 fixes the data or sets `vertical_offset_m`.
+through to the next one where it is nodata. Suggested: HiRISE 30, CTX 20, coarse ring 10.
+
+**Blend band (new in 0.2).** Two sources can differ by tens of metres where they meet: CTX and the
+200 m data by up to about 30 m locally. A hard switch puts a false cliff into every horizon that
+looks across the join. So along the edge of its bounds a source is blended into whatever lies beneath
+it: at the edge the height is the lower source's, `edge_blend_m` further in it is the source's own,
+with a smooth ramp in between. `edge_blend_m` is optional per source. Without it the engine uses
+7.5 cells of the source beneath: 150 m for HiRISE onto CTX, 1.5 km for CTX onto the 200 m data.
+`0` gives a hard switch. Holes inside a source (nodata) are not blended; they fall through as before.
+
+The engine still measures the raw height step where sources join and reports it
+(`backend/scripts/check_terrain.py`); Person 2 fixes the data or sets `vertical_offset_m`. Blending
+hides a step; it does not make a wrong zero level right.
 
 ### Coverage the engine needs
 
@@ -73,7 +87,7 @@ Fine HiRISE data matters most within about 2 km of where the astronaut can be.
 
 ```json
 {
-  "contract_version": "0.1",
+  "contract_version": "0.2",
   "sphere_radius_m": 3396190,
   "vertical_datum": "mars_areoid_mola",
   "units": "m",
@@ -85,6 +99,7 @@ Fine HiRISE data matters most within about 2 km of where the astronaut can be.
       "cell_size_m": 20,
       "nodata": -3.4028226550889045e38,
       "vertical_offset_m": 0,
+      "edge_blend_m": 1500,
       "tiles": [
         {
           "file": "ctx_20m/jezero_ctx_dem_20m.tif",
@@ -105,6 +120,7 @@ Fine HiRISE data matters most within about 2 km of where the astronaut can be.
 | `sources[].cell_size_m` | Nominal north–south cell size, for choosing data by distance. The exact size comes from `bounds`, `rows`, `cols` |
 | `sources[].nodata` | Optional; see Nodata above |
 | `sources[].vertical_offset_m` | Optional, default 0 |
+| `sources[].edge_blend_m` | Optional. Width in metres of the blend band along the source's edge. Default: 7.5 cells of the source beneath. 0 = hard switch |
 | `tiles[].file` | Path relative to the folder |
 | `tiles[].bounds`, `rows`, `cols` | Where the tile sits and its size in pixels |
 

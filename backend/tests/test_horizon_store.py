@@ -190,3 +190,18 @@ def test_real_store_matches_live_renders(real_terrain):
     assert index >= 0
     west = store.elev_deg(index)[int(240 / store.az_step_deg):int(280 / store.az_step_deg)]
     assert 3.0 < west.max() < 5.5
+
+
+def test_candidates_cover_only_terrain_fine_enough_to_stand_on():
+    from marsloc.horizon.store import default_candidate_bounds
+    fine_bounds, fine_lat, _ = grid_around(LAT0, LON0, 100, 100, 20.0)
+    ring_bounds, ring_lat, _ = grid_around(LAT0, LON0, 60, 60, 200.0)
+    terrain = Terrain.from_arrays([
+        dict(id="fine", priority=20, bounds=fine_bounds, data=np.zeros(fine_lat.shape)),
+        dict(id="ring", priority=10, bounds=ring_bounds, data=np.zeros(ring_lat.shape)),
+    ])
+    assert default_candidate_bounds(terrain) == fine_bounds          # not the 200 m ring
+    assert default_candidate_bounds(terrain, max_cell_m=500.0) == terrain.bounds
+    only_ring = Terrain.from_arrays([dict(id="ring", priority=10, bounds=ring_bounds,
+                                          data=np.zeros(ring_lat.shape))])
+    assert default_candidate_bounds(only_ring) == ring_bounds        # nothing finer: use what there is

@@ -5,9 +5,10 @@ Run from backend/:
     .venv/bin/python scripts/build_horizons.py                      (macOS, Linux)
 
 Options: --spacing 200 (metres between candidates), --az-step 0.5 (degrees per azimuth bin),
---workers N (default: all cores but one), --margin 0 (metres to stay inside the terrain's
-edge), --out DIR. Prints the build time, the size on disk and how much of the horizon is
-formed by nearby terrain.
+--workers N (default: all cores but one), --margin 0 (metres to stay inside the area's edge),
+--bounds LAT_MIN LON_MIN LAT_MAX LON_MAX (default: where the terrain has cells of 100 m or
+finer, i.e. the CTX extent, not the 200 m ring), --out DIR. Prints the build time, the size on
+disk and how much of the horizon is formed by nearby terrain.
 """
 import argparse
 import os
@@ -43,6 +44,8 @@ def main():
     parser.add_argument("--az-step", type=float, default=STORE_CONFIG.az_step_deg, help="degrees per bin")
     parser.add_argument("--max-range", type=float, default=STORE_CONFIG.max_range_m, help="metres")
     parser.add_argument("--margin", type=float, default=0.0, help="metres to stay inside the terrain edge")
+    parser.add_argument("--bounds", type=float, nargs=4, default=None,
+                        metavar=("LAT_MIN", "LON_MIN", "LAT_MAX", "LON_MAX"), help="area for candidates")
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     parser.add_argument("--terrain", type=Path, default=None, help="terrain folder")
     parser.add_argument("--out", type=Path, default=None, help="store folder")
@@ -61,8 +64,9 @@ def main():
             last[0] = time.perf_counter()
             print("  %d / %d rows" % (done, total), flush=True)
 
+    bounds = None if args.bounds is None else [args.bounds[:2], args.bounds[2:]]
     meta = build_store(terrain, out, spacing_m=args.spacing, config=config, margin_m=args.margin,
-                       workers=args.workers, progress=progress)
+                       bounds=bounds, workers=args.workers, progress=progress)
     for issue in terrain.issues:
         print("TERRAIN ISSUE: %s" % issue)
 

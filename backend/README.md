@@ -4,8 +4,9 @@ Finds where an astronaut is standing in Jezero Crater from the skyline in their 
 matching it against the skyline the terrain would produce from candidate positions.
 
 **Status:** the terrain layer, the horizon renderer and the precomputed horizons are built and
-tested. The matcher, the dominant-feature step, the HTTP API and the validation report are not
-built yet. The file formats are in [`CONTRACTS.md`](CONTRACTS.md) (a draft until the team agrees).
+tested. The matcher (`marsloc/match/`) is in progress and **not validated**: do not rely on its
+answers yet. The dominant-feature step, the HTTP API and the validation report are not built yet.
+The file formats are in [`CONTRACTS.md`](CONTRACTS.md) (a draft until the team agrees).
 
 ## Set up
 
@@ -31,10 +32,12 @@ macOS, Linux:
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-**Terrain.** Elevation data is too big for git. Get `jezero_ctx_dem_20m.tif` ("MRO CTX, Jezero
-DEM, Controlled", from NASA Mars Trek) from the data team and put it at
-`backend/data_local/terrain/ctx_20m/jezero_ctx_dem_20m.tif`. To keep the terrain elsewhere, set the
-environment variable `MARS_TERRAIN_DIR` to that folder. `data_local/` is git-ignored.
+**Terrain.** Elevation data is too big for git. The data team's terrain folder (`terrain.json`
+plus the HiRISE 1 m, CTX 20 m and 200 m tiles, see `CONTRACTS.md` section 1) goes in
+`backend/data_local/terrain/`. With only `jezero_ctx_dem_20m.tif` at
+`backend/data_local/terrain/ctx_20m/` and no `terrain.json`, the engine runs on that one file. To
+keep the terrain elsewhere, set the environment variable `MARS_TERRAIN_DIR` to that folder.
+`data_local/` is git-ignored.
 
 ## Commands
 
@@ -44,7 +47,7 @@ Run them from `backend/`. On macOS and Linux use `.venv/bin/python` instead of `
 |---|---|
 | `.venv\Scripts\python -m pytest` | All tests. Tests that need the real DEM or the precomputed horizons are skipped when those are missing |
 | `.venv\Scripts\python scripts\check_terrain.py` | Lists the terrain sources, and reports tile problems and height steps where sources join |
-| `.venv\Scripts\python scripts\build_horizons.py` | Precomputes the horizon of every candidate position (200 m grid) into `cache/`. Rerun it whenever the terrain changes |
+| `.venv\Scripts\python scripts\build_horizons.py` | Precomputes the horizon of every candidate position (200 m grid over the CTX extent) into `cache/`: about 3 minutes and 66 MB. Rerun it whenever the terrain or its blend bands change |
 
 ## What is where
 
@@ -52,9 +55,11 @@ Run them from `backend/`. On macOS and Linux use `.venv/bin/python` instead of `
 |---|---|
 | `CONTRACTS.md` | The three file formats: terrain input, skyline input, result |
 | `marsloc/constants.py`, `marsloc/geo.py` | Mars radius, landing site; distances, bearings, the east/north frame, elevation angles with curvature |
-| `marsloc/terrain/` | Height lookup from tiled grids at several resolutions: the finest source wins, tiles load on first use. The only code that knows about files |
+| `marsloc/terrain/` | Height lookup from tiled grids at several resolutions: the finest source wins and is blended into the one beneath along its edge; tiles load on first use. The only code that knows about files |
 | `marsloc/horizon/render.py` | The horizon the terrain produces from a position: elevation angle and source point per azimuth |
 | `marsloc/horizon/store.py` | Precomputed horizons for a grid of candidate positions: build, quantize, load |
+| `marsloc/match/` | The matcher (in progress): photo binning, scoring, coarse and fine search, likelihood map, sun heading |
+| `marsloc/simulate.py` | Simulated photos on the real terrain, for testing the matcher |
 | `scripts/` | The commands above |
 | `tests/` | pytest |
 | `data_local/`, `cache/`, `.venv/` | Terrain, precomputed horizons, Python packages. All git-ignored |

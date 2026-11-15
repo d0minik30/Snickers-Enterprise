@@ -131,6 +131,16 @@ class CandidateGrid:
                    rows=data["rows"], cols=data["cols"])
 
 
+def default_candidate_bounds(terrain, max_cell_m=100.0):
+    """The area where candidate positions make sense: around the sources with cells up to
+    max_cell_m. Coarser data (the 200 m ring) only forms the far horizon; putting candidates on
+    it would multiply the store's size for places nobody stands on. All sources if none is
+    that fine."""
+    boxes = [s.bounds for s in terrain.sources if s.cell_m <= max_cell_m] or [terrain.bounds]
+    return [[min(b[0][0] for b in boxes), min(b[0][1] for b in boxes)],
+            [max(b[1][0] for b in boxes), max(b[1][1] for b in boxes)]]
+
+
 def quantize_elev(elev_deg):
     """Elevation angles as int16 steps of 0.01 deg; NaN becomes ELEV_NODATA."""
     steps = np.round(np.asarray(elev_deg, dtype=np.float64) / ELEV_SCALE_DEG)
@@ -197,13 +207,15 @@ def build_store(terrain, out_dir, spacing_m=200.0, config=STORE_CONFIG,
                 progress=None):
     """Render the horizon of every candidate on a grid and write a store to out_dir.
 
-    bounds: area to cover, default the terrain's. workers > 1 renders rows in parallel
+    bounds: area to cover, default default_candidate_bounds(terrain): where the terrain has
+    cells of 100 m or finer. workers > 1 renders rows in parallel
     processes, which reopen the terrain from its folder (so it must come from files).
     progress: optional function(rows_done, rows_total). Returns the store's meta dict.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    grid = CandidateGrid.cover(bounds if bounds is not None else terrain.bounds, spacing_m, margin_m)
+    grid = CandidateGrid.cover(bounds if bounds is not None else default_candidate_bounds(terrain),
+                               spacing_m, margin_m)
     n_az = config.azimuths().size
     lats, lons = grid.lats, grid.lons
     started = time.perf_counter()
