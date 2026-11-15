@@ -776,11 +776,16 @@
 }
 
 .fixCue {
-  /* Sits over the cell's own label for the cue, so it never covers the number or the unit. */
+  /* Covers the cell's whole label row for the cue (left to right edge, so no letters of a longer
+     label show past it), and never the number or the unit below. */
   position: absolute;
   top: 7px;
   left: calc(var(--pad-x) - 4px);
+  right: calc(var(--pad-x) - 4px);
   padding: 2px 4px 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
   background: var(--nominal);
   color: var(--surface);
   font-size: 10px;
