@@ -31,8 +31,11 @@ export default function FieldScreen() {
   const overlays = useMemo(() => fieldOverlays(state), [state]);
   const [panel, setPanel] = useState<FieldPanel>('none');
   const [sheetHeight, setSheetHeight] = useState(0);
+  const [readyHeight, setReadyHeight] = useState(0);
   // While a sheet covers the bottom of the map, keep the traveller in the part still showing.
-  const camera = useMemo(() => fieldCamera(state, panel === 'none' ? 0 : sheetHeight), [state, panel, sheetHeight]);
+  // The docked Start panel also covers the map: keep the traveller visible above it.
+  const cover = panel !== 'none' ? sheetHeight : state.status === 'ready' ? readyHeight : 0;
+  const camera = useMemo(() => fieldCamera(state, cover), [state, cover]);
   const cue = fieldCue(state);
   const notice = latestUnacked(state);
   const status = hydrated ? state.status : 'awaiting-route';
@@ -66,7 +69,7 @@ export default function FieldScreen() {
           </div>
         )}
         {cue.routeChangeId && <div key={cue.routeChangeId} className={styles.routePulse} aria-hidden="true" />}
-        {hydrated && <StatusPanel state={state} onStart={start} />}
+        {hydrated && <StatusPanel state={state} onStart={start} onHeight={setReadyHeight} />}
         {/* After the panel in the tree, so it stays on top of the waiting screen too. */}
         <ScreenMenu className={styles.menuButton} label="Menu: all screens">
           <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true">

@@ -52,7 +52,7 @@ export function CommsBar({ state, panel, onPanel }: { state: FieldState; panel: 
 }
 
 /** Tells the screen how much of the map a sheet covers, so the traveller stays above it. */
-function useCoverHeight(ref: React.RefObject<HTMLElement | null>, onHeight: (px: number) => void) {
+export function useCoverHeight(ref: React.RefObject<HTMLElement | null>, onHeight: (px: number) => void) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
