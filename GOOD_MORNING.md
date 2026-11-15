@@ -61,6 +61,10 @@ Each person treats the other folders as read-only. Shared files (`SYSTEM_REFEREN
   `/locate/?result=saved` when no engine server runs. Rebased onto 909df8a; kept Person 3's newer
   `public/validation.json` in the one conflict. 194 frontend tests and the browser smoke test pass.
   Notes for the frontend in `frontend/docs/CHANGES.md`.
+- **~04:00 · d947ac4 … 52c7a20** · Website, continued (frontend only): Control Live says "no route sent yet"
+  with a button back to Plan; Field keeps the traveller visible above the Start panel on a phone; `/map` shows
+  the real mission sites from `places.geojson`, the traverse end (Western Delta Deposit) in magenta, others on
+  hover. Production build, 194 tests and the smoke test pass. Nothing waiting on a human from the website side.
 
 ---
 
