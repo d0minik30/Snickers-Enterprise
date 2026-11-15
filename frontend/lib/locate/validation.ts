@@ -27,7 +27,11 @@ export type ValidationCase = {
 export type FitStats = { n: number; median_deg: number; mad_deg: number };
 
 export type ValidationReport = {
-  source: { what: string; cases_from: string; run_utc: string; note: string; engine: LocateResult['engine'] | null };
+  source: {
+    what: string; cases_from: string; run_utc: string; note: string; engine: LocateResult['engine'] | null;
+    /** Optional plain-words label for the run, shown in the banner (e.g. which terrain it used). */
+    label?: string;
+  };
   summary: {
     cases: number; median_error_m: number | null; mean_error_m: number | null;
     within_50_m: number; within_100_m: number; inside_68: number; inside_95: number;

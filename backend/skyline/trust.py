@@ -29,6 +29,13 @@ EDGE_FRACTION = 0.03  # weight ramps from 0 to 1 over this fraction of the width
 TOP_CLEARANCE = 0.02  # line closer than this fraction of the height to the usable top: weight 0
 HAZE_LOW, HAZE_HIGH = 0.12, 0.35  # contrast against this skyline's typical: weight 0 below LOW, full above HIGH
 HAZE_FLOOR = 0.015  # ...and an edge weaker than this colour distance (0-1 scale) is haze regardless
+# Absolute edge strength (in sky-noise units), whatever the rest of this photo's skyline is like. On the
+# 24 test poses, scored at the true position, a skyline edge weaker than 100 is mostly near ground the 20 m
+# elevation data can't show and misses the terrain by 0.3-0.4 deg (median); above 150 it misses by 0.1 deg.
+# A photo whose whole skyline is weak would pass the relative test above, so this one is absolute.
+# The weight only drops to WEAK_EDGE_WEIGHT, never 0: weak stretches still count, just less.
+WEAK_EDGE_LOW, WEAK_EDGE_FULL = 60.0, 150.0
+WEAK_EDGE_WEIGHT = 0.25
 NEAR_TEXTURE = 8.0  # texture above this many times the far skyline's typical texture: near anyway
 NEAR_TEXTURE_IF_PROTRUDING = 1.8  # where the line sticks up: near if clearly sharper than the far skyline
 PROTRUDE_FRACTION = 0.02  # "sticks up": this fraction of the height above the far skyline line
@@ -99,6 +106,9 @@ def column_trust(trace: Trace) -> Trust:
     rel = contrast / max(float(np.median(inner_c)), 1e-9)
     w_haze = np.clip((rel - HAZE_LOW) / (HAZE_HIGH - HAZE_LOW), 0, 1)
     w_haze = np.where(contrast * trace.noise < HAZE_FLOOR, 0.0, w_haze)
+    w_weak = WEAK_EDGE_WEIGHT + (1 - WEAK_EDGE_WEIGHT) * np.clip(
+        (contrast - WEAK_EDGE_LOW) / (WEAK_EDGE_FULL - WEAK_EDGE_LOW), 0, 1)
+    w_haze = np.minimum(w_haze, w_weak)  # reported as 'haze': a weak edge either way
 
     # Near objects stick up above the far skyline AND are sharper than it (far terrain is hazy).
     # The far skyline: a robust straight line through the lower envelope of the trace (a line follows

@@ -67,6 +67,7 @@ export default function ValidateScreen() {
           <p className={css.saved} data-testid="validation-banner">
             SAVED VALIDATION RUN · {report.source.run_utc.slice(0, 16).replace('T', ' ')} UTC · engine{' '}
             {report.source.engine?.version ?? '?'} · truth: NASA rover waypoints · no prior given to the engine
+            {report.source.label ? <> · <strong>{report.source.label}</strong></> : null}
           </p>
         )}
         <section className={css.side} aria-label="Validation run">
@@ -75,6 +76,7 @@ export default function ValidateScreen() {
           {report && (
             <>
               <Summary report={report} />
+              <ByPhotos cases={cases} />
               <h2 className={css.sub}>CASES</h2>
               <ol className={css.cases} data-testid="validation-cases">
                 {cases.map(c => <CaseRow key={c.pose} c={c} active={c.pose === selected} onPick={() => setSelected(c.pose === selected ? null : c.pose)} />)}
@@ -114,6 +116,44 @@ function Summary({ report }: { report: ValidationReport }) {
       <div><dt>TRUTH INSIDE 95 %</dt><dd>{s.inside_95} of {n}</dd></div>
       <div><dt>MEDIAN HEADING ERROR</dt><dd>{s.median_abs_heading_error_deg === null ? '—' : `${s.median_abs_heading_error_deg.toFixed(1)}°`}</dd></div>
     </dl>
+  );
+}
+
+function median(xs: number[]): number {
+  const v = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(v.length / 2);
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+}
+
+/** The two things a reader should see first: more photos work better, and the engine says when it is unsure. */
+function ByPhotos({ cases }: { cases: ValidationCase[] }) {
+  const groups = [
+    { label: '1 PHOTO', of: cases.filter(c => c.photos.length === 1) },
+    { label: '2 PHOTOS', of: cases.filter(c => c.photos.length === 2) },
+    { label: '3+ PHOTOS', of: cases.filter(c => c.photos.length >= 3) },
+  ].filter(g => g.of.length > 0);
+  const unsure = cases.filter(c => c.result.status !== 'ok').length;
+  const wrongOk = cases.filter(c => c.result.status === 'ok' && c.error_m > 1000).length;
+  return (
+    <>
+      <h2 className={css.sub}>BY NUMBER OF PHOTOS PER POSITION</h2>
+      <dl className={css.summary} data-testid="validation-by-photos">
+        {groups.map(g => (
+          <div key={g.label}>
+            <dt>{g.label} · {g.of.length} CASES</dt>
+            <dd>
+              {g.of.filter(c => c.error_m <= 100).length} within 100 m · {g.of.filter(c => c.error_m <= 400).length} within 400 m
+              · median {Math.round(median(g.of.map(c => c.error_m)))} m
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <h2 className={css.sub}>DOES IT SAY WHEN IT IS UNSURE?</h2>
+      <dl className={css.summary} data-testid="validation-honesty">
+        <div><dt>FLAGGED AMBIGUOUS / NO MATCH</dt><dd>{unsure} of {cases.length}</dd></div>
+        <div><dt>CALLED OK BUT OVER 1 KM OFF</dt><dd>{wrongOk} of {cases.length}</dd></div>
+      </dl>
+    </>
   );
 }
 
