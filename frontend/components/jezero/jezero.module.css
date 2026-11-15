@@ -201,8 +201,8 @@
 
 .panel {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  bottom: 30px;
+  right: 10px;
   z-index: 1000;
   width: 200px;
   display: flex;
@@ -320,4 +320,29 @@
 
 .siteEnd {
   background: var(--route);
+}
+
+/* Labels for the "Where am I?" answer. */
+.map :global(.leaflet-tooltip.findme-label) {
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--text);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--text);
+  font-family: var(--font-barlow), 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.map :global(.leaflet-tooltip.findme-here) {
+  background: var(--route);
+  border-color: var(--route);
+  color: var(--surface);
+  font-size: 15px;
+}
+
+.map :global(.leaflet-tooltip.findme-label)::before {
+  display: none;
 }

@@ -1,9 +1,5 @@
 import Link from 'next/link';
-import { formatClock } from '@/lib/nav/format';
-import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import styles from './page.module.css';
-
-const DELAY = formatClock(SIGNAL_DELAY_MS);
 
 export default function Home() {
   return (
@@ -12,44 +8,44 @@ export default function Home() {
         <p className={styles.kicker}>NASA SPACE APPS 2026 · TEAM SNICKERS ENTERPRISE</p>
         <h1 className={styles.title}>MARS MAP</h1>
         <p className={styles.lede}>
-          A map for walking and driving on Mars. There is no GPS, and every radio message to Earth takes{' '}
-          <b className={styles.caution}>{DELAY}</b> to arrive.
+          There is no GPS on Mars. This map finds where you are from a photo of the horizon.
         </p>
       </header>
 
       <nav className={styles.choices} aria-label="Start here">
-        <Link href="/mission/" className={`${styles.choice} ${styles.choiceMain}`} data-testid="choice-mission">
-          <span className={styles.choiceTag}>RECOMMENDED</span>
+        <Link href="/map/" className={`${styles.choice} ${styles.choiceMain}`} data-testid="choice-map">
+          <span className={styles.choiceTag}>START HERE</span>
+          <span className={styles.choiceTitle}>Where am I?</span>
+          <span className={styles.choiceText}>
+            Upload a photo of the Martian horizon. We match the skyline to the 3D terrain and put a pin on the map
+            where it was taken.
+          </span>
+          <span className={styles.choiceGo}>OPEN THE MAP →</span>
+        </Link>
+        <Link href="/mission/" className={styles.choice} data-testid="choice-mission">
+          <span className={styles.choiceTag}>&nbsp;</span>
           <span className={styles.choiceTitle}>Run a mission</span>
           <span className={styles.choiceText}>
-            Plan a trip across Jezero Crater from Earth, send it, and watch the crew on Mars follow it. Both on one screen.
+            Plan a trip across Jezero Crater from Earth and watch the crew on Mars follow it, with the real radio delay.
           </span>
           <span className={styles.choiceGo}>START →</span>
-        </Link>
-        <Link href="/map/" className={styles.choice} data-testid="choice-map">
-          <span className={styles.choiceTag}>&nbsp;</span>
-          <span className={styles.choiceTitle}>Explore the map</span>
-          <span className={styles.choiceText}>
-            Zoom from all of Mars into Jezero Crater. Turn on steep ground and sand to see where it is safe to go.
-          </span>
-          <span className={styles.choiceGo}>OPEN MAP →</span>
         </Link>
       </nav>
 
       <section className={styles.how} aria-labelledby="how">
-        <h2 id="how" className={styles.sectionTitle}>How a mission works</h2>
+        <h2 id="how" className={styles.sectionTitle}>How “Where am I?” works</h2>
         <ol className={styles.steps}>
-          <li><b>Plan.</b> Pick one of three routes. We suggest the safest one.</li>
-          <li><b>Send.</b> The route takes {DELAY} to reach Mars.</li>
-          <li><b>Go.</b> The crew presses Start and walks. Speed up time up to 1000×.</li>
-          <li><b>Done.</b> A message tells you when they arrive.</li>
+          <li><b>Take photos</b> of the horizon, a few in different directions.</li>
+          <li><b>Upload them</b> on the map.</li>
+          <li><b>We trace the skyline</b> and compare it with the terrain around Jezero.</li>
+          <li><b>A pin shows where you are</b>, and how sure we are.</li>
         </ol>
       </section>
 
       <section className={styles.more} aria-labelledby="more">
         <h2 id="more" className={styles.sectionTitle}>More</h2>
         <ul className={styles.moreList}>
-          <li><Link href="/locate/">Locate</Link> Find where a photo was taken by its skyline. <Link href="/locate/?result=saved">See a saved example</Link></li>
+          <li><Link href="/locate/">Locate (advanced)</Link> The same photo search with every detail: fix the traced skyline by hand, camera settings.</li>
           <li><Link href="/validate/">Validate</Link> How well Locate does on real rover photos.</li>
           <li><Link href="/control/">Control</Link> and <Link href="/field/">Field</Link> The two halves of a mission, to open in separate windows or on a phone.</li>
         </ul>

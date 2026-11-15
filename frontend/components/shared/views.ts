@@ -2,8 +2,8 @@
 
 /** Every screen of the app, main ones first. Control and Field are the two halves of Mission, for two windows. */
 export const VIEWS = [
+  { href: '/map/', label: 'MAP', hint: 'Where am I? Find your position from a photo' },
   { href: '/mission/', label: 'MISSION', hint: 'Plan a trip and watch it happen' },
-  { href: '/map/', label: 'MAP', hint: 'Look around Jezero Crater' },
   { href: '/locate/', label: 'LOCATE', hint: 'Find where a photo was taken' },
   { href: '/validate/', label: 'VALIDATE', hint: 'How well Locate does on real photos' },
   { href: '/control/', label: 'CONTROL', hint: 'Earth side only, for a second window' },

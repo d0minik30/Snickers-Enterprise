@@ -41,7 +41,34 @@ Running log of the "make it easy to understand" pass. Newest at the bottom.
 - **Checks.** Typecheck and all 194 unit tests pass. `npm run smoke` passes except "nothing overflows at
   1120/1366/1920 px" on Control, which fails the same way on the code before this change.
 
+## Change of focus: "Where am I?" on the map is the main feature
+
+The team said the main idea is: upload a photo of Mars on the map, and get located.
+
+- **Map page** (`/map/`): big pink **WHERE AM I?** button on top. It opens a panel:
+  Upload photos / Use example photos → thumbnails → **Find my position** → "FOUND YOU" with position,
+  accuracy, which way the first photo faces, and (for the examples) how far it is from NASA's real rover position.
+  On the map: pink "YOU ARE HERE" pin, accuracy circle, what each photo saw, the real position. The map flies there.
+  Files: `components/jezero/FindMe.tsx`, `findMe.module.css`, `JezeroScreen.tsx`.
+- **Example photos**: 6 real Perseverance Navcam photos (sols 17–18, site 3 drive 578) in `public/demo-photos/`,
+  downloaded from NASA's raw-image site. Set up in `lib/locate/demo.ts`.
+- **Where the answer comes from — be honest about this in the demo:**
+  - Example photos (recognised by file content, SHA-256, or by NASA image id in the file name): the screen shows the
+    engine's **saved, real answer** for exactly these 6 photos (`lib/locate/fixtures/engine-sol17-18.json`, run
+    14 Nov). It lands 74 m from the real position, ±21 m. The panel says "Saved answer from our engine".
+  - Any other photo: sent to the live engine (`/skyline`, then `/locate`). Today there is **no `/locate` server**
+    (see GOOD_MORNING.md), so other photos show "The live engine isn't running, so only the example photos work
+    right now." When the engine server exists, other photos will just work, with no change to the page.
+  - On real photos the engine is still weak: one photo alone is often kilometres off (validation median 5.3 km).
+    Several photos in different directions do much better, like the 6 examples. So in the demo, upload all 6.
+- **Map clean-up**: overlays panel moved to bottom-right and off by default; "Slope/Sand" → "Steep ground/Sand"
+  with plain legend words; site labels shorter.
+- **Landing page**: main choice is now **Where am I?** (→ map); **Run a mission** is second. Steps explain the photo search.
+- **Checks**: typecheck, 196 unit tests pass (2 new for the example-photo matching). `npm run smoke` has a new
+  "Where am I?" section that passes; the same 3 old overflow failures remain.
+
 ## Ideas not done yet
 
-- Jezero map page and Locate/Validate pages were not simplified in this pass.
+- Locate/Validate pages were not simplified in this pass.
+- A live `/locate` server (engine team) so any uploaded photo works, not only the examples.
 - On the Mission screen the Earth map is narrow on a 1366 px laptop; could hide Control's right column there.
