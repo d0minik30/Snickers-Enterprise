@@ -1,154 +1,128 @@
+"""Slide-ready workflow diagram of the Mars Map pipeline (see WORKFLOW_ARCHITECTURE.md).
+
+Writes to the repo root:
+  architecture_workflow.png              white background, for light slides
+  architecture_workflow_transparent.png  transparent background (tiles stay white)
+  architecture_workflow.svg              vector, scales without blur in PowerPoint
+
+Run from anywhere: backend/.venv/Scripts/python backend/scripts/generate_workflow_diagram.py
+"""
 import os
-os.environ["MPLCONFIGDIR"] = os.environ.get("TEMP", "/tmp")
+from pathlib import Path
 
+os.environ.setdefault("MPLCONFIGDIR", os.environ.get("TEMP", "/tmp"))
+
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+from matplotlib import font_manager
+from matplotlib.patches import FancyBboxPatch
 
-# Set high-DPI figure with clean off-white background matching the user reference image
-fig = plt.figure(figsize=(12, 14), dpi=300, facecolor="#F8F9FA")
-ax = fig.add_subplot(111)
-ax.set_facecolor("#F8F9FA")
-ax.set_xlim(0, 100)
-ax.set_ylim(0, 100)
-ax.axis("off")
+ROOT = Path(__file__).resolve().parents[2]
 
-def draw_card(ax, center_x, center_y, width, height, title, subtitle, bg_color, border_color, title_color="#1E293B", sub_color="#475569"):
-    # Calculate lower-left corner
-    x0 = center_x - width / 2.0
-    y0 = center_y - height / 2.0
-    
-    # Rounded rectangle box
-    box = patches.FancyBboxPatch(
-        (x0, y0), width, height,
-        boxstyle="round,pad=0.8,rounding_size=1.6",
-        facecolor=bg_color,
-        edgecolor=border_color,
-        linewidth=2.0,
-        zorder=3
-    )
-    ax.add_patch(box)
-    
-    # Title text
-    ax.text(
-        center_x, center_y + height * 0.16,
-        title,
-        ha="center", va="center",
-        fontsize=14, fontweight="bold",
-        color=title_color,
-        fontfamily="sans-serif",
-        zorder=4
-    )
-    
-    # Subtitle text
-    ax.text(
-        center_x, center_y - height * 0.20,
-        subtitle,
-        ha="center", va="center",
-        fontsize=10.5, fontweight="normal",
-        color=sub_color,
-        fontfamily="sans-serif",
-        linespacing=1.35,
-        zorder=4
-    )
-    return (center_x, y0, center_x, y0 + height) # bottom_center, top_center
+FONT = next((f for f in ("Segoe UI", "Helvetica Neue", "Arial", "DejaVu Sans")
+             if any(e.name == f for e in font_manager.fontManager.ttflist)), "sans-serif")
 
-def draw_arrow(ax, start_pt, end_pt):
-    ax.annotate(
-        "",
-        xy=end_pt, xycoords="data",
-        xytext=start_pt, textcoords="data",
-        arrowprops=dict(
-            arrowstyle="->,head_width=0.45,head_length=0.6",
-            color="#475569",
-            lw=2.0,
-            shrinkA=2,
-            shrinkB=2,
-        ),
-        zorder=2
-    )
+W, H = 21.0, 10.5          # tile size, in layout units
+INK = "#0F172A"
+LINE = "#64748B"
 
-# Coordinates for top-down layout
-# Y levels: 90 (Input), 72 (Sources), 50 (Engine), 30 (Refine), 10 (Outputs)
+# (fill, border) per kind of stage
+INPUT = ("#F1F5F9", "#94A3B8")
+VISION = ("#ECFDF5", "#34D399")
+TERRAIN = ("#F5F3FF", "#A78BFA")
+ENGINE = ("#FFF1F2", "#FB7185")
+RESULT = ("#FFFBEB", "#F59E0B")
+OUTPUT = ("#EFF6FF", "#60A5FA")
 
-# 1. TOP: User Input
-top_card = draw_card(
-    ax, center_x=50, center_y=90, width=44, height=10.5,
-    title="User Uploads Surface Photo",
-    subtitle="Captured by astronaut / rover with camera FOV & tilt\nUploaded via /locate web interface",
-    bg_color="#FFFFFF", border_color="#CBD5E1",
-    title_color="#0F172A", sub_color="#475569"
-)
+COL = [14, 40, 66, 92, 118, 144]
+MAIN_Y, LOW_Y = 50, 23
 
-# 2. ROW 2: Data Sources & Processing (Split)
-left_source = draw_card(
-    ax, center_x=27, center_y=71, width=42, height=11.5,
-    title="Multi-Tier Orbital DEM Tiles",
-    subtitle="HiRISE (1 m) + CTX (20 m) + MOLA-HRSC (200 m)\nSeam-calibrated with 1.5 km smooth edge blend",
-    bg_color="#F3F0FF", border_color="#C4B5FD",
-    title_color="#4338CA", sub_color="#6366F1"
-)
+TILES = {
+    "photo":   (COL[0], MAIN_Y, "Surface\nPhoto", INPUT),
+    "skyline": (COL[1], MAIN_Y, "Skyline\nExtraction", VISION),
+    "coarse":  (COL[2], MAIN_Y, "Coarse\nSearch", ENGINE),
+    "fine":    (COL[3], MAIN_Y, "Fine\nSearch", ENGINE),
+    "fix":     (COL[4], MAIN_Y, "Position Fix &\nUncertainty", RESULT),
+    "map":     (COL[5], MAIN_Y + 8.5, "Locate Screen\n& Map", OUTPUT),
+    "hud":     (COL[5], MAIN_Y - 8.5, "Field HUD\n& Control", OUTPUT),
+    "terrain": (COL[1], LOW_Y, "Orbital\nTerrain", TERRAIN),
+    "horizon": (COL[2], LOW_Y, "Precomputed\nHorizons", TERRAIN),
+}
 
-right_source = draw_card(
-    ax, center_x=73, center_y=71, width=42, height=11.5,
-    title="Skyline Angle Extraction",
-    subtitle="backend/skyline: Column-wise horizon edge detection\nConverts pixels to world rays (azimuth & elevation)",
-    bg_color="#ECFDF5", border_color="#A7F3D0",
-    title_color="#065F46", sub_color="#059669"
-)
 
-# 3. ROW 3: Core Matching Engine
-engine_card = draw_card(
-    ax, center_x=50, center_y=50, width=54, height=12.0,
-    title="MarsLoc Localization Engine",
-    subtitle="Pass 1: Vectorized 2° coarse circular cross-correlation (all 22.8k positions)\nPass 2: Gaussian + Outlier mixture log-likelihood scoring",
-    bg_color="#FFF1F2", border_color="#FECDD3",
-    title_color="#9F1239", sub_color="#E11D48"
-)
+def tile(ax, x, y, text, colors):
+    fill, border = colors
+    ax.add_patch(FancyBboxPatch((x - W / 2, y - H / 2), W, H,
+                                boxstyle="round,pad=0,rounding_size=1.6",
+                                facecolor=fill, edgecolor=border, linewidth=2.4, zorder=3))
+    ax.text(x, y, text, ha="center", va="center", fontsize=17, fontweight="bold", color=INK,
+            fontfamily=FONT, linespacing=1.15, zorder=4)
 
-# 4. ROW 4: Refinement & Landmark Scoring
-refine_card = draw_card(
-    ax, center_x=50, center_y=30, width=54, height=11.5,
-    title="Fine Search & Landmark Identification",
-    subtitle="Hierarchical sub-pixel descent (12.5 m) with Mars curvature\nDominant distant feature named via IAU gazetteer",
-    bg_color="#FFFBEB", border_color="#FDE68A",
-    title_color="#92400E", sub_color="#D97706"
-)
 
-# 5. ROW 5: Dual Outputs
-left_output = draw_card(
-    ax, center_x=27, center_y=11, width=42, height=11.5,
-    title="Interactive Jezero Map",
-    subtitle="Best position fix, 68% & 95% uncertainty ellipses,\nlikelihood heatmap & camera heading wedge",
-    bg_color="#F0F9FF", border_color="#BAE6FD",
-    title_color="#0369A1", sub_color="#0284C7"
-)
+def arrow(ax, points, dashed=False):
+    """A line through points, with an arrow head at the last one."""
+    style = (0, (4, 3)) if dashed else "solid"
+    xs, ys = zip(*points)
+    if len(points) > 2:
+        ax.plot(xs[:-1], ys[:-1], color=LINE, lw=2.2, linestyle=style, zorder=2,
+                solid_capstyle="butt", solid_joinstyle="miter")
+    ax.annotate("", xy=points[-1], xytext=points[-2],
+                arrowprops=dict(arrowstyle="-|>,head_width=0.45,head_length=0.9", color=LINE, lw=2.2,
+                                linestyle=style, shrinkA=0, shrinkB=0), zorder=2)
 
-right_output = draw_card(
-    ax, center_x=73, center_y=11, width=42, height=11.5,
-    title="Synchronized HUD & Control",
-    subtitle="Turn-by-turn Field HUD & Earth Control Station\nsynchronized across 11:20 Martian signal delay",
-    bg_color="#F0F9FF", border_color="#BAE6FD",
-    title_color="#0369A1", sub_color="#0284C7"
-)
 
-# Connect with Arrows
-# Top -> Left Source, Top -> Right Source
-draw_arrow(ax, (40, 84.5), (27, 77))
-draw_arrow(ax, (60, 84.5), (73, 77))
+def edge(name, side):
+    x, y = TILES[name][:2]
+    return {"l": (x - W / 2, y), "r": (x + W / 2, y), "t": (x, y + H / 2), "b": (x, y - H / 2)}[side]
 
-# Left Source -> Engine, Right Source -> Engine
-draw_arrow(ax, (27, 65), (42, 56.5))
-draw_arrow(ax, (73, 65), (58, 56.5))
 
-# Engine -> Refine
-draw_arrow(ax, (50, 44), (50, 36))
+def draw():
+    fig = plt.figure(figsize=(15.6, 5.8))
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_xlim(1, 157)
+    ax.set_ylim(7, 65)
+    ax.set_aspect("equal")
+    ax.axis("off")
 
-# Refine -> Left Output, Refine -> Right Output
-draw_arrow(ax, (42, 24), (27, 17))
-draw_arrow(ax, (58, 24), (73, 17))
+    # the offline part, prepared once before any photo arrives
+    ax.add_patch(FancyBboxPatch((COL[1] - W / 2 - 3, 10), COL[2] - COL[1] + W + 6, LOW_Y + H / 2 + 6 - 10,
+                                boxstyle="round,pad=0,rounding_size=2", facecolor="none",
+                                edgecolor="#C4B5FD", linewidth=1.6, linestyle=(0, (5, 4)), zorder=1))
+    ax.text(COL[1] - W / 2 - 1, LOW_Y + H / 2 + 4.6, "PREPARED ONCE", ha="left", va="top", fontsize=11,
+            fontweight="bold", color="#7C3AED", fontfamily=FONT, zorder=4)
 
-# Save output
-out_repo = "architecture_workflow.png"
-plt.tight_layout()
-plt.savefig(out_repo, dpi=300, facecolor=fig.get_facecolor(), edgecolor="none")
-print(f"Saved flowchart to {out_repo}")
+    for x, y, text, colors in TILES.values():
+        tile(ax, x, y, text, colors)
+
+    gap = 0.4
+    for a, b in (("photo", "skyline"), ("skyline", "coarse"), ("coarse", "fine"), ("fine", "fix"),
+                 ("terrain", "horizon")):
+        (x0, y0), (x1, y1) = edge(a, "r"), edge(b, "l")
+        arrow(ax, [(x0 + gap, y0), (x1 - gap, y1)])
+    arrow(ax, [(edge("horizon", "t")[0], edge("horizon", "t")[1] + gap),
+               (edge("coarse", "b")[0], edge("coarse", "b")[1] - gap)])
+    # the fine search renders horizons live from the terrain
+    tx, ty = edge("terrain", "b")
+    fx, fy = edge("fine", "b")
+    arrow(ax, [(tx, ty - gap), (tx, 13.5), (fx, 13.5), (fx, fy - gap)], dashed=True)
+    # one fix, two kinds of screen
+    x0, y0 = edge("fix", "r")
+    mid = (x0 + edge("map", "l")[0]) / 2
+    for out in ("map", "hud"):
+        x1, y1 = edge(out, "l")
+        arrow(ax, [(x0 + gap, y0), (mid, y0), (mid, y1), (x1 - gap, y1)])
+    return fig
+
+
+def main():
+    fig = draw()
+    common = dict(bbox_inches="tight", pad_inches=0.25)
+    fig.savefig(ROOT / "architecture_workflow.png", dpi=200, facecolor="white", **common)
+    fig.savefig(ROOT / "architecture_workflow_transparent.png", dpi=200, transparent=True, **common)
+    fig.savefig(ROOT / "architecture_workflow.svg", transparent=True, **common)
+    print("Saved architecture_workflow.png, _transparent.png and .svg to", ROOT)
+
+
+if __name__ == "__main__":
+    main()

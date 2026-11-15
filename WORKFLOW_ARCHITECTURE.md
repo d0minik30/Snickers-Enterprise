@@ -1,76 +1,95 @@
 # Mars Map — System Architecture & Workflow
 
-This document details the end-to-end data processing and execution pipeline of the **Snickers Enterprise Mars Map** application, following a top-down approach from user inputs to dual synchronized outputs:
+This document follows one position fix of the **Snickers Enterprise Mars Map** from the photo to the screens that show it. It was checked against the code on 2026-11-15; `backend/STATUS.md` holds the measured accuracy and timings.
 
 ---
 
 ## 1. Top-Down Flow Overview
 
 ```
-                      [ User Uploads Surface Photo ]
-                     /locate UI or Rover Camera HUD
-                                   │
-                 ┌─────────────────┴─────────────────┐
-                 ▼                                   ▼
-    [ Multi-Tier Orbital Terrain ]       [ Skyline Angle Extraction ]
-     HiRISE 1m + CTX 20m + MOLA 200m      Edge detection & ray angles
-     1.5 km edge blend & calibrated seams (azimuth & elevation)
-                 │                                   │
-                 └─────────────────┬─────────────────┘
-                                   ▼
-                    [ MarsLoc Localization Engine ]
-                     Pass 1: Vectorized 2° coarse cross-correlation
-                     Pass 2: Gaussian + Outlier mixture likelihood
-                                   │
-                                   ▼
-                [ Fine Search & Landmark Identification ]
-                 Hierarchical 12.5 m descent + Mars curvature
-                 Dominant landmark named via IAU gazetteer
-                                   │
-                 ┌─────────────────┴─────────────────┐
-                 ▼                                   ▼
-     [ Interactive Jezero Map ]           [ Synchronized HUD & Control ]
-      Fix, 68%/95% uncertainty,            Field HUD & Earth Control Station
-      likelihood heatmap, FOV wedge        synced over 11:20 signal delay
+   PREPARED ONCE (offline)                      PER REQUEST (POST /skyline, POST /locate)
+
+                                         [ Surface Photo ]
+                                    /locate screen or Jezero map
+                                                 │
+                                                 ▼
+                                      [ Skyline Extraction ]
+                                   trace, per-column trust, pixels
+                                   → azimuth & elevation angles
+                                                 │
+ [ Orbital Terrain ]                             ▼
+  HiRISE 1 m + CTX 20 m + MOLA 200 m     [ Coarse Search ]
+          │                         ┌──▶  pass 1: cheap cost, all candidates, all headings
+          ▼                         │     pass 2: full likelihood of the best 20 %
+ [ Precomputed Horizons ] ──────────┘            │
+  22,801 positions, 200 m grid, 0.5° bins        ▼
+          ·                              [ Fine Search ]
+          · terrain, rendered live ─────▶ top 3 places, 200 m → 3 m pattern search
+                                                 │
+                                                 ▼
+                                    [ Position Fix & Uncertainty ]
+                                   verdict, 68 % / 95 % circles,
+                                   dominant landmark
+                                                 │
+                         ┌───────────────────────┴───────────────────────┐
+                         ▼                                               ▼
+               [ Locate Screen & Map ]                         [ Field HUD & Control ]
+           fix, circles, heat map, view wedge              photo fix resets the drift ring;
+                                                           Control sees it 11 min 20 s later
 ```
 
-*(A visual presentation graphic is rendered in [`architecture_workflow.png`](./architecture_workflow.png)).*
+*(A slide-ready graphic is rendered in [`architecture_workflow.png`](./architecture_workflow.png) by `backend/scripts/generate_workflow_diagram.py`.)*
 
 ---
 
-## 2. Pipeline Breakdown by Layer
+## 2. Pipeline Breakdown by Stage
 
-### Tier 1: User Interface & Input
-- **Action:** An astronaut on EVA or a rover captures surface photos with an optical camera.
-- **Input Parameters:** Image file (PNG/JPEG), horizontal/vertical field of view (HFOV/VFOV), estimated eye height (default $1.7\text{ m}$), and camera roll/pitch uncertainty.
-- **Interaction:** Uploaded via the `/locate` web UI or fed directly from the rover HUD.
+### Stage 1: Surface Photo
+- **Action:** An astronaut or rover takes one or more photos with the skyline in view.
+- **Inputs:** The image, plus what is known about the camera: field of view (from EXIF, a Perseverance label file, or chosen by hand), eye height (default 1.7 m), and how far the camera's level may be off (`horizon_uncertainty_deg`).
+- **Where:** The `/locate` screen and the "find me" panel of the Jezero map send the photo to the engine server (default `http://localhost:8000`).
 
-### Tier 2: Dual Data Ingestion (Parallel Tracks)
-- **Track A — Multi-Resolution Orbital Terrain (`data/` & `backend/data_local/`):**
-  - High-resolution HiRISE DTM ($1\text{ m}$/px) covering the immediate landing site.
-  - Controlled MRO CTX DEM ($20\text{ m}$/px) covering the $30 \times 30\text{ km}$ crater floor.
-  - Coarse USGS MOLA–HRSC blend ($200\text{ m}$/px) extending regional coverage out to $\pm 100\text{ km}$.
-  - Seam-calibrated with a $1.5\text{ km}$ smooth cosine edge blend band.
-- **Track B — Computer Vision Skyline Extraction (`backend/skyline/`):**
-  - Column-wise luminance gradient analysis to separate the smooth Martian sky from the rugged terrain.
-  - Dynamic weight masking: filters out rover chassis hardware, wheels, and foreground rocks ($<2\text{ m}$).
-  - Exact pinhole/CAHVORE conversion from pixel coordinates $(x, y)$ to world viewing rays (azimuth $\alpha$, elevation $\theta$).
+### Stage 2: Skyline Extraction (`backend/skyline/`, `POST /skyline`)
+- Traces the line between sky and ground in every column of the photo.
+- Gives every column a trust weight from 0 to 1. Columns where something near rises into the sky (a rock, the rover's arm, a person) get weight 0; haze, glare, image edges and a jumping line lower the weight.
+- Converts pixels to world angles (azimuth offset and elevation above the local horizontal) with a rectilinear or JPL CAHVORE camera model.
+- Reads the sun from the photo when it can; with the capture time this gives a heading hint.
+- A line the user edited in the app is converted the same way (`POST /skyline/convert`).
 
-### Tier 3: Core Localization Engine (`backend/marsloc/`)
-- **Pass 1 (Vectorized Prefilter):** Evaluates all $22{,}801$ precomputed candidate positions on a $200\text{ m}$ grid across all $360^\circ$ headings using pooled $2.0^\circ$ circular cross-correlation. Discards the bottom $90\%$ of candidates in under $1\text{ second}$.
-- **Pass 2 (Likelihood Evaluation):** Evaluates survivor candidates in $0.5^\circ$ bins using a robust Gaussian inlier + uniform outlier mixture model:
-  $$p(\Delta \theta) = \gamma \cdot \mathcal{N}(\Delta \theta; 0, \sigma^2) + (1 - \gamma) \cdot \frac{1}{\Delta \theta_{\text{outlier}}}$$
+### Stage 3: Orbital Terrain (prepared once, `backend/data_local/terrain/`)
+- HiRISE DTM, 1 m: 5 × 5 km around the landing site.
+- CTX DEM, 20 m: 30 × 30 km crater floor and rim.
+- MOLA–HRSC blend, 200 m: the regional horizon out to about 40 km.
+- Where a finer source ends, it is blended into the coarser one over a band: 150 m (HiRISE → CTX) and 1.5 km (CTX → MOLA).
 
-### Tier 4: Geodesic Refinement & Landmark Identification
-- **Fine Coordinate Descent:** Top modes are refined through a $4$-level hierarchical coordinate search ($100\text{ m} \to 50\text{ m} \to 25\text{ m} \to 12.5\text{ m}$) with live ray-marching.
-- **Planetary Curvature Correction:** Incorporates Mars drop $\Delta h \approx d^2 / (2R_{\text{Mars}})$, adjusting far terrain angles by up to $235\text{ m}$ at $40\text{ km}$.
-- **Landmark Geocoding:** Identifies the highest distant ridge/peak casting the skyline and cross-references `features.geojson` to report official IAU named landmarks (e.g. *Kodiak Butte*, *Belva Crater Rim*).
+### Stage 4: Precomputed Horizons (prepared once, `backend/marsloc/horizon/`)
+- For every candidate position on a 200 m grid over the CTX area (22,801 positions), the 360° horizon is rendered by ray marching in 0.5° bins, with Mars's curvature (ground 40 km away sits 235 m below a flat tangent plane).
+- Stored quantized and memory-mapped: 66 MB, built in about 4 minutes on 15 cores.
 
-### Tier 5: Dual Output Visualization
-- **Output 1 — Interactive Map (`/map`, `/locate`):**
-  - Displays the estimated coordinate with $68\%$ and $95\%$ confidence uncertainty circles.
-  - Renders the $2\text{D}$ likelihood probability heatmap and camera field-of-view heading wedge.
-  - Draws a vector ray to the detected landmark with distance and elevation angle tags.
-- **Output 2 — Field HUD & Earth Control Station (`/field`, `/control`):**
-  - Synchronizes astronaut navigation HUD and mission planner view across the real $11\text{ min } 20\text{ s}$ speed-of-light comms latency.
-  - Real-time turn-by-turn guidance, hazard flagging, dynamic A* rerouting, and sloped comms timelines.
+### Stage 5: Coarse Search (`backend/marsloc/match/coarse.py`)
+- **Pass 1 (prefilter):** a cheap capped squared error of every candidate at every heading, in 2° bins. The best 20 % go on (at least 1,500; fewer when the photos cover more than 75° of skyline).
+- **Pass 2 (likelihood):** the survivors in 0.5° bins with a robust inlier/outlier mixture, so a nearby rock or haze cannot wreck a true match:
+  $$p(\Delta \theta) = \gamma \cdot \mathcal{N}(\Delta \theta; 0, \sigma^2) + (1 - \gamma) \cdot p_{\text{outlier}}$$
+  where $\gamma$ is 0.9 times the sample's trust and an outlier costs as much as a 3σ miss. The result is a likelihood map over the whole area.
+- **Modes:** the map is split into separate places (peaks more than 600 m apart).
+
+### Stage 6: Fine Search (`backend/marsloc/match/fine.py`)
+- The three most likely places are refined with horizons rendered live from the terrain: a 3 × 3 pattern search whose step halves 7 times (200 m → 3.1 m), with the heading searched continuously.
+- The refined fits decide how the likelihood is shared: a look-alike place that fits on the 200 m grid but not at a few metres loses its share.
+
+### Stage 7: Position Fix & Uncertainty (`backend/marsloc/match/matcher.py`, `feature.py`)
+- **Verdict:** `ok`, `ambiguous` (another place holds a real share, or the fit is only fair) or `no_match` (the best place does not fit).
+- **Uncertainty:** the radius around the fix that holds 68 % and 95 % of the likelihood.
+- **Dominant landmark:** the most prominent peak of the matched skyline formed by terrain at least 1 km away, with its distance and direction; it is named when a place in `data/output/places.geojson` lies within 2.5 km of it.
+
+### Stage 8: Outputs (`frontend/`)
+- **Locate screen & Jezero map (`/locate`, `/map`):** the fix with its 68 % / 95 % circles, the likelihood heat map, the camera's view wedge, the other candidate places and the dominant landmark.
+- **Field HUD & Earth Control (`/field`, `/control`):** a photo fix is a mission event. On the field HUD it resets the position-uncertainty ring that grows while walking; Earth Control receives it after the 11 min 20 s one-way signal delay. Both screens stay in sync through the browser (`localStorage` + `BroadcastChannel`), no server needed.
+
+---
+
+## 3. What is measured (15 Nov)
+
+- Simulated photos: verdicts calibrated; the 95 % circles are too small with several photos (hold 82–84 %).
+- Real Perseverance photos: 16 of 24 poses not found yet; the skyline trace on near ridges is the main blocker.
+- One request with one photo takes about 4–6 s on a laptop; the second coarse pass is the slowest part.
