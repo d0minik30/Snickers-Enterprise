@@ -1,7 +1,7 @@
 # Engine status (Person 1, `backend/marsloc`)
 
 Kept current after each stage. Numbers are measured, not targets.
-Last update: 2026-11-15, 08:15 local.
+Last update: 2026-11-15, 08:30 local.
 
 ## Where it stands
 
@@ -26,10 +26,21 @@ From `backend/`: `.venv\Scripts\python -m uvicorn marsloc.api:app --port 8000`
 - Checked for real: a three-photo Navcam request (sol 20, pose 3/770) returned HTTP 200, verdict
   `ok`, ±56 m / ±90 m, 39 m from the true position, and a dominant feature 10.7 km away whose two
   distance estimates agree to 3 m.
-- **Speed is not good enough for several photos.** That request took 31 s while a harness run was
-  using 8 cores; I have not timed it on an idle machine yet. A single 60° photo takes about 4 s
-  alone. Since then, requests with a lot of skyline keep fewer candidates after the first pass and
-  are refined with wider-spaced rays; the effect on time is not measured yet.
+- **Time per request on an idle machine** (server start: 1.4 s):
+
+  | Request | Time |
+  |---|---|
+  | one 60° photo | 3.7 s |
+  | one 120° photo | 3.9 s |
+  | three 60° photos | 6.1 s |
+  | 360° panorama | 8.7 s |
+  | real request, three Navcam photos | 7.6 s |
+
+  One photo meets "a few seconds"; several photos take 6–9 s. The largest part of a single-photo
+  request is the second pass of the coarse search (2.2 s). Requests with a lot of skyline keep
+  fewer candidates after the first pass and are refined with wider-spaced rays; without that rule
+  the real three-photo request took 31 s (measured while a harness run used 8 cores). The rule
+  changes nothing in simulation (table below) but lost one real pose (3/828, below).
 
 ## Real photos (24 rover poses, no prior)
 
@@ -99,9 +110,26 @@ Positions are random over the crater floor, the delta and the western rim area.
   68 % circle 76–88 % (slightly cautious). 91–96 % of `ok` answers are within 300 m.
 - About a quarter of single 60° photos can't be located (wrong by more than 1 km); those are
   nearly all reported `ambiguous` or `no_match`.
-- **Still running when this was written:** the sets with a 120° photo, three photos, a panorama,
-  0.1° noise, rocks and a pitch error (200 trials each). Their table will be in
-  `reports/more_sets/validate_sim.md`. They ran with the code before the speed rule.
+
+### More skyline, and more trouble (200 photos per row)
+
+| Set | Within 100 m | Within 300 m | Median error | `ok` | `ok`: within 300 m | In 95 % circle |
+|---|---|---|---|---|---|---|
+| one 60° photo (base, 300 trials) | 52 % | 67 % | 96 m | 43 % | 91 % | 98 % |
+| one 120° photo | 71 % | 77 % | 22 m | 68 % | 98 % | 92 % |
+| three 60° photos, known relative headings | 88 % | 92 % | 6 m | 70 % | 100 % | 83 % |
+| 360° panorama | 90 % | 94 % | 2 m | 72 % | 100 % | 84 % |
+| three photos, with the speed rule | 87 % | 92 % | 6 m | 70 % | 100 % | 82 % |
+| one 120° photo, with the speed rule | 70 % | 76 % | 23 m | 68 % | 98 % | 91 % |
+| 0.1° noise instead of 0.05° | 36 % | 52 % | 263 m | 20 % | 95 % | 100 % |
+| 2 unflagged rocks and a gap | 42 % | 54 % | 185 m | 16 % | 100 % | 100 % |
+| 0.3° pitch error, declared as ±0.5° | 33 % | 44 % | 988 m | 30 % | 86 % | 98 % |
+
+- **More skyline is the biggest lever.** Three photos or a panorama: about 90 % within 100 m, and
+  every `ok` answer within 300 m.
+- With several photos the 95 % circle holds the truth only 82–84 % of the time: too small there.
+- Angle noise of 0.1°, unflagged rocks and an undeclared horizontal each roughly halve what one
+  photo can do. A pitch error is the worst: allowing ±0.5° of shift makes many places fit.
 
 ## Matcher: what was wrong and what changed
 
@@ -124,10 +152,11 @@ Positions are random over the crater floor, the delta and the western rim area.
 
 ## Next, in order
 
-1. Time `/locate` on an idle machine (one photo, three photos) and cut the multi-photo time.
-2. Real photos: with Person 3, sort out the horizontal (shift at its limit in 7 poses) and the
-   0.8° heading offset, then rerun. Engine side: make the circles hold on real photos.
-3. Read the remaining harness sets; rerun the base set with the speed rule in place.
+1. Real photos: with Person 3, sort out the horizontal (shift at its limit in 7 poses) and the
+   0.8° heading offset, then rerun. More photos per pose would help most (see the table above).
+2. Make the circles hold with several photos (82–84 % instead of 95 %) and on real photos.
+3. Cut the second coarse pass (2.2 s of a 3.7 s single-photo request).
+4. Point the app at the server and try the Locate screen end to end (not done from my side).
 
 ## Notes for the team
 
