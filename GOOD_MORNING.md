@@ -5,7 +5,7 @@
 > (corrected tonight to match reality), then `backend/STATUS.md` (the engine's own status, if present)
 > and `backend/CONTRACTS.md` (the formats between the three parts).
 
-Last updated: **15 Nov, 02:50 local**.
+Last updated: **15 Nov, 03:00 local**.
 
 ---
 
@@ -49,6 +49,7 @@ Each person treats the other folders as read-only. Shared files (`SYSTEM_REFEREN
 - **~02:26** · Stored horizons rebuilt on the three-source terrain (about 3 min).
 - **~02:39 · 2148be3** · Cleanup: test-photo list 1.88 MB / 67k lines → 76 KB / 1,430 lines; `work/m20_candidates.json` removed; new `backend/skyline/scripts/build_test_requests.py`; `/validate` now loads `frontend/public/validation.json`. Fixed two wrong image ids (sols 100, 1100) and the "looks 25° down" error in the docs (they look 23–33° up).
 - **~02:50** · `SYSTEM_REFERENCE.md` corrected: matcher marked not validated, timings marked as targets, no `/locate` server yet, blend band, test counts.
+- **02:50–02:52 · e1b0b20, 775c2c8** · Person 3 (Dávid) did the same test-photo consolidation in parallel and merged it with 2148be3. Checked at 03:00: the merged manifest has 24 poses / 38 photos (1,430 lines), `work/` is gone, skyline tests 22 passed / 6 skipped, scripts compile, `GOOD_MORNING.md` and `SYSTEM_REFERENCE.md` kept intact. Person 3 is evidently still working from their own machine.
 - The engine session ("Fable Image Engine") keeps working on the matcher, in this order: (1) scoring bug, (2) a few hundred simulated trials, (3) honest confidence, (4) rerun on real photos. Updates are added below as they land.
 
 ---
