@@ -49,6 +49,12 @@
   color: var(--route);
 }
 
+/* The screen links sit over the hero photo: give them a dark backing so they stay readable. */
+.siteNav {
+  height: 40px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
 .navLinks {
   display: flex;
   gap: 28px;

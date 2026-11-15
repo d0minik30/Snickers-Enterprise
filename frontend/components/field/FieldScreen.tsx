@@ -9,7 +9,7 @@ import { ReadoutBand } from '@/components/field/ReadoutBand';
 import { StatusBanner, StatusPanel } from '@/components/field/StatusPanel';
 import { fieldStateAt } from '@/lib/mission/field';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
-import { ScreenMenu } from '@/components/shared/ScreenMenu';
+import { SiteHeader } from '@/components/shared/SiteHeader';
 import { useEmbedded } from '@/components/shared/embedded';
 import { MissionComplete } from '@/components/mission/MissionComplete';
 import { useMissionComplete } from '@/components/mission/useMissionComplete';
@@ -46,6 +46,7 @@ export default function FieldScreen() {
 
   return (
     <main className={styles.screen} data-testid="field-status" data-status={status}>
+      {!embedded && <SiteHeader place="" />}
       {status !== 'awaiting-route' && <NextMoveBand view={hydrated ? nextMoveView(state) : null} />}
       {hydrated && <StatusBanner status={state.status} />}
       <div className={styles.mapArea}>
@@ -71,14 +72,6 @@ export default function FieldScreen() {
         )}
         {cue.routeChangeId && <div key={cue.routeChangeId} className={styles.routePulse} aria-hidden="true" />}
         {hydrated && <StatusPanel state={state} onStart={start} onHeight={setReadyHeight} />}
-        {/* After the panel in the tree, so it stays on top of the waiting screen too. */}
-        {!embedded && (
-          <ScreenMenu className={styles.menuButton} label="Menu: all screens">
-            <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true">
-              <path d="M0 1H20M0 8H20M0 15H20" stroke="currentColor" strokeWidth="2" />
-            </svg>
-          </ScreenMenu>
-        )}
       </div>
       {hydrated && !embedded && done.show && done.summary && (
         <MissionComplete

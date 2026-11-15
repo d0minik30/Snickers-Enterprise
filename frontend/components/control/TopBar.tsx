@@ -1,6 +1,7 @@
 'use client';
 
-import { ScreenMenu } from '@/components/shared/ScreenMenu';
+import Link from 'next/link';
+import { SiteNav } from '@/components/shared/SiteNav';
 import { useEffect, useState } from 'react';
 import { getMissionStore, useMissionSnapshot } from '@/lib/mission/useMission';
 import { RATES } from '@/lib/mission/types';
@@ -24,10 +25,8 @@ export function TopBar() {
   const destination = useTraverseName();
   return (
     <header className={styles.topBar}>
-      <ScreenMenu className={styles.brand} label="Marsfinder: all screens">
-        MARSFINDER <span className={styles.brandView}>/ CONTROL</span>
-        <span className={styles.brandCaret} aria-hidden="true">▾</span>
-      </ScreenMenu>
+      <Link href="/" className={styles.homeLink}>MARSFINDER</Link>
+      <SiteNav />
       <div className={styles.traverse}>
         <span className={styles.traversePlace}>LANDING SITE&nbsp;→&nbsp;</span>{destination}
       </div>

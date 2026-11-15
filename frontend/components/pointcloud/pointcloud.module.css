@@ -226,3 +226,10 @@
     display: none;
   }
 }
+
+/* The screen links over the 3D view: a dark backing keeps them readable. */
+.siteNav {
+  height: 40px;
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}

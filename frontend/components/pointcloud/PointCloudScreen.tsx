@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { SiteNav } from '@/components/shared/SiteNav';
 import css from './pointcloud.module.css';
 
 const KM = 1 / 1000; // scene units are kilometres
@@ -278,10 +279,7 @@ export default function PointCloudScreen() {
 
       <header className={css.bar}>
         <Link href="/" className={css.logo}>MARS<span>FINDER</span></Link>
-        <span className={css.links}>
-          <Link href="/map/">Map</Link>
-          <Link href="/mission/">Mission</Link>
-        </span>
+        <SiteNav className={css.siteNav} />
       </header>
 
       <aside className={css.panel} aria-label="Point cloud">

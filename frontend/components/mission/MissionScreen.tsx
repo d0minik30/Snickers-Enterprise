@@ -12,7 +12,7 @@ import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/missi
 import { RATES, SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import { formatClock } from '@/lib/nav/format';
 import { DESTINATION } from '@/lib/planner';
-import Link from 'next/link';
+import { SiteHeader } from '@/components/shared/SiteHeader';
 import styles from './mission.module.css';
 
 const subscribeNever = () => () => {};
@@ -40,8 +40,8 @@ export default function MissionScreen() {
   return (
     <EmbeddedContext.Provider value={true}>
       <div className={styles.screen}>
+        <SiteHeader />
         <header className={styles.guide}>
-          <Link href="/" className={styles.home} aria-label="Home">MARSFINDER</Link>
           {hydrated && (
             <p className={styles.step} data-testid="mission-step">
               <span className={styles.stepNumber}>{step.n}</span>

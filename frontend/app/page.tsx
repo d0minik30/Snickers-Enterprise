@@ -4,6 +4,7 @@ import { formatClock } from '@/lib/nav/format';
 import { distanceM } from '@/lib/nav/geo';
 import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import { HeroBackground } from '@/components/landing/HeroBackground';
+import { SiteNav } from '@/components/shared/SiteNav';
 import styles from './page.module.css';
 
 const DELAY = formatClock(SIGNAL_DELAY_MS);
@@ -27,11 +28,7 @@ export default function Home() {
 
         <nav className={styles.nav} aria-label="Main">
           <Link href="/" className={styles.logo}>MARS<span>FINDER</span></Link>
-          <span className={styles.navLinks}>
-            <Link href="/map/">Map</Link>
-            <Link href="/pointcloud/">Point cloud</Link>
-            <Link href="/mission/">Mission</Link>
-          </span>
+          <SiteNav className={styles.siteNav} />
         </nav>
 
         <div className={styles.heroText}>
