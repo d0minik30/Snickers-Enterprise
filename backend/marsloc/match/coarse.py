@@ -18,7 +18,8 @@ import math
 
 import numpy as np
 
-from .score import bias_grid, heading_penalty, loglike_terms, logsumexp, model_variance, reliability
+from .score import (bias_grid, heading_penalty, loglike_terms, logsumexp, model_variance, reliability,
+                    trusted_variance)
 
 _CHUNK = 1024
 
@@ -76,11 +77,13 @@ class CoarseIndex:
         heading t * step1_deg + phase_deg.
         """
         mean = self.mean1 if rows is None else self.mean1[rows]
-        var = (self.var1 if rows is None else self.var1[rows]) + np.float32(sigma_deg ** 2)
         trust = self.trust1 if rows is None else self.trust1[rows]
-        gain = np.sqrt(trust / var)            # residual x gain = sqrt(trust) x (residual / sigma)
-        cap = np.float32(9.0) * trust          # a bin never costs more than a 3-sigma miss
-        norm = trust * np.log(var)             # broad predictions are worth less when they fit
+        var, known = trusted_variance((self.var1 if rows is None else self.var1[rows])
+                                      + np.float32(sigma_deg ** 2), trust)
+        var = var.astype(np.float32)
+        gain = np.where(known, 1.0 / np.sqrt(var), 0.0).astype(np.float32)   # residual x gain = z
+        cap = np.where(known, np.float32(9.0), np.float32(0.0))   # never more than a 3-sigma miss
+        norm = np.where(known, np.log(var), 0.0).astype(np.float32)  # broad predictions fit less sharply
 
         k = binned.n
         obs = binned.elev.astype(np.float32)
@@ -148,8 +151,9 @@ class CoarseIndex:
             stop = min(n, start + 256)
             index = np.mod(shifts[start:stop, :, None] + steps, self.n_az)
             row = np.arange(start, stop)[:, None, None]
-            total_var = var[row, index] + np.float32(sigma_deg ** 2)
-            inlier = trust[row, index] * inlier_obs
+            total_var, known = trusted_variance(var[row, index] + np.float32(sigma_deg ** 2),
+                                                trust[row, index])
+            inlier = known * inlier_obs
             base = obs - elev[row, index]
             best = None
             for bias in biases:

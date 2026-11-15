@@ -17,7 +17,8 @@ import numpy as np
 from .. import geo
 from ..horizon.render import render_horizon
 from .resample import bin_group
-from .score import bias_grid, heading_penalty, loglike_terms, logsumexp, model_variance, reliability
+from .score import (bias_grid, heading_penalty, loglike_terms, logsumexp, model_variance, reliability,
+                    trusted_variance)
 
 
 @dataclass
@@ -147,9 +148,9 @@ class FineSearch:
                 photo = self.observations[index]
                 az = headings[:, None] + binned.offsets_deg[None, :]
                 model = self._at(part, part["elev"], az)
-                total_var = self._at(part, var, az) + photo.angle_sigma_deg ** 2
-                model_trust = self._at(part, trust, az)
-                inlier = model_trust * binned.weight[None, :] * (1.0 - cfg.outlier_fraction)
+                total_var, known = trusted_variance(self._at(part, var, az) + photo.angle_sigma_deg ** 2,
+                                                    self._at(part, trust, az))
+                inlier = known * binned.weight[None, :] * (1.0 - cfg.outlier_fraction)
                 base = binned.elev[None, :] - model
                 biases = bias_grid(photo.horizon_uncertainty_deg, photo.angle_sigma_deg)
                 by_bias = np.stack([loglike_terms(base - b, total_var, inlier, cfg).sum(axis=1)
@@ -171,8 +172,10 @@ class FineSearch:
         photo = self.observations[index]
         az = group_heading + binned.offsets_deg
         model = self._at(part, part["elev"], az)
-        sigma = np.sqrt(self._at(part, var, az) + photo.angle_sigma_deg ** 2)
-        weight = self._at(part, trust, az) * binned.weight
+        model_trust = self._at(part, trust, az)
+        total_var, _ = trusted_variance(self._at(part, var, az) + photo.angle_sigma_deg ** 2, model_trust)
+        sigma = np.sqrt(total_var)
+        weight = model_trust * binned.weight
         seen = binned.weight > 0
         resid = np.where(seen, binned.elev - bias - model, np.nan)
         used = seen & (weight > 0) & (np.abs(np.where(seen, resid, 0.0)) <= 3.0 * sigma)

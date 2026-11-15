@@ -2,3 +2,6 @@
 output/*.json text eol=lf
 output/*.geojson text eol=lf
 output/*.bin binary
+
+# The test-case manifest is generated with LF so it stays stable across platforms.
+test_photos/*.json text eol=lf

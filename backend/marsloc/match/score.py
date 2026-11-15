@@ -6,15 +6,20 @@ Each observed bin is compared with the horizon value at the same azimuth. A bin 
 - an outlier (a rock near the camera, haze, a wrong trace): the angle could be anything
   within outlier_range_deg.
 
-The chance of being an inlier is (1 - outlier_fraction) x the sample's weight x how far the
-horizon can be trusted at that azimuth. So a bin with weight 0 has no influence at all, a
-nearby rock costs a bounded amount no matter how tall it is, and horizon bins formed by
-terrain close to the camera count little: at 20 m per pixel the elevation data can't show
-rocks, ripples and ledges that close.
+The chance of being an inlier is (1 - outlier_fraction) x the sample's weight. So a bin with
+weight 0 has no influence at all, and a nearby rock costs a bounded amount no matter how tall
+it is.
 
 The Gaussian's width combines the photo's own angle error with what the horizon can be off by:
 the DEM's height error seen at that distance, and the fact that a candidate position (and
-heading) is only near the true one, which shifts every feature by parallax.
+heading) is only near the true one, which shifts every feature by parallax. Horizon bins
+formed by terrain close to the camera are trusted less (reliability()): their variance is
+divided by that trust, so they pull less on the fit. At 20 m per pixel the elevation data
+can't show rocks, ripples and ledges that close.
+
+Trust must widen the Gaussian, never lower the chance of being an inlier: that would cap what
+a near-terrain bin can score however well it fits, and every far-terrain look-alike would
+beat a true position whose horizon is near terrain.
 """
 import math
 from dataclasses import dataclass, field
@@ -102,6 +107,13 @@ def model_variance(elev_deg, dist_m, step_deg, position_error_m, heading_error_d
     slide_sq = parallax_deg ** 2 + heading_error_deg ** 2
     dem_deg = np.degrees(config.dem_height_error_m / dist)
     return dem_deg ** 2 + slope_sq * slide_sq + (elev * position_error_m / dist) ** 2
+
+
+def trusted_variance(var, trust):
+    """Variance widened by the lack of trust: var / trust. Returns (variance, known), where
+    known is False for bins without a horizon (trust 0); their variance is a placeholder."""
+    known = trust > 0
+    return np.where(known, var / np.where(known, trust, 1.0), 1.0), known
 
 
 def loglike_terms(resid, var, inlier, config):

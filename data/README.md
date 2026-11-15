@@ -276,20 +276,44 @@ coordinates and elevations in the same Mars 2000 / areoid convention.
 
 ## Ground-truth photo cases
 
-`test_photos/manifest.json` reserves the v0.1 validation case list. It is empty at
-present: this checkout has no PDS images, PDS labels, camera calibration records, or
-verified rover telemetry linking true coordinates and headings to individual images.
-Do not treat a landing-site coordinate as the truth for later sols. Before adding
-cases, preserve the full source PDS product link and image calibration metadata;
-put truth coordinates and headings only in the validation manifest, never in a
-photo request sent to `/locate`. Keep full-resolution image products outside git.
+`test_photos/manifest.json` contains 19 real Perseverance Navcam cases spanning sols
+17–1700 and rover positions about 50 m to 11.4 km from the landing site. Images were
+selected from the NASA/JPL Mars 2020 raw-image feed; each case records the NASA image
+page, metadata-feed URL, full-resolution image URL, and image SHA-256. Full-resolution
+PNG files and their raw feed labels are stored in `test_photos/images/`, which is
+git-ignored. The authoritative sources are NASA's [Mars 2020 raw-image archive](https://mars.nasa.gov/mars2020/multimedia/raw-images/)
+and [M20 waypoint GeoJSON](https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json).
+
+Each case has the camera model, image dimensions, derived HFOV/VFOV, UTC timestamp,
+and a complete Section 4 request with skyline samples generated using the existing
+`backend/skyline` processor. Ground-truth `lat`, `lon`, and `heading_deg` are in the
+separate `truth` object, never in `request`. Position and heading come from the NASA
+M20 waypoint GeoJSON, joined by site/drive to a final localization within one sol of
+the image. The manifest records `rover_heading_deg` from waypoint `yaw`; contract
+`heading_deg`/`headings_deg` give the photo optical-axis azimuth, computed by adding
+the label-calibrated camera-axis offset to the waypoint rover heading. It also records
+the waypoint sol and source for auditing.
+
+To refresh the ignored images and rebuild the manifest from NASA's public endpoints,
+run from the repository root with the backend environment (Pillow, NumPy, and the
+skyline package dependencies) available:
+
+```powershell
+.\backend\.venv\Scripts\python.exe data/scripts/fetch_test_photos.py
+```
+
+The script uses fixed NASA product IDs for repeatability, retries transient feed
+failures, verifies that each product is a full-frame Navcam image with a usable camera
+model, and writes the manifest only after all cases have processed successfully.
+Inspect each case's truth object for its position association; the rover's position
+and heading are validation truth only and must never be copied into a `/locate` request.
 
 ## Data status and provenance
 
 All geospatial coordinates use east-positive longitude and the Mars 2000 sphere
 (3,396,190 m); terrain heights use metres above the Mars areoid. The original six
 processing scripts and outputs listed above remain the map-layer pipeline. The new
-`fetch_terrain.py`, `terrain_sources.json`, and `test_photos/manifest.json` are
-committed data-side assets. Terrain GeoTIFFs and full-resolution rover images remain
-in ignored/local or shared storage; only their checksums and manifest metadata belong
-in git.
+`fetch_terrain.py`, `terrain_sources.json`, `fetch_test_photos.py`,
+`test_photos/manifest.json`, and `output/features.geojson` are committed data-side
+assets. Terrain GeoTIFFs and full-resolution rover images remain in ignored/local or
+shared storage; checksums and manifest metadata are committed.
