@@ -1,13 +1,12 @@
 'use client';
 
-import { earthClock, liveProgress, marsClock, routeSentEvent, type RerouteBlocker } from '@/components/control/controlModel';
-import { fieldBars, fieldCells } from '@/components/field/fieldModel';
-import { Bar } from '@/components/shared/Bar';
+import { liveProgress, routeSentEvent, type RerouteBlocker } from '@/components/control/controlModel';
+import { simpleCells } from '@/components/field/fieldModel';
 import { Readout } from '@/components/shared/Readout';
 import type { ControlView } from '@/lib/mission/control';
 import type { FieldStatus } from '@/lib/mission/field';
 import { SIGNAL_DELAY_MS, type MissionEvent } from '@/lib/mission/types';
-import { formatClock, formatDistance, formatLat, formatLon } from '@/lib/nav/format';
+import { formatClock, formatDistance } from '@/lib/nav/format';
 import styles from './control.module.css';
 
 type Props = {
@@ -20,11 +19,11 @@ type Props = {
 };
 
 const STATUS_TEXT: Record<FieldStatus, string> = {
-  'awaiting-route': 'AWAITING ROUTE',
-  ready: 'ROUTE RECEIVED · NOT STARTED',
-  moving: 'MOVING',
+  'awaiting-route': 'WAITING FOR ROUTE',
+  ready: 'GOT THE ROUTE · NOT STARTED',
+  moving: 'WALKING',
   holding: 'HOLDING',
-  arrived: 'ARRIVED',
+  arrived: 'ARRIVED ✓',
 };
 
 const STATUS_TONE: Record<FieldStatus, string> = {
@@ -47,7 +46,7 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
   return (
     <aside className={`${styles.rail} ${styles.leftRail}`} aria-label="Live">
       <div data-testid="data-age" className={styles.dataAge}>
-        FIELD DATA IS {formatClock(view.dataAgeMs)} OLD
+        WHAT YOU SEE HERE IS {formatClock(view.dataAgeMs)} OLD
       </div>
 
       <section className={styles.section}>
@@ -57,8 +56,8 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
         </div>
         {!hasData && (
           <p className={styles.noData}>
-            NO FIELD DATA YET
-            {sent && <> · FIRST SIGNAL IN {formatClock(Math.max(0, sent.tMs + 2 * SIGNAL_DELAY_MS - view.tMs))}</>}
+            NOTHING HEARD FROM MARS YET
+            {sent && <> · FIRST NEWS IN {formatClock(Math.max(0, sent.tMs + 2 * SIGNAL_DELAY_MS - view.tMs))}</>}
           </p>
         )}
       </section>
@@ -66,8 +65,7 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
       {hasData && (
         <>
           <section className={`${styles.section} ${styles.liveCells}`}>
-            {fieldCells(received).map(c => <Readout key={c.label} label={c.label} value={c.value} unit={c.unit} tone={c.tone} />)}
-            {fieldBars(received).map(b => <Bar key={b.label} label={b.label} value={b.value} unit={b.unit} fraction={b.fraction} />)}
+            {simpleCells(received).map(c => <Readout key={c.label} label={c.label} value={c.value} unit={c.unit} tone={c.tone} />)}
           </section>
 
           {progress && (
@@ -81,18 +79,11 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
             </section>
           )}
 
-          {received.pos && (
+          {received.status === 'moving' && ahead > 1 && (
             <section className={styles.section}>
-              <h2 className={styles.heading}>Last received position</h2>
-              <p className={styles.coords}>{formatLat(received.pos.lat)} &nbsp;{formatLon(received.pos.lon)}</p>
               <p className={styles.note}>
-                Received {earthClock(view.tMs)} UTC · sent from Mars {marsClock(received.tMs).time}
+                By now they are probably about <span className={styles.noteValue}>{distanceText(ahead)}</span> further along.
               </p>
-              {received.status === 'moving' && ahead > 1 && (
-                <p className={styles.note}>
-                  Estimated now: about <span className={styles.noteValue}>{distanceText(ahead)}</span> further along the route.
-                </p>
-              )}
             </section>
           )}
         </>
@@ -100,11 +91,11 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
 
       <section className={styles.actions}>
         {notice === 'too-late' && (
-          <p data-testid="too-late" className={styles.tooLate} role="alert">TOO LATE TO REROUTE · TRAVELLER WILL HAVE ARRIVED</p>
+          <p data-testid="too-late" className={styles.tooLate} role="alert">TOO LATE TO CHANGE THE ROUTE · THEY WILL HAVE ARRIVED</p>
         )}
         {notice === 'too-close' && (
           <p data-testid="too-close" className={styles.tooLate} role="alert">
-            TOO CLOSE TO ROUTE AROUND · TRAVELLER REACHES IT BEFORE A NEW ROUTE · FLAG PAST EARLIEST REROUTE OR SEND HOLD
+            TOO CLOSE · THEY REACH IT BEFORE A NEW ROUTE COULD ARRIVE · FLAG FURTHER AHEAD OR SEND HOLD
           </p>
         )}
         <button
@@ -115,12 +106,12 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
           disabled={!hasRoute}
           onClick={onFlag}
         >
-          {flagging ? 'CLICK THE MAP · ESC TO CANCEL' : 'FLAG HAZARD ON MAP'}
+          {flagging ? 'CLICK THE MAP · ESC TO CANCEL' : 'MARK A DANGER ON THE MAP'}
         </button>
         <button type="button" data-testid="replan" className={styles.actionButton} disabled={!hasRoute} onClick={onReplan}>
-          REPLAN FROM CURRENT POSITION
+          PLAN A NEW ROUTE FROM HERE
         </button>
-        <p className={styles.sendNote}>New routes reach the field in <span className={styles.sendDelay}>{formatClock(SIGNAL_DELAY_MS)}</span></p>
+        <p className={styles.sendNote}>New routes reach Mars in <span className={styles.sendDelay}>{formatClock(SIGNAL_DELAY_MS)}</span></p>
       </section>
     </aside>
   );

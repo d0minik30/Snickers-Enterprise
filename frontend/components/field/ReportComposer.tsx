@@ -27,7 +27,7 @@ export function CommsBar({ state, panel, onPanel }: { state: FieldState; panel: 
       >
         <span className={styles.reportBarLabel}>
           <span className={styles.reportBarIcon} aria-hidden="true">{composing ? '✕' : '▲'}</span>
-          {composing ? 'CLOSE' : 'MESSAGE CONTROL'}
+          {composing ? 'CLOSE' : 'MESSAGE EARTH'}
         </span>
         {composing && <span className={styles.reportMuted}>DELAY {formatClock(SIGNAL_DELAY_MS)}</span>}
       </button>

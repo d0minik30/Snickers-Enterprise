@@ -2,8 +2,8 @@
 
 import { ScreenMenu } from '@/components/shared/ScreenMenu';
 import { useEffect, useState } from 'react';
-import { earthClock, marsClock } from '@/components/control/controlModel';
-import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
+import { useEmbedded } from '@/components/shared/embedded';
+import { getMissionStore, useMissionSnapshot } from '@/lib/mission/useMission';
 import { RATES, SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import { distanceM } from '@/lib/nav/geo';
 import { DEFAULT_END, DESTINATION } from '@/lib/planner';
@@ -26,9 +26,8 @@ function useTraverseName(): string {
 }
 
 export function TopBar({ mode, onMode }: Props) {
-  const t = useMissionTime();
+  const embedded = useEmbedded();
   const destination = useTraverseName();
-  const mars = marsClock(t);
   const tab = (m: ControlMode, label: string) => (
     <button
       type="button"
@@ -50,24 +49,16 @@ export function TopBar({ mode, onMode }: Props) {
       </ScreenMenu>
       <div role="tablist" aria-label="Mode" className={styles.tabs}>
         {tab('plan', 'PLAN')}
-        {tab('live', 'LIVE')}
+        {tab('live', 'WATCH')}
       </div>
       <div className={styles.traverse}>
-        <span className={styles.traversePlace}>BASE&nbsp;→&nbsp;</span>{destination}
-      </div>
-      <div className={styles.clock}>
-        <span className={styles.clockLabel}>EARTH UTC</span>
-        <span className={styles.clockValue}>{earthClock(t)}</span>
-      </div>
-      <div className={styles.clock}>
-        <span className={styles.clockLabel}>MARS · SOL {mars.sol}</span>
-        <span className={styles.clockValue}>{mars.time}</span>
+        <span className={styles.traversePlace}>LANDING SITE&nbsp;→&nbsp;</span>{destination}
       </div>
       <div data-testid="signal-delay" className={`${styles.clock} ${styles.delay}`}>
-        <span className={styles.clockLabel}>SIGNAL DELAY</span>
+        <span className={styles.clockLabel}>RADIO DELAY</span>
         <span className={styles.clockValue}>{formatClock(SIGNAL_DELAY_MS)}</span>
       </div>
-      <DemoControls />
+      {!embedded && <DemoControls />}
     </header>
   );
 }
@@ -91,7 +82,7 @@ function DemoControls() {
 
   return (
     <div className={styles.demo} aria-label="Demo controls" role="group">
-      <span>DEMO</span>
+      <span>SPEED</span>
       <div data-testid="demo-rate" role="group" aria-label="Clock rate" className={styles.rates}>
         {RATES.map(rate => (
           <button

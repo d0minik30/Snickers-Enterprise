@@ -61,14 +61,14 @@ export function CommsRail({ view, log, onOrder, onMessage }: Props) {
           className={styles.msgForm}
           onSubmit={e => { e.preventDefault(); send(); }}
         >
-          <label className={styles.srOnly} htmlFor="msg-input">Message to field</label>
+          <label className={styles.srOnly} htmlFor="msg-input">Message to the crew</label>
           <input
             id="msg-input"
             data-testid="msg-input"
             className={styles.msgInput}
             value={draft}
             maxLength={MAX_MESSAGE_LENGTH}
-            placeholder="Message to field"
+            placeholder="Message to the crew"
             autoComplete="off"
             onChange={e => setDraft(e.target.value)}
           />
@@ -86,7 +86,7 @@ function UplinkEntry({ u, nowMs }: { u: Uplink; nowMs: number }) {
   return (
     <li data-testid="uplink" data-status={u.status} data-id={u.event.id} className={`${styles.entry} ${styles.entryOut} ${styles[`entry-${u.status}`]}`}>
       <div className={styles.entryHead}>
-        <span>▲ TO FIELD</span>
+        <span>▲ TO MARS</span>
         <span>{earthClock(u.sentMs)}</span>
       </div>
       <p className={styles.entryText}>{uplinkText(u)}</p>
@@ -95,7 +95,7 @@ function UplinkEntry({ u, nowMs }: { u: Uplink; nowMs: number }) {
           <div className={styles.entryTrack}><span style={{ width: `${u.progress * 100}%` }} /></div>
           <p className={styles.entryState}>
             ARRIVES IN {formatClock(Math.max(0, u.arrivesMs - nowMs))}
-            {u.event.type === 'route-changed' && ' · FIELD STILL ON OLD ROUTE'}
+            {u.event.type === 'route-changed' && ' · CREW STILL ON OLD ROUTE'}
           </p>
         </>
       ) : (
@@ -118,7 +118,7 @@ function DownlinkEntry({ d, targetText }: { d: Downlink; targetText: string }) {
   return (
     <li data-testid="downlink" data-kind={d.kind} className={`${styles.entry} ${styles.entryIn} ${d.kind === 'report' ? styles['entry-report'] : ''}`}>
       <div className={styles.entryHead}>
-        <span>{d.kind === 'report' ? '▼ MESSAGE FROM FIELD' : '▼ FROM FIELD'}</span>
+        <span>{d.kind === 'report' ? '▼ MESSAGE FROM MARS' : '▼ FROM MARS'}</span>
         <span>{earthClock(d.receivedMs)}</span>
       </div>
       <p className={styles.entryText}>{downlinkText(d, targetText)}</p>

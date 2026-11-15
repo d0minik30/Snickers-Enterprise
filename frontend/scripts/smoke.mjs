@@ -173,7 +173,7 @@ async function sendRoute(page) {
 
   await byTestId(page, 'tab-plan').click();
   check(await byTestId(page, 'send-route').count() === 0, 'Plan offers no second send while a mission runs');
-  check((await page.getByText('MISSION IN PROGRESS').count()) === 1, 'Plan says the mission is in progress');
+  check((await page.getByText('MISSION UNDER WAY').count()) === 1, 'Plan says the mission is in progress');
 }
 
 async function demoControls(page, other) {

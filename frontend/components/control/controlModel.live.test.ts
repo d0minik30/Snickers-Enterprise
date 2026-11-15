@@ -40,7 +40,7 @@ describe('liveOverlays', () => {
     const o = liveOverlays(controlViewAt([sent, start, change], 1_500_000));
     expect(o.filter(x => x.kind === 'traveller').map(x => x.kind === 'traveller' && x.variant).sort()).toEqual(['ghost', 'solid']);
     expect(o.find(x => x.kind === 'hazard' && x.id === 'hazard:hz')).toMatchObject({ pending: true });
-    expect(o.some(x => x.kind === 'label' && x.text === 'FLAGGED · NOT YET AT FIELD')).toBe(true);
+    expect(o.some(x => x.kind === 'label' && x.text === 'MARKED · CREW NOT TOLD YET')).toBe(true);
     expect(o.some(x => x.kind === 'route' && x.variant === 'pending')).toBe(true);
     expect(o.some(x => x.kind === 'label' && x.text.startsWith('REROUTE · ARRIVES IN'))).toBe(true);
   });

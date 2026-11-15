@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useMemo, useState, useSyncExternalStore } from 'react';
-import { fieldBars, fieldCamera, fieldCells, fieldCue, fieldOverlays, latestUnacked, nextMoveView } from '@/components/field/fieldModel';
+import { fieldCamera, simpleCells, fieldCue, fieldOverlays, latestUnacked, nextMoveView } from '@/components/field/fieldModel';
 import { MessageStrip } from '@/components/field/MessageStrip';
 import { NextMoveBand } from '@/components/field/NextMoveBand';
 import { ReadoutBand } from '@/components/field/ReadoutBand';
@@ -11,6 +11,10 @@ import { StatusBanner, StatusPanel } from '@/components/field/StatusPanel';
 import { fieldStateAt } from '@/lib/mission/field';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
 import { ScreenMenu } from '@/components/shared/ScreenMenu';
+import { useEmbedded } from '@/components/shared/embedded';
+import { MissionComplete } from '@/components/mission/MissionComplete';
+import { useMissionComplete } from '@/components/mission/useMissionComplete';
+import { DESTINATION } from '@/lib/planner';
 import styles from './field.module.css';
 
 const MarsMap = dynamic(() => import('@/components/map/MarsMap'), { ssr: false });
@@ -24,8 +28,10 @@ function useHydrated(): boolean {
 
 export default function FieldScreen() {
   const hydrated = useHydrated();
+  const embedded = useEmbedded();
   const snapshot = useMissionSnapshot();
   const t = useMissionTime();
+  const done = useMissionComplete(snapshot.log, t, snapshot.epoch);
   const state = useMemo(() => fieldStateAt(snapshot.log, t), [snapshot.log, t]);
 
   const overlays = useMemo(() => fieldOverlays(state), [state]);
@@ -55,7 +61,7 @@ export default function FieldScreen() {
         {hydrated && (state.status === 'moving' || state.status === 'holding') && (
           <button type="button" data-testid="field-photo-fix" className={styles.fixButton} onClick={photoFix}>
             PHOTO FIX
-            <span className={styles.fixButtonNote}>skyline → position</span>
+            <span className={styles.fixButtonNote}>find my position</span>
           </button>
         )}
         {hydrated && state.pos && (
@@ -71,16 +77,27 @@ export default function FieldScreen() {
         {cue.routeChangeId && <div key={cue.routeChangeId} className={styles.routePulse} aria-hidden="true" />}
         {hydrated && <StatusPanel state={state} onStart={start} onHeight={setReadyHeight} />}
         {/* After the panel in the tree, so it stays on top of the waiting screen too. */}
-        <ScreenMenu className={styles.menuButton} label="Menu: all screens">
-          <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true">
-            <path d="M0 1H20M0 8H20M0 15H20" stroke="currentColor" strokeWidth="2" />
-          </svg>
-        </ScreenMenu>
+        {!embedded && (
+          <ScreenMenu className={styles.menuButton} label="Menu: all screens">
+            <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true">
+              <path d="M0 1H20M0 8H20M0 15H20" stroke="currentColor" strokeWidth="2" />
+            </svg>
+          </ScreenMenu>
+        )}
         {hydrated && panel === 'compose' && <ReportSheet onSend={report} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
         {hydrated && panel === 'log' && <LogSheet state={state} onAck={ack} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
       </div>
       {hydrated && <CommsBar state={state} panel={panel} onPanel={setPanel} />}
-      <ReadoutBand cells={fieldCells(state)} bars={fieldBars(state)} fixCue={hydrated && cue.fix} />
+      {hydrated && !embedded && done.show && done.summary && (
+        <MissionComplete
+          summary={done.summary}
+          place={DESTINATION.name}
+          note="Mission Control on Earth hears about it 11:20 later."
+          onNew={() => { done.close(); getMissionStore().reset(); }}
+          onClose={done.close}
+        />
+      )}
+      <ReadoutBand cells={simpleCells(state)} fixCue={hydrated && cue.fix} />
     </main>
   );
 }

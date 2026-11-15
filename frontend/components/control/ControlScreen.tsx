@@ -18,7 +18,11 @@ import type { MapCamera } from '@/components/map/overlays';
 import { controlViewAt } from '@/lib/mission/control';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
 import type { MissionEvent } from '@/lib/mission/types';
-import { DEFAULT_END, DEFAULT_START, FLAG_RADIUS_M, PRESET_HAZARDS } from '@/lib/planner';
+import { DEFAULT_END, DEFAULT_START, DESTINATION, FLAG_RADIUS_M, PRESET_HAZARDS } from '@/lib/planner';
+import { MissionComplete } from '@/components/mission/MissionComplete';
+import { useMissionComplete } from '@/components/mission/useMissionComplete';
+import { useEmbedded } from '@/components/shared/embedded';
+import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import type { LatLon } from '@/lib/planner/types';
 import styles from './control.module.css';
 
@@ -60,6 +64,7 @@ export default function ControlScreen() {
       {hydrated && (mode === 'plan'
         ? <PlanMode draft={draft} inProgress={sent !== undefined} onSend={send} />
         : <LiveMode log={snapshot.log} onPlan={() => setChosenMode('plan')} />)}
+      {hydrated && <EarthHearsDone />}
     </main>
   );
 }
@@ -177,5 +182,23 @@ function LiveMode({ log, onPlan }: { log: MissionEvent[]; onPlan: () => void }) 
         onMessage={text => getMissionStore().append({ type: 'message', origin: 'control', text })}
       />
     </>
+  );
+}
+
+/** On its own page, Control shows "mission complete" once the news reaches Earth (11:20 after arrival). */
+function EarthHearsDone() {
+  const embedded = useEmbedded();
+  const snapshot = useMissionSnapshot();
+  const t = useMissionTime(2);
+  const done = useMissionComplete(snapshot.log, t - SIGNAL_DELAY_MS, snapshot.epoch);
+  if (embedded || !done.show || !done.summary) return null;
+  return (
+    <MissionComplete
+      summary={done.summary}
+      place={DESTINATION.name}
+      note="The news just reached Earth. The crew arrived 11:20 ago."
+      onNew={() => { done.close(); getMissionStore().reset(); }}
+      onClose={done.close}
+    />
   );
 }
