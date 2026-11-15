@@ -1,6 +1,7 @@
 'use client';
 
-import { liveProgress, routeSentEvent, type RerouteBlocker } from '@/components/control/controlModel';
+import { liveProgress, projectedArrivalPercent, routeSentEvent, type OxygenCheck, type RerouteBlocker, type RerouteOption } from '@/components/control/controlModel';
+import { RESERVE_PERCENT, formatEndPercent, lifeSupportAt, lifeTone } from '@/lib/mission/lifeSupport';
 import { simpleCells } from '@/components/field/fieldModel';
 import { Readout } from '@/components/shared/Readout';
 import type { ControlView } from '@/lib/mission/control';
@@ -17,7 +18,14 @@ type Props = {
   notice: RerouteBlocker | null;
   onFlag: () => void;
   onReplan: () => void;
+  /** A reroute held back because it would end under the reserve: Control picks one of its options. */
+  check: OxygenCheck | null;
+  onChoose: (kind: RerouteOption['kind']) => void;
+  onCancelCheck: () => void;
 };
+
+const OPTION_LABEL: Record<RerouteOption['kind'], string> = { around: 'GO AROUND', back: 'TURN BACK', anyway: 'SEND ANYWAY' };
+const TONE_CLASS = { plain: styles.statusPlain, caution: styles.statusCaution, danger: styles.lifeDanger } as const;
 
 const STATUS_TEXT: Record<FieldStatus, string> = {
   'awaiting-route': 'WAITING FOR ROUTE',
@@ -39,7 +47,7 @@ const STATUS_TONE: Record<FieldStatus, string> = {
  * The one rail in Live mode, read top to bottom: what Earth knows (never as if it were current)
  * and what Earth can do about the route.
  */
-export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Props) {
+export function LiveRail({ view, log, flagging, notice, onFlag, onReplan, check, onChoose, onCancelCheck }: Props) {
   const { received } = view;
   const embedded = useEmbedded(); // inside Mission, Mars shows the numbers and the step line says the state
   const sent = routeSentEvent(log);
@@ -47,6 +55,8 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
   const hasData = received.status !== 'awaiting-route';
   const progress = liveProgress(view);
   const ahead = view.estimatedNow ? view.estimatedNow.distM - received.distM : 0;
+  const life = lifeSupportAt(received);
+  const atArrival = projectedArrivalPercent(view);
 
   return (
     <aside className={`${styles.rail} ${styles.leftRail}`} aria-label="Live">
@@ -87,6 +97,13 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
           </div>
         )}
 
+        {hasData && life && atArrival !== null && received.status !== 'arrived' && (
+          <p className={`${styles.lifeLine} ${styles.blockGap}`} data-testid="live-life">
+            {life.kind === 'oxygen' ? 'OXYGEN' : 'BATTERY'} {Math.round(life.percent)} % ·{' '}
+            <span className={TONE_CLASS[lifeTone(atArrival)]}>≈ {formatEndPercent(atArrival)} AT ARRIVAL</span>
+          </p>
+        )}
+
         {hasData && !embedded && received.status === 'moving' && ahead > 1 && (
           <p className={`${styles.note} ${styles.blockGap}`}>
             By now they are probably about <span className={styles.noteValue}>{distanceText(ahead)}</span> further along.
@@ -104,6 +121,7 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
             TOO CLOSE · THEY REACH IT BEFORE A NEW ROUTE COULD ARRIVE · FLAG FURTHER AHEAD OR SEND HOLD
           </p>
         )}
+        {check && <OxygenCheckCard check={check} battery={view.traveller === 'rover'} onChoose={onChoose} onCancel={onCancelCheck} />}
         <button
           type="button"
           data-testid="flag-hazard"
@@ -120,6 +138,36 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
         {!embedded && <p className={styles.sendNote}>New routes reach Mars in <span className={styles.sendDelay}>{formatClock(SIGNAL_DELAY_MS)}</span></p>}
       </section>
     </aside>
+  );
+}
+
+/** The reroute would end under the reserve: the options, the app's pick marked. Nothing is sent until a click. */
+function OxygenCheckCard({ check, battery, onChoose, onCancel }: {
+  check: OxygenCheck; battery: boolean; onChoose: (kind: RerouteOption['kind']) => void; onCancel: () => void;
+}) {
+  const asked = check.options.find(o => o.kind === 'anyway') ?? check.options.find(o => o.kind === 'around');
+  return (
+    <div className={styles.oxygenCheck} data-testid="oxygen-check" role="alert">
+      <p className={styles.oxygenTitle}>{battery ? 'BATTERY CHECK' : 'OXYGEN CHECK'}</p>
+      <p className={styles.oxygenWhy}>
+        {check.noneKeeps
+          ? `No option keeps the ${RESERVE_PERCENT} % reserve. Highlighted: the one that leaves the most.`
+          : `This route ends at ≈ ${asked ? formatEndPercent(asked.endPercent) : '—'} · reserve is ${RESERVE_PERCENT} %. Highlighted: recommended.`}
+      </p>
+      {check.options.map(o => (
+        <button
+          key={o.kind}
+          type="button"
+          data-testid={`oxygen-${o.kind}`}
+          className={`${styles.actionButton} ${o.kind === check.pick ? styles.oxygenPick : ''}`}
+          aria-label={`${OPTION_LABEL[o.kind]}, about ${formatEndPercent(o.endPercent)} at the end${o.kind === check.pick ? ', recommended' : ''}`}
+          onClick={() => onChoose(o.kind)}
+        >
+          {OPTION_LABEL[o.kind]} · ≈ {formatEndPercent(o.endPercent)}
+        </button>
+      ))}
+      <button type="button" className={styles.oxygenCancel} onClick={onCancel}>CANCEL</button>
+    </div>
   );
 }
 

@@ -521,8 +521,8 @@ button.brand[aria-expanded='true'] .brandCaret {
 
 .cardStats {
   display: grid;
-  grid-template-columns: 1.1fr 1.1fr 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 8px;
 }
 
 .tooClose {
@@ -1252,4 +1252,59 @@ button.brand[aria-expanded='true'] .brandCaret {
 
 .homeLink:hover {
   color: var(--route);
+}
+
+/* ---------------------------------------------------------------- oxygen (battery) */
+
+.lifeLine {
+  font-size: var(--type-small);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+}
+
+.lifeDanger {
+  color: var(--danger);
+}
+
+.runsOut {
+  margin-top: 8px;
+  text-align: center;
+  font-size: var(--type-small);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+  color: var(--danger);
+}
+
+.oxygenCheck {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--caution);
+}
+
+.oxygenTitle {
+  color: var(--caution);
+  font-size: var(--type-small);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+}
+
+.oxygenWhy {
+  font-size: var(--type-small);
+  line-height: 1.3;
+}
+
+.oxygenCheck .oxygenPick {
+  background: var(--caution);
+  border-color: var(--caution);
+  color: var(--surface);
+}
+
+.oxygenCancel {
+  padding: 4px 0;
+  color: var(--muted);
+  font-size: var(--type-small);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
 }

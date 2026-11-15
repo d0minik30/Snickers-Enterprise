@@ -1,14 +1,15 @@
 import type { NextMoveView } from '@/components/field/fieldModel';
-import type { LifeSupport } from '@/lib/mission/lifeSupport';
+import { formatEndPercent, lifeTone, type LifeSupport } from '@/lib/mission/lifeSupport';
 import { TurnArrow } from '@/components/shared/TurnArrow';
 import { useEmbedded } from '@/components/shared/embedded';
 import styles from './field.module.css';
 
 const LOW_PERCENT = 25; // amber below this
 const CRITICAL_PERCENT = 10; // red below this
+const ARRIVAL_TONE = { plain: '', caution: styles.lifeLow, danger: styles.lifeCritical } as const;
 
 /** Suit oxygen with the breathing rate behind it, or the rover's battery with its net draw. */
-function LifeCell({ life }: { life: LifeSupport }) {
+function LifeCell({ life, arrival }: { life: LifeSupport; arrival: number | null }) {
   const tone = life.percent < CRITICAL_PERCENT ? styles.lifeCritical : life.percent < LOW_PERCENT ? styles.lifeLow : styles.lifeOk;
   return (
     <div className={`${styles.sideCell} ${styles.lifeCell}`} data-testid="field-life-support" data-kind={life.kind}>
@@ -18,12 +19,17 @@ function LifeCell({ life }: { life: LifeSupport }) {
       <span className={styles.lifeNote}>
         {life.kind === 'oxygen' ? `${life.breathsPerMin} BREATHS/MIN` : `${life.netW > 0 ? '−' : '+'}${Math.abs(life.netW)} W`}
       </span>
+      {arrival !== null && (
+        <span className={`${styles.lifeNote} ${ARRIVAL_TONE[lifeTone(arrival)]}`} data-testid="field-life-arrival">
+          ≈ {formatEndPercent(arrival)} AT END
+        </span>
+      )}
     </div>
   );
 }
 
 /** Top band: the next move on the left; oxygen or battery (and, on its own page, the heading) on the right. */
-export function NextMoveBand({ view, life }: { view: NextMoveView | null; life: LifeSupport | null }) {
+export function NextMoveBand({ view, life, arrival = null }: { view: NextMoveView | null; life: LifeSupport | null; arrival?: number | null }) {
   const embedded = useEmbedded();
   return (
     <section className={styles.nextMove} aria-label="Next move">
@@ -45,7 +51,7 @@ export function NextMoveBand({ view, life }: { view: NextMoveView | null; life: 
         )}
       </div>
       <div className={styles.moveSide}>
-        {life && <LifeCell life={life} />}
+        {life && <LifeCell life={life} arrival={arrival} />}
         {!embedded && (
           <div className={styles.sideCell}>
             <span className={styles.sideLabel}>HDG</span>

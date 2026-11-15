@@ -85,6 +85,11 @@ export function arrivalPercent(state: FieldState): number | null {
   return life.percent - costPercent(state.traveller, state.route.lengthM - state.distM, 0);
 }
 
+/** '34 %', or "WON'T REACH" when a route would run out: never a negative percentage. */
+export function formatEndPercent(percent: number): string {
+  return percent < 0 ? "WON'T REACH" : `${Math.round(percent)} %`;
+}
+
 /** Red below empty, amber below the reserve. */
 export function lifeTone(percent: number): 'plain' | 'caution' | 'danger' {
   return percent < 0 ? 'danger' : percent < RESERVE_PERCENT ? 'caution' : 'plain';

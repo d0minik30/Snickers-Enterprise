@@ -8,7 +8,7 @@ import { NextMoveBand } from '@/components/field/NextMoveBand';
 import { ReadoutBand } from '@/components/field/ReadoutBand';
 import { StatusBanner, StatusPanel } from '@/components/field/StatusPanel';
 import { fieldStateAt } from '@/lib/mission/field';
-import { lifeSupportAt } from '@/lib/mission/lifeSupport';
+import { arrivalPercent, lifeSupportAt } from '@/lib/mission/lifeSupport';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
 import { SiteHeader } from '@/components/shared/SiteHeader';
 import { useEmbedded } from '@/components/shared/embedded';
@@ -48,7 +48,8 @@ export default function FieldScreen() {
   return (
     <main className={styles.screen} data-testid="field-status" data-status={status}>
       {!embedded && <SiteHeader place="" />}
-      {status !== 'awaiting-route' && <NextMoveBand view={hydrated ? nextMoveView(state) : null} life={hydrated ? lifeSupportAt(state) : null} />}
+      {status !== 'awaiting-route' && <NextMoveBand view={hydrated ? nextMoveView(state) : null} life={hydrated ? lifeSupportAt(state) : null}
+        arrival={hydrated && state.status !== 'arrived' ? arrivalPercent(state) : null} />}
       {hydrated && <StatusBanner status={state.status} />}
       <div className={styles.mapArea}>
         {hydrated && <MarsMap overlays={overlays} camera={camera} />}

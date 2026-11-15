@@ -4,6 +4,7 @@ import { recommendationText, riskTone, routeLetter, slopeTone, summarizeRoute } 
 import type { PlanDraft } from '@/components/control/usePlanDraft';
 import { Readout } from '@/components/shared/Readout';
 import { useEmbedded } from '@/components/shared/embedded';
+import { formatEndPercent, lifeTone, routeEndPercent } from '@/lib/mission/lifeSupport';
 import { SIGNAL_DELAY_MS, type TravellerKind } from '@/lib/mission/types';
 import { formatClock } from '@/lib/nav/format';
 import { MIN_ROUTE_M } from '@/lib/planner';
@@ -21,6 +22,8 @@ const TRAVELLERS: { kind: TravellerKind; label: string }[] = [
 /** Left rail in Plan mode, everything in one column: who goes, the routes and why A, moving start or end, send. */
 export function PlanRail({ draft, inProgress, onSend }: Props) {
   const embedded = useEmbedded();
+  const chosen = draft.routes.find(r => r.profile === draft.selected);
+  const runsOut = chosen !== undefined && routeEndPercent(chosen, draft.traveller) < 0;
   return (
     <aside className={`${styles.rail} ${styles.leftRail}`} aria-label="Plan">
       <section className={styles.section}>
@@ -78,9 +81,14 @@ export function PlanRail({ draft, inProgress, onSend }: Props) {
           <p className={styles.inProgress}>MISSION UNDER WAY · START OVER TO PLAN A NEW ONE</p>
         ) : (
           <>
-            <button type="button" data-testid="send-route" className={styles.sendButton} disabled={draft.tooClose} onClick={onSend}>
+            <button type="button" data-testid="send-route" className={styles.sendButton} disabled={draft.tooClose || runsOut} onClick={onSend}>
               SEND ROUTE {routeLetter(draft.selected)} TO MARS ▲
             </button>
+            {runsOut && (
+              <p className={styles.runsOut} data-testid="send-runs-out">
+                NOT ENOUGH {draft.traveller === 'rover' ? 'BATTERY' : 'OXYGEN'} TO REACH THE END
+              </p>
+            )}
             <p className={styles.sendNote}>
               Reaches Mars in <span className={styles.sendDelay}>{formatClock(SIGNAL_DELAY_MS)}</span>
             </p>
@@ -119,6 +127,7 @@ type CardProps = { route: Route; traveller: TravellerKind; selected: boolean; on
 
 function RouteCard({ route, traveller, selected, onSelect }: CardProps) {
   const s = summarizeRoute(route, traveller);
+  const end = routeEndPercent(route, traveller);
   return (
     <button
       type="button"
@@ -137,6 +146,7 @@ function RouteCard({ route, traveller, selected, onSelect }: CardProps) {
           <Readout label="Length" value={s.length} />
           <Readout label="Time" value={s.time} />
           <Readout label="Max slope" value={s.maxSlope} tone={slopeTone(route.maxSlopeDeg)} />
+          <Readout label={traveller === 'rover' ? 'Battery at end' : 'O₂ at end'} value={formatEndPercent(end)} tone={lifeTone(end)} />
         </span>
       </span>
     </button>

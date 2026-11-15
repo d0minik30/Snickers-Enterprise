@@ -8,7 +8,7 @@ import { PlanRail } from '@/components/control/PlanRail';
 import { SignalTimeline } from '@/components/control/SignalTimeline';
 import { TopBar } from '@/components/control/TopBar';
 import {
-  buildReroute, liveOverlays, newestRoute, planFitPoints, planOverlays, rerouteBlocker, routeSentEvent, type RerouteBlocker,
+  liveOverlays, planReroute, type OxygenCheck, type RerouteOption, newestRoute, planFitPoints, planOverlays, rerouteBlocker, routeSentEvent, type RerouteBlocker,
 } from '@/components/control/controlModel';
 import { buildTimeline } from '@/components/control/timelineModel';
 import { usePlanDraft, type PlanDraft } from '@/components/control/usePlanDraft';
@@ -21,7 +21,8 @@ import { MissionComplete } from '@/components/mission/MissionComplete';
 import { useMissionComplete } from '@/components/mission/useMissionComplete';
 import { useEmbedded } from '@/components/shared/embedded';
 import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
-import type { LatLon } from '@/lib/planner/types';
+import type { Hazard, LatLon } from '@/lib/planner/types';
+import { RESERVE_PERCENT } from '@/lib/mission/lifeSupport';
 import styles from './control.module.css';
 
 const MarsMap = dynamic(() => import('@/components/map/MarsMap'), { ssr: false });
@@ -103,6 +104,7 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
   const overlays = useMemo(() => liveOverlays(view, { quiet: embedded }), [view, embedded]);
   const [flagging, setFlagging] = useState(false);
   const [notice, setNotice] = useState<RerouteBlocker | null>(null);
+  const [pending, setPending] = useState<{ check: OxygenCheck; hazard: Hazard | null } | null>(null);
   const newest = newestRoute(view);
   // The map fits the newest route; panning or zooming by hand detaches it until RECENTER (see MarsMap).
   const camera = useMemo<MapCamera>(() => {
@@ -123,22 +125,36 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [flagging]);
 
-  /** Works out and sends a new route; reads the view at this moment, not the last render. */
-  const reroute = useCallback((center: LatLon | null) => {
+  /**
+   * Works out a new route and sends it if it keeps the oxygen (battery) reserve; otherwise holds it back
+   * as an OXYGEN CHECK for Control. Reads the view at this moment, not the last render. With `choose`,
+   * it works the options out again (time has passed) and sends that one.
+   */
+  const reroute = useCallback((hazard: Hazard | null, choose?: RerouteOption['kind']) => {
     const store = getMissionStore();
     const current = controlViewAt(store.getSnapshot().log, store.now());
-    const hazard = center && { id: `flag-${crypto.randomUUID().slice(0, 8)}`, center, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' as const };
     const blocked = rerouteBlocker(current, hazard);
-    const result = blocked ? null : buildReroute(current, hazard);
-    if (!result) return setNotice(blocked ?? 'too-late');
+    const plan = blocked ? null : planReroute(current, hazard);
+    setPending(null);
+    if (!plan) return setNotice(blocked ?? 'too-late');
     setNotice(null);
-    store.append({ type: 'route-changed', origin: 'control', reason: center ? 'hazard' : 'replan', route: result.route, hazards: result.hazards });
+    if (!('send' in plan) && !choose) return setPending({ check: plan.check, hazard });
+    const option = 'send' in plan ? plan.send : plan.check.options.find(o => o.kind === choose)
+      ?? plan.check.options.find(o => o.kind === plan.check.pick)!;
+    store.append({ type: 'route-changed', origin: 'control', reason: hazard ? 'hazard' : 'replan', route: option.route, hazards: option.hazards });
+    if (option.kind === 'back') {
+      const what = current.traveller === 'rover' ? 'battery' : 'oxygen';
+      store.append({ type: 'message', origin: 'control', text: `Turning back to the start: not enough ${what} to reach the destination with a ${RESERVE_PERCENT} % reserve.` });
+    }
   }, []);
+
+  const flagAt = (center: LatLon | null) =>
+    reroute(center && { id: `flag-${crypto.randomUUID().slice(0, 8)}`, center, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' });
 
   const onMapClick = (p: LatLon) => {
     if (!flagging) return;
     setFlagging(false);
-    reroute(p);
+    flagAt(p);
   };
 
   return (
@@ -149,7 +165,10 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
         flagging={flagging}
         notice={notice}
         onFlag={() => setFlagging(f => !f)}
-        onReplan={() => reroute(null)}
+        onReplan={() => flagAt(null)}
+        check={pending?.check ?? null}
+        onChoose={kind => reroute(pending?.hazard ?? null, kind)}
+        onCancelCheck={() => setPending(null)}
       />
       <div className={styles.mapArea}>
         <MarsMap overlays={overlays} camera={camera} onMapClick={onMapClick} armed={flagging} />
