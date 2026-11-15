@@ -10,6 +10,7 @@ import {
   SAND_ATTRIBUTION,
   SLOPE_ATTRIBUTION,
   loadMapLayers,
+  loadPlaces,
   loadSand,
   steepOnly,
   loadSlopeBounds,
@@ -112,6 +113,35 @@ export default function JezeroMap({ overlays, onStatus, onMap }: Props) {
           className: css.siteLabel,
         })
         .addTo(map);
+
+      // Mission sites from the data team's places.geojson; the traverse in Control ends at the Western Delta Deposit.
+      // Not awaited: the map and its overlays do not wait for them, and a missing file only drops the markers.
+      loadPlaces().then(places => {
+        if (cancelled || !map) return;
+        for (const f of places.features) {
+          if (f.properties.type !== 'mission_site') continue;
+          const [lon, lat] = f.geometry.coordinates;
+          const isEnd = f.properties.name === 'Western Delta Deposit';
+          const height = f.properties.elevation_m === undefined ? '' : ` · ${Math.round(f.properties.elevation_m).toLocaleString('en-US')} m`;
+          L.circleMarker([lat, lon], {
+            pane: 'markerPane',
+            radius: 6,
+            color: cssVar('--text', '#FFFFFF'),
+            weight: 2,
+            fillColor: cssVar(isEnd ? '--route' : '--surface', isEnd ? '#FF5CE1' : '#0A0A0B'),
+            fillOpacity: 1,
+          })
+            // Only the traverse end keeps its label up; the other sites show theirs on hover or tap, so labels
+            // do not pile up when zoomed out.
+            .bindTooltip(`${f.properties.name.toUpperCase()}${isEnd ? ' · TRAVERSE END' : ''}${height}`, {
+              permanent: isEnd,
+              direction: isEnd ? 'top' : 'right',
+              offset: isEnd ? [0, -8] : [9, 0],
+              className: css.siteLabel,
+            })
+            .addTo(map);
+        }
+      }).catch(() => {});
 
       map.on('zoomend', () => statusRef.current?.({ zoom: map!.getZoom(), cursor: null }));
       map.on('mousemove', e => statusRef.current?.({ zoom: map!.getZoom(), cursor: e.latlng }));

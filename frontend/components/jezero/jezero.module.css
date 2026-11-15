@@ -297,3 +297,27 @@
   background: color-mix(in srgb, var(--text) 12%, transparent);
   opacity: 1;
 }
+
+/* Sites legend: mission sites from places.geojson. */
+.panelSub {
+  margin: 10px 0 4px;
+  padding: 8px 12px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.siteDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 2px;
+  border: 2px solid var(--text);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.siteEnd {
+  background: var(--route);
+}

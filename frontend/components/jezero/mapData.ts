@@ -23,6 +23,7 @@ export const DATA_URL = {
   slopePng: '/data/slope.png',
   slopeBounds: '/data/slope_bounds.json',
   sand: '/data/sand.geojson',
+  places: '/data/places.geojson',
 } as const;
 
 export const SAND_ATTRIBUTION =
@@ -77,3 +78,5 @@ async function getJson<T>(url: string): Promise<T> {
 export const loadMapLayers = () => getJson<MapLayers>(DATA_URL.layers);
 export const loadSlopeBounds = () => getJson<BoundsPair>(DATA_URL.slopeBounds);
 export const loadSand = () => getJson<GeoJSON.FeatureCollection>(DATA_URL.sand);
+
+export const loadPlaces = () => getJson<GeoJSON.FeatureCollection<GeoJSON.Point, { name: string; type: string; elevation_m?: number }>>(DATA_URL.places);

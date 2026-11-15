@@ -72,6 +72,12 @@ export default function JezeroScreen() {
               </li>
             </ul>
           )}
+
+          <h3 className={css.panelSub}>SITES</h3>
+          <ul className={css.legend} aria-label="Sites legend">
+            <li><span className={`${css.siteDot} ${css.siteEnd}`} aria-hidden />Traverse end (Control)</li>
+            <li><span className={css.siteDot} aria-hidden />Other mission sites · hover for name</li>
+          </ul>
         </section>
       </main>
     </div>
