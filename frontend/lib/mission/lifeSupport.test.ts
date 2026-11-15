@@ -56,7 +56,7 @@ describe('route costs', () => {
 
   it('expects the rest of the route to cost what walking it costs', () => {
     const r3 = straightRoute(3000);
-    const log: MissionEvent[] = [{ ...sent('astronaut'), route: r3 }, start];
+    const log: MissionEvent[] = [{ id: 'r1', tMs: 0, type: 'route-sent', origin: 'control', traveller: 'astronaut', route: r3, hazards: [] }, start];
     const s = fieldStateAt(log, 700_000 + (1000 / PACE_MPS.astronaut) * 1000); // 1000 m along
     expect(s.distM).toBeCloseTo(1000, 0);
     expect(arrivalPercent(s)!).toBeCloseTo(lifeSupportAt(s)!.percent - costPercent('astronaut', r3.lengthM - s.distM, 0), 6);
