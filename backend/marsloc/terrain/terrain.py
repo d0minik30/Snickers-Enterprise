@@ -10,30 +10,53 @@ from .manifest import Manifest, SourceSpec, TerrainError, TileSpec, find_manifes
 from .source import Source
 
 
+# A source's blend band, when its manifest entry gives none: this many cells of the source
+# that lies beneath it (150 m onto 20 m data, 1.5 km onto 200 m data).
+DEFAULT_BLEND_CELLS = 7.5
+
+
 class Terrain:
     """Height lookup over all sources of a terrain folder.
 
     At each spot the source with the highest priority that has data there wins; where it has
-    none, the next one is used (CONTRACTS.md, section 1). Nothing is blended.
+    none, the next one is used (CONTRACTS.md, section 1).
+
+    Two sources can differ by tens of metres where they meet, which would put a false cliff
+    into every horizon that looks across the join. So along the edge of its bounds a source
+    is blended into whatever lies beneath it: at the edge the height is the lower source's,
+    edge_blend_m further in it is the source's own, with a smooth ramp in between.
     """
 
-    def __init__(self, manifest, arrays=None):
+    def __init__(self, manifest, arrays=None, edge_blend_m=None):
+        """edge_blend_m: None = each source's manifest value, else the default; a number = that
+        width for every source (0 switches blending off); a dict {source id: width} = overrides."""
         self.manifest = manifest
         self.sources = sorted((Source(spec, manifest.root, arrays) for spec in manifest.sources),
                               key=lambda s: -s.priority)
+        self.blend_m = []
+        for number, source in enumerate(self.sources):
+            width = source.spec.edge_blend_m
+            if isinstance(edge_blend_m, dict):
+                width = edge_blend_m.get(source.id, width)
+            elif edge_blend_m is not None:
+                width = float(edge_blend_m)
+            if width is None:
+                beneath = self.sources[number + 1:]
+                width = DEFAULT_BLEND_CELLS * beneath[0].cell_m if beneath else 0.0
+            self.blend_m.append(float(width) if number + 1 < len(self.sources) else 0.0)
 
     @classmethod
-    def open(cls, root=None):
+    def open(cls, root=None, edge_blend_m=None):
         """Terrain of a folder (default: $MARS_TERRAIN_DIR or backend/data_local/terrain/)."""
-        return cls(find_manifest(root))
+        return cls(find_manifest(root), edge_blend_m=edge_blend_m)
 
     @classmethod
-    def from_arrays(cls, sources):
+    def from_arrays(cls, sources, edge_blend_m=None):
         """Terrain from in-memory grids, for tests.
 
         sources: list of dicts with id, priority, bounds [[lat_min, lon_min], [lat_max, lon_max]],
-        data (2-D heights, row 0 = north, NaN = no data), and optionally vertical_offset_m and
-        cell_size_m.
+        data (2-D heights, row 0 = north, NaN = no data), and optionally vertical_offset_m,
+        edge_blend_m and cell_size_m. edge_blend_m: as in __init__.
         """
         specs, arrays = [], {}
         for s in sources:
@@ -48,8 +71,9 @@ class Terrain:
                 cell = np.radians((lat_max - lat_min) / data.shape[0]) * MARS_RADIUS_M
             specs.append(SourceSpec(id=s["id"], priority=s["priority"], cell_size_m=float(cell),
                                     tiles=(tile,),
-                                    vertical_offset_m=float(s.get("vertical_offset_m", 0.0))))
-        return cls(Manifest(sources=tuple(specs)), arrays=arrays)
+                                    vertical_offset_m=float(s.get("vertical_offset_m", 0.0)),
+                                    edge_blend_m=s.get("edge_blend_m")))
+        return cls(Manifest(sources=tuple(specs)), arrays=arrays, edge_blend_m=edge_blend_m)
 
     @property
     def bounds(self):
@@ -74,7 +98,7 @@ class Terrain:
     def terrain_id(self):
         """Short fingerprint of the terrain (manifest plus size and date of every file), so
         precomputed horizons can tell whether they were made from this terrain."""
-        parts = [json.dumps(self.manifest.to_json(), sort_keys=True)]
+        parts = [json.dumps(self.manifest.to_json(), sort_keys=True), "blend:%r" % (self.blend_m,)]
         root = self.manifest.root
         for spec in self.manifest.sources:
             for tile in spec.tiles:
@@ -100,34 +124,53 @@ class Terrain:
         cell_f = np.broadcast_to(np.asarray(min_cell_m, dtype=np.float64), shape).reshape(-1) \
             if per_point else float(min_cell_m)
 
-        out = np.full(lat_f.shape, np.nan)
-        for number, source in enumerate(self.sources):
-            if number == 0:
-                index, la, lo = None, lat_f, lon_f
-            else:
-                index = np.flatnonzero(np.isnan(out))
-                if index.size == 0:
-                    break
-                la, lo = lat_f[index], lon_f[index]
-            if (la.size == 0 or la.max() < source.lat_min or la.min() > source.lat_top
-                    or lo.max() < source.lon_left or lo.min() > source.lon_max):
-                continue
-            if per_point:
-                cells = cell_f if index is None else cell_f[index]
-                unique_cells = np.unique(cells)
-                levels = np.array([source.level_for(c) for c in unique_cells])
-                values = np.full(la.shape, np.nan)
-                for level in np.unique(levels):
-                    pick = np.isin(cells, unique_cells[levels == level])
-                    values[pick] = source.sample(la[pick], lo[pick], int(level))
-            else:
-                values = source.sample(la, lo, source.level_for(cell_f))
-            values = values + source.vertical_offset_m
-            if index is None:
-                out = values
-            else:
-                out[index] = values
+        out = self._height_from(0, lat_f, lon_f, cell_f)
         return out.reshape(shape) if shape else float(out[0])
+
+    def _height_from(self, number, lat, lon, cell):
+        """Heights (1-D) from source `number` and everything beneath it. cell: min_cell_m as a
+        float or as an array per point."""
+        if number >= len(self.sources) or lat.size == 0:
+            return np.full(lat.shape, np.nan)
+        source = self.sources[number]
+        per_point = np.ndim(cell) > 0
+        if (lat.max() < source.lat_min or lat.min() > source.lat_top
+                or lon.max() < source.lon_left or lon.min() > source.lon_max):
+            return self._height_from(number + 1, lat, lon, cell)
+        if per_point:
+            unique_cells = np.unique(cell)
+            levels = np.array([source.level_for(c) for c in unique_cells])
+            out = np.full(lat.shape, np.nan)
+            for level in np.unique(levels):
+                pick = np.isin(cell, unique_cells[levels == level])
+                out[pick] = source.sample(lat[pick], lon[pick], int(level))
+        else:
+            out = source.sample(lat, lon, source.level_for(cell))
+        out = out + source.vertical_offset_m
+        if number + 1 >= len(self.sources):
+            return out
+
+        missing = np.isnan(out)
+        width = self.blend_m[number]
+        if width > 0:
+            ramp = np.clip(source.edge_distance_m(lat, lon) / width, 0.0, 1.0)
+            own = ramp * ramp * (3.0 - 2.0 * ramp)       # 0 at the edge, 1 from `width` inwards
+            band = ~missing & (own < 1.0)
+        else:
+            band = np.zeros(lat.shape, dtype=bool)
+        beneath = np.flatnonzero(missing | band)
+        if beneath.size:
+            lower = self._height_from(number + 1, lat[beneath], lon[beneath],
+                                      cell[beneath] if per_point else cell)
+            mine = out[beneath]
+            if width > 0:
+                share = own[beneath]
+                mixed = share * mine + (1.0 - share) * lower
+                # blend only where both exist; otherwise whichever exists
+                out[beneath] = np.where(np.isnan(mine), lower, np.where(np.isnan(lower), mine, mixed))
+            else:
+                out[beneath] = lower
+        return out
 
     def source_at(self, lat, lon):
         """Index into self.sources of the source that supplies each point; -1 where none does."""

@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from marsloc.constants import LANDING_SITE_LAT, LANDING_SITE_LON, MARS_RADIUS_M
-from marsloc.terrain import Terrain, TerrainError, default_terrain_dir
+from marsloc.terrain import Manifest, Terrain, TerrainError, default_terrain_dir
 
 
 def cell_deg(cell_m):
@@ -48,6 +48,17 @@ def real_terrain():
         terrain.height(LANDING_SITE_LAT, LANDING_SITE_LON)  # loads the tile under the landing site
     except TerrainError as error:
         pytest.skip("real DEM not available: %s" % error)
+    return terrain
+
+
+@pytest.fixture(scope="session")
+def ctx_terrain(real_terrain):
+    """Only the 20 m CTX DEM of the real terrain: for checks against numbers known for it."""
+    ctx = tuple(spec for spec in real_terrain.manifest.sources if spec.id == "ctx_20m")
+    if not ctx:
+        pytest.skip("the real terrain has no ctx_20m source")
+    terrain = Terrain(Manifest(sources=ctx, root=real_terrain.manifest.root))
+    terrain.height(LANDING_SITE_LAT, LANDING_SITE_LON)
     return terrain
 
 

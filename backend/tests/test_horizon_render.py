@@ -21,10 +21,10 @@ FINE = RenderConfig(step_min_m=0.5, step_growth=0.0, refine_top=0)   # brute for
 
 def test_range_schedule_grows_with_distance():
     dist, step = range_schedule(10.0, 0.008, 40000.0)
-    assert dist[0] == 10.0 and dist[-1] <= 40000.0 and dist[-1] > 39600.0
+    assert dist[0] == 10.0 and dist[-1] == 40000.0          # the far end is always sampled
     gaps = np.diff(dist)
-    assert np.allclose(gaps, np.maximum(10.0, 0.008 * dist[:-1]))
-    assert gaps[0] == pytest.approx(10.0) and gaps[-1] == pytest.approx(0.008 * dist[-2])
+    assert np.allclose(gaps[:-1], np.maximum(10.0, 0.008 * dist[:-2]))
+    assert gaps[0] == pytest.approx(10.0) and 0 < gaps[-1] <= 0.008 * dist[-2] + 1e-9
     assert np.allclose(step, np.maximum(10.0, 0.008 * dist))
     assert dist.size < 700      # far fewer than the 4000 samples of a fixed 10 m step
 
@@ -192,10 +192,16 @@ def test_no_terrain_under_the_camera_is_an_error():
 
 # ---------------------------------------------------------------- the real DEM
 
-def brute_force(terrain, lat, lon, azimuths, eye=EYE, step_m=4.0, max_range_m=40000.0):
-    """Horizon by the simplest possible means: every 4 m along every ray, full detail."""
+def brute_force(terrain, lat, lon, azimuths, eye=EYE, step_m=4.0, max_range_m=40000.0,
+                near_step_m=None, near_to_m=6000.0):
+    """Horizon by the simplest possible means: every 4 m along every ray, full detail.
+    near_step_m: a finer step for the first near_to_m, for terrain with 1 m data."""
     cam = terrain.height(lat, lon) + eye
-    dist = np.arange(step_m, max_range_m + step_m, step_m)
+    if near_step_m is None:
+        dist = np.arange(step_m, max_range_m + step_m, step_m)
+    else:
+        dist = np.concatenate([np.arange(near_step_m, near_to_m, near_step_m),
+                               np.arange(near_to_m, max_range_m + step_m, step_m)])
     out = np.empty(len(azimuths))
     for i, az in enumerate(azimuths):
         la, lo = geo.destination(lat, lon, az, dist)
@@ -204,7 +210,8 @@ def brute_force(terrain, lat, lon, azimuths, eye=EYE, step_m=4.0, max_range_m=40
 
 
 @pytest.mark.realdem
-def test_fast_renderer_agrees_with_brute_force_on_the_real_dem(real_terrain):
+def test_fast_renderer_agrees_with_brute_force_on_the_real_dem(ctx_terrain):
+    real_terrain = ctx_terrain
     rng = np.random.default_rng(11)
     (lat_min, lon_min), (lat_max, lon_max) = real_terrain.bounds
     positions = [(LAT0, LON0)] + [(rng.uniform(lat_min + 0.03, lat_max - 0.03),
@@ -224,7 +231,23 @@ def test_fast_renderer_agrees_with_brute_force_on_the_real_dem(real_terrain):
 
 
 @pytest.mark.realdem
-def test_landing_site_horizon_on_the_real_dem(real_terrain):
+def test_fast_renderer_agrees_with_brute_force_on_every_source(real_terrain):
+    # With 1 m data near the camera the reference has to step finer than 1 m there.
+    azimuths = np.arange(0.0, 360.0, 15.0) + 0.37
+    errors = []
+    for lat, lon in ((LAT0, LON0), (18.47, 77.42)):
+        fast = render_horizon(real_terrain, lat, lon, EYE, RenderConfig(), azimuths_deg=azimuths)
+        errors.append(fast.elev_deg - brute_force(real_terrain, lat, lon, azimuths, near_step_m=0.5))
+    errors = np.concatenate(errors)
+    rms = float(np.sqrt(np.mean(errors ** 2)))
+    print("\nfast vs 0.5 m brute force on the delivered terrain (%s): rms %.4f deg, max %.4f"
+          % (", ".join(real_terrain.source_ids), rms, np.abs(errors).max()))
+    assert rms < 0.01 and np.abs(errors).max() < 0.06
+
+
+@pytest.mark.realdem
+def test_landing_site_horizon_on_the_real_dem(ctx_terrain):
+    real_terrain = ctx_terrain
     horizon = render_horizon(real_terrain, LAT0, LON0, EYE, RenderConfig(az_step_deg=1.0))
     assert np.isfinite(horizon.elev_deg).all()
     # The western rim stands a few degrees high; values from an independent pure-Python check

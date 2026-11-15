@@ -20,7 +20,8 @@ class SeamReport:
     spread_m: float       # robust spread of that difference (1.4826 * MAD)
     p05_m: float
     p95_m: float
-    n_edge: int           # points within EDGE_CELLS cells of the upper source's edge
+    n_edge: int           # points within EDGE_CELLS cells of the upper source's edge where the
+                          # lower source is the one that takes over (no source in between)
     edge_median_m: float  # upper minus lower there: the step a traveller would see at the join
     problem: bool
 
@@ -34,6 +35,8 @@ class SeamReport:
                    self.p05_m, self.p95_m))
         if self.n_edge:
             text += "; at the join %+.2f m (%d points)" % (self.edge_median_m, self.n_edge)
+        else:
+            text += "; they never meet at an edge (another source lies between)"
         return text + ("  <-- STEP, tell Person 2" if self.problem else "")
 
 
@@ -46,7 +49,7 @@ def compare_sources(terrain, max_points=250000):
     reports = []
     sources = terrain.sources  # highest priority first
     for i, upper in enumerate(sources):
-        for lower in sources[i + 1:]:
+        for j, lower in enumerate(sources[i + 1:], start=i + 1):
             lat_min = max(upper.lat_min, lower.lat_min)
             lat_max = min(upper.lat_top, lower.lat_top)
             lon_min = max(upper.lon_left, lower.lon_left)
@@ -78,13 +81,20 @@ def compare_sources(terrain, max_points=250000):
                 shifted = read(upper, lat + d_row * EDGE_CELLS * coarse.dlat,
                                lon + d_col * EDGE_CELLS * coarse.dlon)
                 near_edge |= ~np.isfinite(shifted)
+            # The lower source only shows at the join if no source in between covers it.
+            for between in sources[i + 1:j]:
+                near_edge &= ~np.isfinite(read(between, lat, lon))
             edge = both & near_edge
             n_edge = int(edge.sum())
             edge_median = float(np.median(up[edge] - low[edge])) if n_edge else float("nan")
-            step = edge_median if n_edge >= 20 else median
+            if n_edge == 0:
+                problem = False                      # they never meet: no step to see
+            elif n_edge >= 20:
+                problem = abs(edge_median) > STEP_WARNING_M
+            else:
+                problem = abs(median) > STEP_WARNING_M
             reports.append(SeamReport(
                 upper=upper.id, lower=lower.id, n=int(both.sum()), median_m=median, spread_m=spread,
                 p05_m=float(np.percentile(diff, 5)), p95_m=float(np.percentile(diff, 95)),
-                n_edge=n_edge, edge_median_m=edge_median,
-                problem=bool(abs(step) > STEP_WARNING_M or abs(median) > STEP_WARNING_M)))
+                n_edge=n_edge, edge_median_m=edge_median, problem=bool(problem)))
     return reports

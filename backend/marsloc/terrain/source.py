@@ -164,6 +164,12 @@ class Source:
     def tiles_loaded(self):
         return sum(1 for tile in self.tiles if tile.loaded)
 
+    def edge_distance_m(self, lat, lon):
+        """Metres from each point to the nearest edge of the source's bounds (0 outside)."""
+        north_south = np.minimum(lat - self.lat_min, self.lat_top - lat)
+        east_west = np.minimum(lon - self.lon_left, self.lon_max - lon) * np.cos(np.radians(lat))
+        return np.maximum(np.radians(np.minimum(north_south, east_west)) * MARS_RADIUS_M, 0.0)
+
     @property
     def bounds(self):
         return [[self.lat_min, self.lon_left], [self.lat_top, self.lon_max]]

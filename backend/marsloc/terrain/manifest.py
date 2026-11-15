@@ -42,6 +42,7 @@ class SourceSpec:
     description: str = ""
     nodata: float | None = None
     vertical_offset_m: float = 0.0
+    edge_blend_m: float | None = None   # width of the blend band along the source's edge; None = default
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,8 @@ class Manifest:
             if s.nodata is not None:
                 entry["nodata"] = s.nodata
             entry["vertical_offset_m"] = s.vertical_offset_m
+            if s.edge_blend_m is not None:
+                entry["edge_blend_m"] = s.edge_blend_m
             entry["tiles"] = [{"file": t.file, "bounds": t.bounds, "rows": t.rows, "cols": t.cols}
                               for t in s.tiles]
             sources.append(entry)
@@ -122,12 +125,16 @@ def parse_manifest(data, root=None, where=MANIFEST_NAME):
         if cell <= 0:
             raise TerrainError("%s: source %r has cell_size_m <= 0" % (where, source_id))
         nodata = entry.get("nodata")
+        blend = entry.get("edge_blend_m")
+        if blend is not None and float(blend) < 0:
+            raise TerrainError("%s: source %r has edge_blend_m < 0" % (where, source_id))
         sources.append(SourceSpec(
             id=source_id, priority=priority, cell_size_m=cell,
             tiles=tuple(_tile_from_json(t, "%s, source %r" % (where, source_id)) for t in tiles),
             description=str(entry.get("description", "")),
             nodata=None if nodata is None else float(nodata),
-            vertical_offset_m=float(entry.get("vertical_offset_m", 0.0))))
+            vertical_offset_m=float(entry.get("vertical_offset_m", 0.0)),
+            edge_blend_m=None if blend is None else float(blend)))
     return Manifest(sources=tuple(sources), root=None if root is None else Path(root),
                     vertical_datum=str(data.get("vertical_datum", "mars_areoid_mola")))
 

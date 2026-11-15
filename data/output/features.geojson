@@ -1,41 +1,125 @@
 {
   "type": "FeatureCollection",
-  "name": "Jezero named landmarks",
+  "name": "Jezero Named Landmarks & Prominent Features",
   "features": [
     {
       "type": "Feature",
       "properties": {
-        "name": "Belva",
-        "feature_type": "impact_crater",
-        "name_authority": "IAU Working Group for Planetary System Nomenclature",
-        "elevation_m": -2489.3,
-        "prominence_m": 37.8,
-        "prominence_kind": "crater_depth",
-        "prominence_source": "Local 40 m CTX terrain_features.geojson; depth to lowest rim point, measured 0.4 km from IAU center",
-        "source": "IAU Gazetteer center (18.48°N, 77.38°E); elevation sampled from the controlled CTX DEM",
-        "source_url": "https://planetarynames.wr.usgs.gov/Feature/15872"
+        "name": "Kodiak Butte",
+        "feature_type": "isolated_butte",
+        "name_authority": "Perseverance Science Team / Science (Mangold et al., 2021)",
+        "elevation_m": -2521.9,
+        "prominence_m": 58.2,
+        "prominence_kind": "butte_relief",
+        "source": "Mangold et al., Science 374(6568), 2021, DOI: 10.1126/science.abl4051; isolated delta remnant",
+        "source_url": "https://doi.org/10.1126/science.abl4051"
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [77.38, 18.48]
+        "coordinates": [
+          77.3783,
+          18.4227
+        ]
       }
     },
     {
       "type": "Feature",
       "properties": {
-        "name": "Perseverance landing site",
+        "name": "Western Delta Front Scarp",
+        "feature_type": "delta_scarp",
+        "name_authority": "USGS / Space Science Reviews (Stack et al., 2020)",
+        "elevation_m": -2470.5,
+        "prominence_m": 85.0,
+        "prominence_kind": "scarp_relief",
+        "source": "Stack et al., Space Sci Rev 216, 127 (2020); western delta deposit main front",
+        "source_url": "https://doi.org/10.1007/s11214-020-00739-x"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.3608,
+          18.4412
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Santa Cruz Butte",
+        "feature_type": "erosional_butte",
+        "name_authority": "Perseverance Science Team (NASA/JPL-Caltech)",
+        "elevation_m": -2482.7,
+        "prominence_m": 41.5,
+        "prominence_kind": "butte_relief",
+        "source": "NASA/JPL-Caltech Mars 2020 Science Target; delta remnant butte observed from Octavia E. Butler",
+        "source_url": "https://mars.nasa.gov/mars2020/mission/where-is-the-rover/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.4042,
+          18.4681
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Jezero Western Rim Crest",
+        "feature_type": "crater_rim_peak",
+        "name_authority": "USGS SIM 3464 (Sun & Stack, 2020)",
+        "elevation_m": -1805.7,
+        "prominence_m": 512.0,
+        "prominence_kind": "crater_rim_relief",
+        "source": "USGS SIM 3464 Geologic Map of Jezero Crater (Sun & Stack 2020); prominent western rim ridge crest",
+        "source_url": "https://doi.org/10.3133/sim3464"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2702,
+          18.4581
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Belva Crater Rim",
+        "feature_type": "impact_crater",
+        "name_authority": "IAU Working Group for Planetary System Nomenclature",
+        "elevation_m": -2489.3,
+        "prominence_m": 37.8,
+        "prominence_kind": "crater_depth",
+        "source": "IAU Gazetteer of Planetary Nomenclature, Feature 15872; impact crater within the western delta",
+        "source_url": "https://planetarynames.wr.usgs.gov/Feature/15872"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.38,
+          18.48
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Octavia E. Butler Landing (Base)",
         "feature_type": "landing_site",
         "name_authority": "NASA Mars 2020 mission",
         "elevation_m": -2567.2,
         "prominence_m": 0.0,
         "prominence_kind": "reference_point",
-        "prominence_source": "Reference point; prominence not applicable",
-        "source": "NASA Mars 2020 landing coordinates; elevation sampled from the controlled CTX DEM",
+        "source": "NASA Mars 2020 landing site; official surface origin",
         "source_url": "https://science.nasa.gov/mission/mars-2020-perseverance/location-map/"
       },
       "geometry": {
         "type": "Point",
-        "coordinates": [77.4508, 18.4447]
+        "coordinates": [
+          77.4508,
+          18.4447
+        ]
       }
     }
   ]

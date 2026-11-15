@@ -231,14 +231,46 @@ Instead of downloading multi-gigabyte global rasters, `data/scripts/fetch_terrai
 
 | Source | Full Dataset Size | Window Cropped | Network Downloaded | Bandwidth Saved |
 |---|---|---|---|---|
-| **MOLA-HRSC 200m** | ~45 GB (Global) | 80 × 80 km box | **343 KB** | **99.999%** |
-| **HiRISE DTM 1m** | ~5.3 GB (Mosaic) | 5 × 5 km box | **20.0 MB** | **99.62%** |
-| **Total** | **> 50 GB** | Target Region | **~20.3 MB** | **99.95%** |
+| **MOLA-HRSC 200m** | ~45 GB (Global) | **±100 km box** (210 × 210 km) | **2.4 MB** | **99.995%** |
+| **HiRISE DTM 1m** | ~5.3 GB (Mosaic) | 5 × 5 km box (Landing site) | **20.0 MB** | **99.62%** |
+| **Total** | **> 50 GB** | Target Region | **~22.4 MB** | **99.95%** |
 
-### 7.2 Vertical Datum Seam Alignment
-Elevation products come from different orbital stereo campaigns and can have vertical offsets. `marsloc/terrain/seams.py` checks boundary overlap using median difference and Median Absolute Deviation ($1.4826 \times \text{MAD}$):
-- **HiRISE (1m) vs CTX (20m):** Edge join offset is **-0.36 m** (well within the $\pm 2.0\text{ m}$ tolerance without offset adjustments).
-- **CTX (20m) vs MOLA (200m):** Raw median offset was $-2.57\text{ m}$. Applying `vertical_offset_m: -1.2` to `mola_200m` balances both edge join step to **+0.88 m** and median to **-1.37 m** (both well below threshold).
+### 7.2 Vertical Datum Seam Alignment & Perimeter Boundary Distribution
+Elevation products come from different orbital stereo campaigns and can have vertical offsets. 
+
+#### Perimeter Step Distribution Along CTX Boundary ($N = 3,108$ sampled points):
+| Boundary Edge | Sample Count | Mean Diff | Median Diff | Std Dev | 5th – 95th Percentile | Min / Max |
+|---|---|---|---|---|---|---|
+| **North Edge (18.72°N)** | 798 points | $-1.98\text{ m}$ | $-0.14\text{ m}$ | $13.7\text{ m}$ | $[-28.6\text{ m}, +16.9\text{ m}]$ | $-45.6\text{ m} / +29.2\text{ m}$ |
+| **South Edge (18.21°N)** | 798 points | $+0.04\text{ m}$ | $+1.62\text{ m}$ | $20.8\text{ m}$ | $[-37.6\text{ m}, +30.8\text{ m}]$ | $-77.6\text{ m} / +37.7\text{ m}$ |
+| **West Edge (77.16°E)** | 756 points | $-13.31\text{ m}$ | $-12.72\text{ m}$ | $18.0\text{ m}$ | $[-42.8\text{ m}, +13.7\text{ m}]$ | $-80.5\text{ m} / +54.2\text{ m}$ |
+| **East Edge (77.70°E)** | 756 points | $+13.06\text{ m}$ | $+14.18\text{ m}$ | $11.6\text{ m}$ | $[-7.3\text{ m}, +30.1\text{ m}]$ | $-24.5\text{ m} / +37.2\text{ m}$ |
+| **Overall Perimeter** | **3,108 points** | **$-0.56\text{ m}$** | **$+1.41\text{ m}$** | **$18.9\text{ m}$** | **$[-33.7\text{ m}, +28.2\text{ m}]$** | **$-80.5\text{ m} / +54.2\text{ m}$** |
+
+#### Proposed 1.5–2.0 km Cosine Blend Band:
+To smooth out local relief differences where 20m CTX resolves scarps that 200m MOLA smooths, the engine supports a transition width $W = 1.5\text{ to }2.0\text{ km}$:
+$$w(d) = \frac{1}{2}\left(1 + \cos\left(\pi \frac{W - d}{W}\right)\right) \quad \text{for } 0 \le d \le W$$
+$$h(x, y) = w(d) \cdot h_{\text{CTX}}(x, y) + (1 - w(d)) \cdot \left[h_{\text{MOLA}}(x, y) + \Delta_{\text{offset}}\right]$$
+Where $d$ is distance inside the CTX boundary. At $d = 0$, $w = 0$ with $C^1$ continuity, completely preventing ray-marching step artifacts.
+
+### 7.3 Ground-Truth Test Photos Dataset (`data/test_photos/`)
+Contains **19 real Perseverance Navcam images** (Sol 17 to Sol 1700) with complete PDS calibration labels and official NASA Mars 2020 telemetry (`lat`, `lon`, `heading_deg`, drive IDs):
+- **Clear Skyline / Rim Horizon Cases (Elevation $0^\circ$ to $+10^\circ$):**
+  - Sols 17, 23, 33, 45, 48 (crater floor near landing base)
+  - Sol 700 (2.5 km delta front)
+  - Sol 1100 (7.5 km crater floor)
+  - Sols 1300 & 1700 (9.0 km & 11.3 km; facing west $255^\circ$ & $270^\circ$ directly toward the 500 m high western crater rim)
+- **Obstacle & Hardware Masking:** Sols 17, 48, 400 have rover chassis / mast components in bottom 7–8% of the frame (tested for weight masking).
+- **Downward Non-Skyline Cases:** Sols 85, 100, 1000 are pointed down at $-25^\circ$ for workspace/wheel inspections (should be flagged as no valid sky boundary).
+
+### 7.4 Named Martian Landmarks (`data/output/features.geojson`)
+Six prominent geological landmarks cataloged with IAU nomenclature and elevations sampled directly from CTX:
+1. **Kodiak Butte** (`18.4227°N, 77.3783°E`): Elev $-2521.9\text{ m}$, Prominence $58.2\text{ m}$ (*Science*, Mangold et al. 2021).
+2. **Western Delta Front Scarp** (`18.4412°N, 77.3608°E`): Elev $-2470.5\text{ m}$, Prominence $85.0\text{ m}$ (*Space Sci Rev*, Stack et al. 2020).
+3. **Santa Cruz Butte** (`18.4681°N, 77.4042°E`): Elev $-2482.7\text{ m}$, Prominence $41.5\text{ m}$ (NASA/JPL).
+4. **Jezero Western Rim Crest** (`18.4581°N, 77.2702°E`): Elev $-1805.7\text{ m}$, Prominence $512.0\text{ m}$ (USGS SIM 3464).
+5. **Belva Crater Rim** (`18.4800°N, 77.3800°E`): Elev $-2489.3\text{ m}$, Prominence $37.8\text{ m}$ (IAU Feature 15872).
+6. **Octavia E. Butler Landing** (`18.4447°N, 77.4508°E`): Elev $-2567.2\text{ m}$ (NASA Mars 2020 Base).
 
 ---
 

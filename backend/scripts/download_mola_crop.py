@@ -14,10 +14,12 @@ try:
         print("Connected to remote GeoTIFF!")
         print(f"CRS: {src.crs}, Dimensions: {src.width}x{src.height}")
         
-        # Jezero 80x80km bounds: lon 76.75..78.15, lat 17.75..19.15
-        # Note: in geographic CRS, bounds are (min_lon, min_lat, max_lon, max_lat)
-        window = from_bounds(76.75, 17.75, 78.15, 19.15, src.transform)
-        print(f"Reading window: {window}")
+        # +/- 100 km around Perseverance landing site (18.4447 N, 77.4508 E)
+        # Lat range: 16.70 to 20.20
+        # Lon range: 75.60 to 79.30 (~210 x 210 km)
+        min_lon, min_lat, max_lon, max_lat = 75.60, 16.70, 79.30, 20.20
+        window = from_bounds(min_lon, min_lat, max_lon, max_lat, src.transform)
+        print(f"Reading window for +/- 100km: {window}")
         
         data = src.read(1, window=window)
         transform = src.window_transform(window)
@@ -33,6 +35,7 @@ try:
         with rasterio.open(out_file, "w", **profile) as dst:
             dst.write(data, 1)
             
-        print(f"Successfully saved crop to {out_file} (shape: {data.shape})")
+        print(f"Successfully saved +/-100km crop to {out_file} (shape: {data.shape})")
+        print(f"File size: {out_file.stat().st_size / 1024:.1f} KB")
 except Exception as e:
     print(f"Error: {e}")

@@ -85,9 +85,10 @@ def test_a_hole_has_no_data_but_its_neighbours_still_do():
 
 # ---------------------------------------------------------------- several sources
 
-def two_sources(fine_offset=0.0, hole=False, declared_offset=0.0):
-    """A coarse 100 m plane with a fine 20 m patch in the middle. The fine patch holds the
-    same plane, shifted up by fine_offset."""
+def two_sources(fine_offset=0.0, hole=False, declared_offset=0.0, blend=0.0):
+    """A coarse 100 m plane (about 6 km) with a fine 20 m patch (about 2 km) in the middle. The
+    fine patch holds the same plane, shifted up by fine_offset. blend: the fine source's
+    edge_blend_m (0 = a hard switch at its edge)."""
     c_bounds, c_lat, c_lon = grid_around(LAT0, LON0, 30, 30, 100.0)
     f_bounds, f_lat, f_lon = grid_around(LAT0, LON0, 50, 50, 20.0)
     fine = plane(f_lat, f_lon) + fine_offset
@@ -96,7 +97,7 @@ def two_sources(fine_offset=0.0, hole=False, declared_offset=0.0):
     terrain = Terrain.from_arrays([
         dict(id="coarse", priority=10, bounds=c_bounds, data=plane(c_lat, c_lon)),
         dict(id="fine", priority=30, bounds=f_bounds, data=fine, vertical_offset_m=declared_offset),
-    ])
+    ], edge_blend_m=blend)
     return terrain, f_bounds, c_bounds
 
 
@@ -124,6 +125,63 @@ def test_vertical_offset_m_is_added_to_its_source():
     assert terrain.height(LAT0, LON0) == pytest.approx(plane(LAT0, LON0), abs=1e-3)
 
 
+# ---------------------------------------------------------------- blending at a source's edge
+
+def test_a_source_is_blended_into_what_lies_beneath_along_its_edge():
+    terrain, f_bounds, _ = two_sources(fine_offset=30.0, blend=400.0)
+    assert terrain.blend_m == [400.0, 0.0]
+    north_edge = f_bounds[1][0]
+    inside = lambda metres: north_edge - cell_deg(metres)
+    above = lambda lat: terrain.height(lat, LON0) - plane(lat, LON0)      # height above the coarse plane
+    assert above(inside(0.01)) == pytest.approx(0.0, abs=0.05)             # at the edge: the lower source
+    assert above(inside(200.0)) == pytest.approx(15.0, abs=0.05)           # half way: half of each
+    assert above(inside(400.0)) == pytest.approx(30.0, abs=0.05)           # from the band inwards: its own
+    assert above(inside(900.0)) == pytest.approx(30.0, abs=1e-3)
+    assert above(north_edge + cell_deg(50.0)) == pytest.approx(0.0, abs=1e-3)   # outside: the lower source
+    # no cliff anywhere on a walk across the edge, and the ramp only rises
+    walk = np.array([above(inside(m)) for m in np.arange(-100.0, 600.0, 5.0)])
+    assert np.abs(np.diff(walk)).max() < 1.0 and (np.diff(walk) > -1e-6).all()
+    # the east edge blends the same way (distances measured on the ground, not in degrees)
+    east = f_bounds[1][1] - cell_deg(200.0) / math.cos(math.radians(LAT0))
+    assert terrain.height(LAT0, east) - plane(LAT0, east) == pytest.approx(15.0, abs=0.05)
+
+
+def test_without_a_blend_band_the_switch_is_hard():
+    terrain, f_bounds, _ = two_sources(fine_offset=30.0, blend=0.0)
+    # 10 m inside is the centre of the fine source's outermost pixel
+    just_in, just_out = f_bounds[1][0] - cell_deg(10.0), f_bounds[1][0] + cell_deg(1.0)
+    step = (terrain.height(just_in, LON0) - plane(just_in, LON0)) - (terrain.height(just_out, LON0) - plane(just_out, LON0))
+    assert step == pytest.approx(30.0, abs=0.05)
+
+
+def test_blend_width_comes_from_the_manifest_an_override_or_the_default():
+    c_bounds, c_lat, c_lon = grid_around(LAT0, LON0, 30, 30, 100.0)
+    f_bounds, f_lat, f_lon = grid_around(LAT0, LON0, 50, 50, 20.0)
+    sources = [dict(id="coarse", priority=10, bounds=c_bounds, data=plane(c_lat, c_lon)),
+               dict(id="fine", priority=30, bounds=f_bounds, data=plane(f_lat, f_lon))]
+    assert Terrain.from_arrays(sources).blend_m == pytest.approx([750.0, 0.0])      # 7.5 cells of 100 m
+    with_manifest = [sources[0], dict(sources[1], edge_blend_m=250.0)]
+    assert Terrain.from_arrays(with_manifest).blend_m == [250.0, 0.0]
+    assert Terrain.from_arrays(with_manifest, edge_blend_m={"fine": 100.0}).blend_m == [100.0, 0.0]
+    assert Terrain.from_arrays(with_manifest, edge_blend_m=0).blend_m == [0.0, 0.0]
+    # the fingerprint changes with the blend, so stored horizons get rebuilt
+    assert Terrain.from_arrays(sources).terrain_id() != Terrain.from_arrays(sources, edge_blend_m=0).terrain_id()
+    again = parse_manifest(json.loads(json.dumps(Terrain.from_arrays(with_manifest).manifest.to_json())))
+    assert again.sources[1].edge_blend_m == 250.0 and again.sources[0].edge_blend_m is None
+    with pytest.raises(TerrainError, match="edge_blend_m"):
+        parse_manifest({"sources": [{"id": "a", "priority": 1, "cell_size_m": 20, "edge_blend_m": -5,
+                                     "tiles": [{"file": "a", "bounds": [[18.0, 77.0], [18.1, 77.1]],
+                                                "rows": 10, "cols": 10}]}]})
+
+
+def test_a_hole_in_a_blended_source_still_falls_through_and_the_outer_edge_stays():
+    terrain, f_bounds, c_bounds = two_sources(fine_offset=30.0, hole=True, blend=300.0)
+    assert terrain.height(LAT0, LON0) == pytest.approx(plane(LAT0, LON0), abs=1e-3)     # in the hole
+    # The lowest source has nothing beneath it: its own heights right up to its edge.
+    edge = c_bounds[1][0] - cell_deg(50.0)          # the centre of its outermost pixel
+    assert terrain.height(edge, LON0) == pytest.approx(plane(edge, LON0), abs=1e-3)
+
+
 def test_seam_check_finds_an_injected_5_m_step():
     terrain, _, _ = two_sources(fine_offset=5.0)
     (report,) = compare_sources(terrain)
@@ -142,6 +200,25 @@ def test_seam_check_is_quiet_when_the_sources_agree_or_the_offset_is_declared():
 
 def test_seam_check_reports_nothing_for_one_source():
     assert compare_sources(plane_terrain(half=5)[0]) == []
+
+
+def test_seam_check_ignores_sources_that_never_meet():
+    # coarse (bottom), middle and fine (top), each inside the one below. The fine source is
+    # 9 m off the coarse one, but the middle one lies between them: no step to see there.
+    c_bounds, c_lat, c_lon = grid_around(LAT0, LON0, 40, 40, 100.0)
+    m_bounds, m_lat, m_lon = grid_around(LAT0, LON0, 100, 100, 20.0)
+    f_bounds, f_lat, f_lon = grid_around(LAT0, LON0, 100, 100, 5.0)
+    terrain = Terrain.from_arrays([
+        dict(id="coarse", priority=10, bounds=c_bounds, data=plane(c_lat, c_lon)),
+        dict(id="middle", priority=20, bounds=m_bounds, data=plane(m_lat, m_lon) + 9.0),
+        dict(id="fine", priority=30, bounds=f_bounds, data=plane(f_lat, f_lon) + 9.0),
+    ])
+    by_pair = {(r.upper, r.lower): r for r in compare_sources(terrain)}
+    assert not by_pair[("fine", "middle")].problem
+    far_apart = by_pair[("fine", "coarse")]
+    assert far_apart.median_m == pytest.approx(9.0, abs=0.1) and far_apart.n_edge == 0
+    assert not far_apart.problem and "never meet" in far_apart.describe()
+    assert by_pair[("middle", "coarse")].problem            # these two do meet, 9 m apart
 
 
 # ---------------------------------------------------------------- coarser levels
@@ -360,7 +437,8 @@ def test_self_built_manifest_matches_the_contract_example(real_terrain, terrain_
 
 
 @pytest.mark.realdem
-def test_real_dem_heights_match_the_data_teams_numbers(real_terrain):
+def test_real_dem_heights_match_the_data_teams_numbers(ctx_terrain):
+    real_terrain = ctx_terrain          # these numbers are the CTX DEM's
     assert real_terrain.issues == []
     # data/README.md: the landing site reads -2,567 m; places.geojson: -2567.2
     assert real_terrain.height(LAT0, LON0) == pytest.approx(-2567.2, abs=0.5)
@@ -374,7 +452,8 @@ def test_real_dem_heights_match_the_data_teams_numbers(real_terrain):
 
 
 @pytest.mark.realdem
-def test_real_dem_has_no_gaps_and_the_known_height_range(real_terrain):
+def test_real_dem_has_no_gaps_and_the_known_height_range(ctx_terrain):
+    real_terrain = ctx_terrain
     source = real_terrain.sources[0]
     lats = source.lat_top - (np.arange(1512) + 0.5) * source.dlat
     lons = source.lon_left + (np.arange(1596) + 0.5) * source.dlon
@@ -384,3 +463,27 @@ def test_real_dem_has_no_gaps_and_the_known_height_range(real_terrain):
     assert heights.min() == pytest.approx(-2710.7, abs=0.06)
     assert heights.max() == pytest.approx(-1515.5, abs=0.06)
     assert compare_sources(real_terrain) == []
+
+
+@pytest.mark.realdem
+def test_real_terrain_sources_join_without_steps(real_terrain):
+    """Whatever sources the data team delivered: tiles load cleanly, no source is more than
+    2 m off the one it meets, and the height is continuous across every source edge."""
+    for source in real_terrain.sources:
+        for tile in source.tiles:
+            tile.level(0)
+    assert real_terrain.issues == []
+    reports = compare_sources(real_terrain)
+    assert [r.describe() for r in reports if r.problem] == []
+    for number, source in enumerate(real_terrain.sources[:-1]):
+        if real_terrain.blend_m[number] <= 0:
+            continue
+        # walk across the middle of the source's northern and western edges in 2 m steps
+        metres = np.arange(-60.0, 60.0, 2.0)
+        mid_lat, mid_lon = (source.lat_min + source.lat_top) / 2, (source.lon_left + source.lon_max) / 2
+        north = real_terrain.height(source.lat_top + np.degrees(metres / MARS_RADIUS_M), mid_lon)
+        west = real_terrain.height(mid_lat, source.lon_left + np.degrees(metres / MARS_RADIUS_M))
+        for walk in (north, west):
+            if np.isfinite(walk).all():
+                # 2 m apart on real ground: a few metres at most, never a cliff of tens of metres
+                assert np.abs(np.diff(walk)).max() < 6.0, source.id

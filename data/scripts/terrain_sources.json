@@ -22,12 +22,12 @@
     },
     {
       "id": "mola_200m",
-      "description": "USGS MOLA-HRSC Global DEM Blend (~200 m, 80x80 km regional coverage)",
+      "description": "USGS MOLA-HRSC Global DEM Blend (~200 m, +/-100 km regional coverage)",
       "priority": 10,
       "cell_size_m": 200.0,
       "local_file": "backend/data_local/terrain/mola_200m/jezero_mola_hrsc_200m.tif",
       "file": "mola_200m/jezero_mola_hrsc_200m.tif",
-      "sha256": "28d51d60a0ead2b541c66969cb21933f1852e321a5ad4e1ef13fd8ca0575e5b4",
+      "sha256": "48ec8d1ca5f96ee1d556b50b294e01739b4408631876e5eb777261aaa20d8868",
       "vertical_offset_m": -1.2
     }
   ]

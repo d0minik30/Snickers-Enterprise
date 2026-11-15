@@ -77,9 +77,11 @@ def range_schedule(step_min_m, step_growth, max_range_m):
     distances = [step_min_m]
     while True:
         nxt = distances[-1] + max(step_min_m, step_growth * distances[-1])
-        if nxt > max_range_m:
+        if nxt >= max_range_m:
             break
         distances.append(nxt)
+    if distances[-1] < max_range_m:
+        distances.append(max_range_m)       # the far end is always sampled
     distances = np.array(distances)
     steps = np.maximum(step_min_m, step_growth * distances)
     distances.setflags(write=False)
