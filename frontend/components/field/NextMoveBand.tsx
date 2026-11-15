@@ -1,10 +1,29 @@
 import type { NextMoveView } from '@/components/field/fieldModel';
+import type { LifeSupport } from '@/lib/mission/lifeSupport';
 import { TurnArrow } from '@/components/shared/TurnArrow';
 import { useEmbedded } from '@/components/shared/embedded';
 import styles from './field.module.css';
 
-/** Top band: the next move on the left, heading and waypoint count on the right. */
-export function NextMoveBand({ view }: { view: NextMoveView | null }) {
+const LOW_PERCENT = 25; // amber below this
+const CRITICAL_PERCENT = 10; // red below this
+
+/** Suit oxygen with the breathing rate behind it, or the rover's battery with its net draw. */
+function LifeCell({ life }: { life: LifeSupport }) {
+  const tone = life.percent < CRITICAL_PERCENT ? styles.lifeCritical : life.percent < LOW_PERCENT ? styles.lifeLow : styles.lifeOk;
+  return (
+    <div className={`${styles.sideCell} ${styles.lifeCell}`} data-testid="field-life-support" data-kind={life.kind}>
+      <span className={styles.sideLabel}>{life.kind === 'oxygen' ? 'OXYGEN' : 'BATTERY'}</span>
+      <span className={`${styles.sideValue} ${tone}`}>{life.percent.toFixed(1)}<span className={styles.lifeUnit}>%</span></span>
+      <div className={styles.lifeTrack}><span className={tone} style={{ width: `${life.percent}%` }} /></div>
+      <span className={styles.lifeNote}>
+        {life.kind === 'oxygen' ? `${life.breathsPerMin} BREATHS/MIN` : `${life.netW > 0 ? '−' : '+'}${Math.abs(life.netW)} W`}
+      </span>
+    </div>
+  );
+}
+
+/** Top band: the next move on the left; oxygen or battery (and, on its own page, the heading) on the right. */
+export function NextMoveBand({ view, life }: { view: NextMoveView | null; life: LifeSupport | null }) {
   const embedded = useEmbedded();
   return (
     <section className={styles.nextMove} aria-label="Next move">
@@ -25,18 +44,15 @@ export function NextMoveBand({ view }: { view: NextMoveView | null }) {
           </>
         )}
       </div>
-      {!embedded && <div className={styles.moveSide}>
-        <div className={styles.sideCell}>
-          <span className={styles.sideLabel}>HDG</span>
-          <span className={styles.sideValue}>{view ? view.heading : '---°'}</span>
-        </div>
-        <div className={styles.sideCell}>
-          <span className={styles.sideLabel}>WAYPOINT</span>
-          <span className={styles.sideValue}>
-            {view ? `${view.waypointNumber} / ${view.waypointTotal}` : '- / -'}
-          </span>
-        </div>
-      </div>}
+      <div className={styles.moveSide}>
+        {life && <LifeCell life={life} />}
+        {!embedded && (
+          <div className={styles.sideCell}>
+            <span className={styles.sideLabel}>HDG</span>
+            <span className={styles.sideValue}>{view ? view.heading : '---°'}</span>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

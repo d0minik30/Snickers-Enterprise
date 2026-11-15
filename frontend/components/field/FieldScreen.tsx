@@ -8,6 +8,7 @@ import { NextMoveBand } from '@/components/field/NextMoveBand';
 import { ReadoutBand } from '@/components/field/ReadoutBand';
 import { StatusBanner, StatusPanel } from '@/components/field/StatusPanel';
 import { fieldStateAt } from '@/lib/mission/field';
+import { lifeSupportAt } from '@/lib/mission/lifeSupport';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
 import { SiteHeader } from '@/components/shared/SiteHeader';
 import { useEmbedded } from '@/components/shared/embedded';
@@ -47,7 +48,7 @@ export default function FieldScreen() {
   return (
     <main className={styles.screen} data-testid="field-status" data-status={status}>
       {!embedded && <SiteHeader place="" />}
-      {status !== 'awaiting-route' && <NextMoveBand view={hydrated ? nextMoveView(state) : null} />}
+      {status !== 'awaiting-route' && <NextMoveBand view={hydrated ? nextMoveView(state) : null} life={hydrated ? lifeSupportAt(state) : null} />}
       {hydrated && <StatusBanner status={state.status} />}
       <div className={styles.mapArea}>
         {hydrated && <MarsMap overlays={overlays} camera={camera} />}
@@ -55,7 +56,10 @@ export default function FieldScreen() {
           <div className={styles.fixGroup}>
             <button type="button" data-testid="field-photo-fix" className={styles.fixButton} onClick={photoFix}>
               PHOTO FIX
-              {!embedded && <span className={styles.fixButtonNote}>find my position · simulated, ±{PHOTO_FIX_ERROR_M} m from real engine runs</span>}
+              {/* A demo shortcut, not an engine answer: it resets the drift ring to a fixed size. Say so on every screen. */}
+              <span className={styles.fixButtonNote}>
+                {embedded ? `simulated · ±${PHOTO_FIX_ERROR_M} m` : `find my position · simulated, ±${PHOTO_FIX_ERROR_M} m from real engine runs`}
+              </span>
             </button>
             <Link href="/locate/" prefetch={false} className={styles.realFix} data-testid="field-real-fix">TAKE A REAL FIX →</Link>
           </div>

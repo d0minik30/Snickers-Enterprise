@@ -101,8 +101,49 @@
 
 .moveSide {
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-auto-rows: 1fr;
   border-left: 1px solid var(--rule);
+}
+
+/* Oxygen or battery: the number, a thin level bar and what drives it. */
+.lifeCell {
+  min-width: 132px;
+}
+
+.lifeUnit {
+  margin-left: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.lifeTrack {
+  height: 4px;
+  background: var(--rule);
+}
+
+.lifeTrack > span {
+  display: block;
+  height: 100%;
+  background: currentColor;
+}
+
+.lifeNote {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+}
+
+.lifeOk {
+  color: var(--nominal);
+}
+
+.lifeLow {
+  color: var(--caution);
+}
+
+.lifeCritical {
+  color: var(--danger);
 }
 
 .sideCell {
