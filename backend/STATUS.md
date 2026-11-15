@@ -12,10 +12,10 @@ Everything of the engine is committed and pushed to `main`. To pick up:
 2. Check the state: from `backend/`, `.venv\Scripts\python -m pytest` (131 pass, about 2 min).
 3. Open work, most important first:
    - **App ↔ server:** see "App's Locate screen" below for what was tried and what is left.
-   - **Real photos (16 of 24 poses not found):** needs Person 3. Seven poses have the up/down
-     shift at the ±0.3° limit (levelling), and site-3 truth headings are off by +0.7–0.9°. After
-     their fix rerun `backend/skyline/scripts/validate.py` (write the output to `backend/reports/`,
-     not over their file) and update the table below.
+   - **Real photos (16 of 24 poses not found):** Person 3 checked both suspects (see "Real photos"
+     below): the levelling is fine at 0.3°, and the site-3 heading offset is in the truth headings
+     (rover yaw per site), not the camera model. What blocks the poses is the skyline trace on near
+     ridges; that is Person 3's next job.
    - **Circles too small** with several photos (hold 82–84 % instead of 95 %) and on real photos.
      Where: `radius_for_mass` in `marsloc/match/likelihood.py`, the widening by
      `fit_z/expected_fit_z` in `marsloc/match/matcher.py`. Measure with
@@ -71,16 +71,43 @@ Run with `backend/skyline/scripts/validate.py`. "Before" is Person 3's saved run
 (`backend/skyline/out/validation.json`); "now" is `backend/reports/validation_real_after2.json`
 (I did not overwrite Person 3's file or the app's copy).
 
-| | Before | Now |
-|---|---|---|
-| Answers called `ok` | 20 | 4 |
-| ... of those within 100 m | 4 | 2 |
-| ... of those wrong by more than 1 km | 12 | 0 |
-| Truth inside the 68 % circle | 2 of 24 | 18 of 24 |
-| Truth inside the 95 % circle | 8 of 24 | 19 of 24 |
-| Within 100 m (any verdict) | 4 | 2 |
-| Within 400 m (any verdict) | 8 | 8 |
-| Median error | 5302 m | 3844 m |
+| | Before | Now | Person 3 rerun, 0.3 | Person 3 trial, 0.4 |
+|---|---|---|---|---|
+| Answers called `ok` | 20 | 4 | 2 | 2 |
+| ... of those within 100 m | 4 | 2 | 1 | 1 |
+| ... of those wrong by more than 1 km | 12 | 0 | 0 | 0 |
+| Truth inside the 68 % circle | 2 of 24 | 18 of 24 | 14 of 24 | 16 of 24 |
+| Truth inside the 95 % circle | 8 of 24 | 19 of 24 | 20 of 24 | 19 of 24 |
+| Within 100 m (any verdict) | 4 | 2 | 2 | 2 |
+| Within 400 m (any verdict) | 8 | 8 | 7 | 7 |
+| Median error | 5302 m | 3844 m | 8350 m | 8350 m |
+
+**Person 3 rerun (2026-11-15, 10:30).** `backend/reports/validation_real_p3_u030.json` (label photos at
+`horizon_uncertainty_deg: 0.3`, unchanged) and `..._u040.json` (the same at 0.4, as a trial). Both on
+freshly rebuilt horizons (the store on this machine was older than the terrain code) and all 24 poses'
+photos. The "Now" column was measured on Person 1's machine; the 0.3 rerun differs from it in a few
+`ambiguous` poses (3/1044 is now `ok` at 43 m, 3/1708 `ok` at 333 m), not from any skyline change.
+What was checked, by scoring every photo at its TRUE position with a free heading
+(`skyline_at_truth.photos` in the report, new in `validate.py`):
+
+- **The +0.7–0.9° heading offset is in the truth headings, not the camera model.** Every well-fitting
+  site-3 photo wants +0.52 to +0.92°, in all three frame types (1280×960, 1296×976, 1288×968). At sites 6,
+  7, 19 and 51, with the identical left-Navcam CAHVORE model, the offset is −0.52, −0.12, +0.34, −0.24°.
+  A camera-model error would be the same everywhere; this changes per site, so it is the rover's onboard
+  yaw in the label (NASA's waypoint yaw equals it to 0.002°, so there is no corrected value to use).
+  The engine fits the heading freely, so this costs nothing in position, only in the heading scores.
+- **The levelling is fine to about 0.3°.** At the true position, the shift needed by the cleanly traced
+  photos is −0.30 to +0.35° (4/0: +0.56° from 13 far samples). Fitting roll too changes little (about
+  −0.2°, spread 0.013 → 0.010°). The shifts at ±0.3° in the earlier run were measured at wrong
+  positions. Raising the value to 0.4 found nothing more and made two wrong answers confident (3/828:
+  14.8 km off at ±21 m; 3/1416: 4.3 km off at ±16 m), so it stays at 0.3.
+- **The attitude-quaternion direction is right**: 3/1708 has 2.3° of roll and fits to 0.02° at truth.
+- **What actually stops the 16 poses** is the skyline trace: lines on near ridges the 20 m DEM can't
+  show (+2.1 to +2.6° at truth in 3/1374 photo 2, 3/2430 photo 1, 82/0; poor shape in 3/2150, 3/578),
+  and three poses with no terrain beyond 2 km at all (33/366, 61/0, 66/0). Next for Person 3: the
+  `near` cut in `skyline/trust.py`.
+- **The 1288×968 frames have a 47.6° field of view**, not 96°: they are crops, and their camera model is
+  right (they fit to 0.02° at truth).
 
 What this says, plainly:
 - The engine no longer claims `ok` for answers that are kilometres off. That was the worst fault.
@@ -175,8 +202,8 @@ Positions are random over the crater floor, the delta and the western rim area.
 
 ## Next, in order
 
-1. Real photos: with Person 3, sort out the horizontal (shift at its limit in 7 poses) and the
-   0.8° heading offset, then rerun. More photos per pose would help most (see the table above).
+1. Real photos: the horizontal and the 0.8° heading offset are checked (neither is a skyline-step
+   bug, see above). Next is the trace on near ridges (Person 3). More photos per pose would help most.
 2. Make the circles hold with several photos (82–84 % instead of 95 %) and on real photos.
 3. Cut the second coarse pass (2.2 s of a 3.7 s single-photo request).
 4. Point the app at the server and try the Locate screen end to end (not done from my side).

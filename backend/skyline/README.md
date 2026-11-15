@@ -136,7 +136,9 @@ Real output for the sol 48 sample photo:
 - **`camera`**: full field of view (outer pixel edge to outer pixel edge) and size. `lens_model` is
   `rectilinear` for phone cameras and `other` for CAHVORE; the samples are true ray angles either way.
 - **`horizon_uncertainty_deg`**: how far "level" may be off, by where the tilt came from: label 0.3,
-  sensor 1.0, manual 1.0, assumed 5.0 (`pipeline.HORIZON_UNCERTAINTY_DEG`; to calibrate on the test photos).
+  sensor 1.0, manual 1.0, assumed 5.0 (`pipeline.HORIZON_UNCERTAINTY_DEG`). The label value is
+  measured: at the true positions the cleanly traced test photos need −0.30 to +0.35°; 0.4 was tried and
+  made wrong answers confident (`backend/STATUS.md`, "Real photos").
 - **`relative_heading_deg`**: always `null` here; the app sets it for photos that turn together
   (Perseverance photos at one rover pose, from `diagnostics.rover_axis_azimuth_deg`).
 - **`samples`**: `az_offset_deg` is the azimuth of the viewing ray minus that of the optical axis, in
@@ -205,6 +207,10 @@ On the ten sample photos:
   rotates rover-frame vectors into the site frame (north, east, down). Checked on the sol 17–18 photos:
   with that convention the label gives each camera's true heading, and the engine, which never saw it,
   found all six within 0.8° (`scripts/engine_result.py`, see below).
+- **The label's heading is only good to about a degree.** It is the rover's onboard yaw, off by a
+  different amount at each site (site 3: +0.5 to +0.9°). The skyline never uses it; `validate.py`
+  reports, per photo, the heading the skyline fits best at the true position
+  (`skyline_at_truth.photos[].heading_offset_deg`), so heading errors can be read against it.
 - **PDS4 labels.** Only the raw-image feed record is read so far. PDS4 XML can be added once Person 2's
   test photos show which form they come in.
 - **Cropped (subframe) Perseverance images** that don't start at the sensor's corner are refused for
