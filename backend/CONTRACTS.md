@@ -307,18 +307,38 @@ message naming the field.
 
 ## 4. Test cases with known positions (Persons 2 and 3 → engine)
 
-So the validation harness can run on real Perseverance photos, one JSON file per case:
+So the validation harness can run on real Perseverance photos. The test cases are one committed list,
+`data/test_photos/manifest.json` (Person 2, written by `data/scripts/fetch_test_photos.py`). It holds
+the inputs and the truth, but no skyline: skylines are generated from it, never committed.
+
+One case per rover pose (NASA site/drive), with the photos taken there:
 
 ```json
 {
-  "name": "sol_0123_navcam_left",
-  "source": "where the photo and its position come from",
-  "request": { "…": "a complete skyline input, as in section 2" },
-  "truth": { "lat": 18.4447, "lon": 77.4508, "headings_deg": [262.5] }
+  "name": "site03_drive0578",
+  "pose": "3/578",
+  "sol": 17,
+  "photos": [{
+    "image_id": "NLF_0017_…", "instrument": "NAVCAM_LEFT", "time_utc": "2021-03-08T05:07:20.728Z",
+    "source": "NASA raw-image page", "metadata_url": "…", "image_url": "…", "image_sha256": "…",
+    "camera": { "model": "CAHVORE", "components": "…", "width_px": 1280, "height_px": 960,
+                "hfov_deg": 96.5, "vfov_deg": 73.1 },
+    "review": { "skyline_visible": true, "usable": true, "notes": "…", "reviewed_by": "…" }
+  }],
+  "truth": { "lat": 18.4452799, "lon": 77.45149726, "headings_deg": { "NLF_0017_…": 61.76 },
+             "position_source": "…", "heading_source": "…" }
 }
 ```
 
-`headings_deg` has one entry per photo, or `null` where the true heading isn't known.
+- `truth` is for scoring only and never goes into a request. `headings_deg` maps each photo to the
+  true azimuth of its optical axis (degrees from north), or `null` where it isn't known.
+- `review.usable` says whether a photo is fit for validation (a skyline is visible and not mostly
+  hidden); only usable photos are sent to the engine.
+- The requests are generated (Person 3, `backend/skyline/scripts/build_test_requests.py`): the current
+  skyline step runs on every usable photo and writes one section 2 body per case to
+  `backend/cache/test_requests/<name>.json` (git-ignored), plus `index.json` saying which image each
+  `photo_k` is. `backend/skyline/scripts/validate.py` sends those bodies to the engine and scores the
+  answers against `truth`.
 
 ## Open questions for the team
 
