@@ -2,12 +2,13 @@
 
 The precomputed candidates are 200 m apart. Starting from one of them, the position is
 improved by a shrinking pattern search: score the 3 x 3 positions around the current best,
-move to the best of them, halve the spacing, repeat (100, 50, 25, 12.5 m). Every position
+move to the best of them, halve the spacing, repeat (100 m down to about 3 m). Every position
 needs one live render of the part of the horizon the photos cover. Heading is continuous
 here: the rendered horizon is interpolated at each heading tried.
 
 As the spacing shrinks, so does the allowance for "the true position is only near this one"
-in the horizon's variance (score.model_variance), so the likelihood sharpens level by level.
+(score.extra_variance). Bins formed by near terrain, which say nothing at 100 m spacing,
+become informative, and the fit sharpens level by level.
 """
 import math
 from dataclasses import dataclass, field
@@ -17,8 +18,7 @@ import numpy as np
 from .. import geo
 from ..horizon.render import render_horizon
 from .resample import bin_group
-from .score import (bias_grid, heading_penalty, loglike_terms, logsumexp, model_variance, reliability,
-                    trusted_variance)
+from .score import base_variance, bias_grid, extra_variance, fit_terms, heading_penalty, logsumexp, score_sum
 
 
 @dataclass
@@ -32,15 +32,37 @@ class PhotoFit:
     model_elev_deg: np.ndarray         # what the terrain gives
     residual_deg: np.ndarray           # observed - shift - model (NaN in gaps)
     distance_m: np.ndarray             # how far away the terrain forming the horizon is
-    sigma_deg: np.ndarray              # expected size of the residual
-    trust: np.ndarray                  # weight x trust in the horizon, 0..1
+    sigma_deg: np.ndarray              # tolerance: expected size of the residual
+    trust: np.ndarray                  # the photo's weight x how informative the bin is, 0..1
     used: np.ndarray                   # bool: trusted and within 3 sigma
+    photo_weight: float = 0.0          # sum of the photo's bin weights (its usable size)
+    bins_total: int = 0                # bins across the photo's field of view, gaps included
 
     @property
     def inlier_fraction(self):
         """Share of the trusted skyline (by trust) that fits within 3 sigma."""
         total = self.trust.sum()
         return float(self.trust[self.used].sum() / total) if total > 0 else 0.0
+
+    @property
+    def fit_z(self):
+        """How far the trusted skyline misses, in tolerances (rms, each bin capped at 3).
+        About 1 for a true match with honest noise settings; 2 and more is a poor fit."""
+        total = self.trust.sum()
+        if total <= 0:
+            return float("nan")
+        z = np.where(self.trust > 0, np.nan_to_num(self.residual_deg) / self.sigma_deg, 0.0)
+        return float(np.sqrt((self.trust * np.minimum(z * z, 9.0)).sum() / total))
+
+    @property
+    def support(self):
+        """Share of the photo's usable skyline that is informative at the matched position."""
+        return float(self.trust.sum() / self.photo_weight) if self.photo_weight > 0 else 0.0
+
+    @property
+    def coverage(self):
+        """Share of the photo's field of view with a usable skyline (weight above 0)."""
+        return float(self.photo_weight / self.bins_total) if self.bins_total else 0.0
 
     @property
     def rms_residual_deg(self):
@@ -137,53 +159,59 @@ class FineSearch:
         best_headings = []
         fits = [None] * len(self.observations)
         for group, group_binned, priors, part in zip(self.groups, self.binned, self.priors, rendered):
-            trust = np.where(part["known"], reliability(part["dist"], cfg), 0.0)
-            var = model_variance(part["elev"], part["dist"], self.step, position_error_m,
-                                 cfg.fine_heading_step_deg / math.sqrt(12.0), cfg,
-                                 circular=part["full"])
+            known = part["known"].astype(np.float64)
+            extra = np.where(part["known"],
+                             extra_variance(part["elev"], part["dist"], self.step, position_error_m,
+                                            cfg.fine_heading_step_deg / math.sqrt(12.0), cfg,
+                                            circular=part["full"]), 0.0)
             headings = part["heading"] + self.heading_offsets
-            ll = np.zeros(headings.size)
+            score = np.zeros(headings.size)
             per_photo = []
             for index, binned in zip(group.photos, group_binned):
                 photo = self.observations[index]
                 az = headings[:, None] + binned.offsets_deg[None, :]
                 model = self._at(part, part["elev"], az)
-                total_var, known = trusted_variance(self._at(part, var, az) + photo.angle_sigma_deg ** 2,
-                                                    self._at(part, trust, az))
-                inlier = known * binned.weight[None, :] * (1.0 - cfg.outlier_fraction)
-                base = binned.elev[None, :] - model
+                more = self._at(part, extra, az)
+                weight = (self._at(part, known, az) > 0.999) * binned.weight[None, :]   # both rays known
+                resid = binned.elev[None, :] - model
+                base = base_variance(photo.angle_sigma_deg, cfg)
                 biases = bias_grid(photo.horizon_uncertainty_deg, photo.angle_sigma_deg)
-                by_bias = np.stack([loglike_terms(base - b, total_var, inlier, cfg).sum(axis=1)
-                                    for b in biases], axis=1)            # [headings, biases]
+                by_bias = np.stack([score_sum(*fit_terms(resid - b, base, more, weight, cfg), weight, cfg)
+                                    for b in biases], axis=1)            # [headings, shifts]
                 pick = np.argmax(by_bias, axis=1)
-                ll += by_bias[np.arange(headings.size), pick]
+                score += by_bias[np.arange(headings.size), pick]
                 per_photo.append((index, binned, biases[pick]))
-            ll = self.temper * ll - 0.5 * heading_penalty(headings, priors)
+            ll = self.temper * score - 0.5 * heading_penalty(headings, priors)
             total += float(logsumexp(ll)) + math.log(cfg.fine_heading_step_deg)
             top = int(np.argmax(ll))
             best_headings.append(float(headings[top] % 360.0))
             if detail:
                 for (index, binned, bias_by_heading), rel in zip(per_photo, group.relative_deg):
-                    fits[index] = self._photo_fit(part, var, trust, binned, index, rel,
-                                                  float(headings[top]), float(bias_by_heading[top]))
+                    fits[index] = self._photo_fit(part, extra, known, binned, index, rel,
+                                                  float(headings[top]), float(bias_by_heading[top]),
+                                                  position_error_m)
         return (total, best_headings, fits) if detail else (total, best_headings)
 
-    def _photo_fit(self, part, var, trust, binned, index, relative_deg, group_heading, bias):
+    def _photo_fit(self, part, extra, known, binned, index, relative_deg, group_heading, bias,
+                   position_error_m):
+        cfg = self.config
         photo = self.observations[index]
         az = group_heading + binned.offsets_deg
         model = self._at(part, part["elev"], az)
-        model_trust = self._at(part, trust, az)
-        total_var, _ = trusted_variance(self._at(part, var, az) + photo.angle_sigma_deg ** 2, model_trust)
-        sigma = np.sqrt(total_var)
-        weight = model_trust * binned.weight
+        base = base_variance(photo.angle_sigma_deg, cfg)
+        more = self._at(part, extra, az)
+        sigma = np.sqrt(base + more)
         seen = binned.weight > 0
         resid = np.where(seen, binned.elev - bias - model, np.nan)
+        _, weight = fit_terms(np.nan_to_num(resid), base, more,
+                              (self._at(part, known, az) > 0.999) * binned.weight, cfg)
         used = seen & (weight > 0) & (np.abs(np.where(seen, resid, 0.0)) <= 3.0 * sigma)
         return PhotoFit(id=photo.id, heading_deg=float((group_heading + relative_deg) % 360.0),
                         horizon_shift_deg=bias, az_offset_deg=binned.offsets_deg - relative_deg,
                         observed_elev_deg=np.where(seen, binned.elev, np.nan), model_elev_deg=model,
                         residual_deg=resid, distance_m=self._at(part, part["dist"], az),
-                        sigma_deg=sigma, trust=weight, used=used)
+                        sigma_deg=sigma, trust=weight, used=used,
+                        photo_weight=float(binned.weight.sum()), bins_total=int(binned.n))
 
     # ------------------------------------------------------------ searching
 

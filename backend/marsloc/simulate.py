@@ -12,15 +12,27 @@ from .horizon.render import RenderConfig, render_horizon
 from .match.resample import PhotoObservation
 
 
+def smooth_noise(rng, n, width):
+    """n random values with standard deviation 1 that vary smoothly over about `width` samples
+    (independent when width is below 1)."""
+    if width < 1.0:
+        return rng.normal(0.0, 1.0, n)
+    kernel = np.exp(-0.5 * (np.arange(-3 * width, 3 * width + 1) / width) ** 2)
+    raw = np.convolve(rng.normal(0.0, 1.0, n + kernel.size - 1), kernel, mode="valid")
+    return raw / np.sqrt((kernel ** 2).sum())
+
+
 def simulate_photo(terrain, lat, lon, heading_deg, hfov_deg=60.0, sample_step_deg=0.1,
-                   eye_height_m=DEFAULT_EYE_HEIGHT_M, noise_sigma_deg=0.0, pitch_error_deg=0.0,
-                   roughness_m=0.0, roughness_corr_deg=1.0,
+                   eye_height_m=DEFAULT_EYE_HEIGHT_M, noise_sigma_deg=0.0, noise_corr_deg=0.5,
+                   pitch_error_deg=0.0, roughness_m=0.0, roughness_corr_deg=1.0,
                    rocks=0, rock_height_deg=(3.0, 9.0), rock_width_deg=(1.0, 3.0), flag_rocks=False,
                    gaps=0, gap_width_deg=(3.0, 8.0), drop_gaps=False, rng=None, photo_id="photo",
                    config=RenderConfig(), **observation_fields):
     """The skyline a photo taken at (lat, lon) facing heading_deg would show.
 
-    noise_sigma_deg: random error added to every traced angle.
+    noise_sigma_deg: random error of every traced angle. It varies smoothly over
+        noise_corr_deg of azimuth, as the error of a traced line does (0 = independent per
+        sample, which averages away in the matcher's bins and flatters the result).
     pitch_error_deg: the whole skyline shifted up by this (a wrong "horizontal").
     roughness_m: real ground differs from the elevation data by about this much (rocks,
         ripples, ledges smaller than a pixel, and the data's own error). Each skyline point is
@@ -40,12 +52,9 @@ def simulate_photo(terrain, lat, lon, heading_deg, hfov_deg=60.0, sample_step_de
                              azimuths_deg=np.mod(heading_deg + offsets, 360.0))
     elev = horizon.elev_deg + pitch_error_deg
     if noise_sigma_deg > 0:
-        elev = elev + rng.normal(0.0, noise_sigma_deg, offsets.size)
+        elev = elev + noise_sigma_deg * smooth_noise(rng, offsets.size, noise_corr_deg / sample_step_deg)
     if roughness_m > 0:
-        width = max(1.0, roughness_corr_deg / sample_step_deg)
-        kernel = np.exp(-0.5 * (np.arange(-3 * width, 3 * width + 1) / width) ** 2)
-        smooth = np.convolve(rng.normal(0.0, 1.0, offsets.size + kernel.size - 1), kernel, mode="valid")
-        height_error = roughness_m * smooth / np.sqrt((kernel ** 2).sum())
+        height_error = roughness_m * smooth_noise(rng, offsets.size, roughness_corr_deg / sample_step_deg)
         elev = elev + np.degrees(height_error / np.maximum(horizon.dist_m, 1.0))
     weight = np.ones(offsets.size)
     keep = np.isfinite(elev)

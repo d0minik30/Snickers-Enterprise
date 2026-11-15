@@ -37,6 +37,9 @@ class Candidate:
     spread_m: float             # rms size of the likelihood peak (NaN if not refined)
     refined: bool               # improved by the fine search
     photos: list = field(default_factory=list)   # fine.PhotoFit per photo
+    fit_z: float = float("nan")     # how far the trusted skyline misses, in tolerances (rms); about 1 is a true match
+    support: float = 0.0        # share of the usable skyline that is informative at this position
+    coverage: float = 0.0       # share of the photos' field of view with a usable skyline
 
 
 @dataclass
@@ -189,12 +192,13 @@ class Matcher:
         radius68 = radius_for_mass(0.68, peak_share, peak_spread, other_dist, other_share) + pad
         radius95 = radius_for_mass(0.95, peak_share, peak_spread, other_dist, other_share) + pad
 
-        if best.score < cfg.no_match_below:
-            status = "no_match"
-        elif best.probability < cfg.ambiguous_below:
-            status = "ambiguous"
-        else:
-            status = "ok"
+        status = verdict(best, candidates, cfg)
+        if status == "no_match":
+            warnings.append("the best place fits poorly (%.0f %% of the usable skyline within tolerance, "
+                            "missing by %.1f tolerances): do not trust it" % (100 * best.score, best.fit_z))
+        if best.coverage < cfg.min_coverage:
+            warnings.append("only %.0f %% of the photos' field of view has a usable skyline"
+                            % (100 * best.coverage))
         lap("summary")
         timing["total"] = round(sum(timing.values()), 1)
         relative = (adjusted / adjusted.max()).astype(np.float32).reshape(grid.rows, grid.cols)
@@ -211,11 +215,36 @@ class Matcher:
         trust = np.array([p.trust.sum() for p in fit.photos])
         fraction = np.array([p.inlier_fraction for p in fit.photos])
         score = float((trust * fraction).sum() / trust.sum()) if trust.sum() > 0 else 0.0
+        z = np.array([p.fit_z if np.isfinite(p.fit_z) else 0.0 for p in fit.photos])
+        fit_z = float(np.sqrt((trust * z * z).sum() / trust.sum())) if trust.sum() > 0 else float("nan")
+        usable = sum(p.photo_weight for p in fit.photos)
+        bins = sum(p.bins_total for p in fit.photos)
         return Candidate(rank=rank, lat=fit.lat, lon=fit.lon, east_m=float(east), north_m=float(north),
                          ground_m=float(self.terrain.height(fit.lat, fit.lon)),
                          heading_deg=fit.photos[0].heading_deg, probability=float(probability),
                          score=score, spread_m=float(fit.spread_m), refined=fit.refined,
-                         photos=fit.photos)
+                         photos=fit.photos, fit_z=fit_z,
+                         support=float(trust.sum() / usable) if usable > 0 else 0.0,
+                         coverage=float(usable / bins) if bins else 0.0)
+
+
+def verdict(best, candidates, config):
+    """"ok", "ambiguous" or "no_match" for the best candidate.
+
+    no_match: the best place does not fit: too little of the usable skyline is within
+    tolerance, or it misses by too much, or too little of it is informative to judge.
+    ambiguous: it fits, but it isn't the only place that does (its share of the likelihood is
+    low, or another separate place holds a real share), or under half of the photos' field of
+    view has a usable skyline.
+    """
+    if (best.score < config.no_match_below or not best.fit_z <= config.no_match_fit_z
+            or best.support < config.min_support):
+        return "no_match"
+    rival = max((c.probability for c in candidates[1:]), default=0.0)
+    if (best.probability < config.ambiguous_below or rival > 0.5 * best.probability
+            or best.coverage < config.min_coverage):
+        return "ambiguous"
+    return "ok"
 
 
 def _input_warnings(observations):
