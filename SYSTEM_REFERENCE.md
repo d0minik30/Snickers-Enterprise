@@ -254,14 +254,19 @@ $$h(x, y) = w(d) \cdot h_{\text{CTX}}(x, y) + (1 - w(d)) \cdot \left[h_{\text{MO
 Where $d$ is distance inside the CTX boundary. At $d = 0$, $w = 0$ with $C^1$ continuity, completely preventing ray-marching step artifacts.
 
 ### 7.3 Ground-Truth Test Photos Dataset (`data/test_photos/`)
-Contains **19 real Perseverance Navcam images** (Sol 17 to Sol 1700) with complete PDS calibration labels and official NASA Mars 2020 telemetry (`lat`, `lon`, `heading_deg`, drive IDs):
-- **Clear Skyline / Rim Horizon Cases (Elevation $0^\circ$ to $+10^\circ$):**
-  - Sols 17, 23, 33, 45, 48 (crater floor near landing base)
-  - Sol 700 (2.5 km delta front)
-  - Sol 1100 (7.5 km crater floor)
-  - Sols 1300 & 1700 (9.0 km & 11.3 km; facing west $255^\circ$ & $270^\circ$ directly toward the 500 m high western crater rim)
-- **Obstacle & Hardware Masking:** Sols 17, 48, 400 have rover chassis / mast components in bottom 7–8% of the frame (tested for weight masking).
-- **Downward Non-Skyline Cases:** Sols 85, 100, 1000 are pointed down at $-25^\circ$ for workspace/wheel inspections (should be flagged as no valid sky boundary).
+One committed list, `data/test_photos/manifest.json` (contract section 4): **24 rover poses, 38 real Perseverance Navcam photos** (sols 17–1700, about 20 m to 11.4 km from the landing site). Per photo: NASA links, SHA-256, CAHVORE calibration, field of view, and a `review` record (`skyline_visible`, `usable`, `notes`). Per pose, kept apart: the truth (`lat`/`lon` from NASA's final waypoint localization, each camera's true heading from its label). No skyline samples are stored; they are regenerated.
+
+| Step | Command (repo root, `backend/.venv` Python) | Writes (git-ignored unless noted) |
+|---|---|---|
+| Fetch and verify | `data/scripts/fetch_test_photos.py` (`--add <id>` to add a photo) | `data/test_photos/images/`; refreshes the manifest (committed) |
+| Build requests | `backend/skyline/scripts/build_test_requests.py --review` | `backend/cache/test_requests/` (one `POST /locate` body per pose), `backend/cache/test_review/index.html` |
+| Validate | `backend/skyline/scripts/validate.py --out backend/skyline/out/validation.json --app-copy frontend/public/validation.json` | full report in `backend/skyline/out/`; the `/validate/` copy in `frontend/public/` (committed) |
+
+What the photos show (from the review sheet):
+- **Clean far skylines:** 3/1708 (sol 48), 3/1950, 3/2046 (delta front and rim), sols 1300 and 1700 toward the western rim.
+- **Hardware in the view, cut at weight 0:** the robotic-arm turret on 3/578 (sol 17) and 3/1416 (sols 45–46); the rover deck below the skyline on many sol 20–33 views.
+- **Near skylines (a slope or ridge within about 1–2 km):** sols 175, 700, 1100, 1400. Weak evidence for 20 m terrain.
+- **Camera tilted up (+23° to +33°), skyline along the bottom:** sols 85, 100, 1000. Most other early views look down about 30°, with the skyline near the top edge.
 
 ### 7.4 Named Martian Landmarks (`data/output/features.geojson`)
 Six prominent geological landmarks cataloged with IAU nomenclature and elevations sampled directly from CTX:

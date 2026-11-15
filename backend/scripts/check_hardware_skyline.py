@@ -6,10 +6,11 @@ import numpy as np
 manifest_path = Path("data/test_photos/manifest.json")
 data = json.loads(manifest_path.read_text(encoding="utf-8"))
 
-for case in data["cases"]:
+# One case per rover pose, several photos each (backend/CONTRACTS.md section 4).
+for case, photo in ((c, p) for c in data["cases"] for p in c["photos"]):
     name = case["name"]
-    sol = case.get("sol")
-    img_path = Path(case["image_file"])
+    sol = photo["sol"]
+    img_path = Path("data/test_photos/images") / f"{photo['image_id']}.png"
     if not img_path.exists():
         continue
     with Image.open(img_path) as img:

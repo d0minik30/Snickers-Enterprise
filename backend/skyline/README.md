@@ -39,6 +39,35 @@ On the six sol 17–18 Navcam photos (one rover pose, no prior): best position 2
 of the landing site, ±13 m (68 %), 93 % of the trusted skyline fits, every heading within 0.8° of the
 label's. The app shows that saved answer at `/locate/?result=saved`, marked as saved.
 
+## Test photos with known positions: requests, review, validation
+
+The test cases are one committed list, `data/test_photos/manifest.json` (`backend/CONTRACTS.md`
+section 4): one case per rover pose, each photo's links, SHA-256, CAHVORE calibration and a `review`
+record, and the truth kept apart. No skyline is stored there; it is regenerated from the photos by the
+current skyline step. Run from the repo root, with the backend environment:
+
+```bash
+backend/.venv/Scripts/python.exe data/scripts/fetch_test_photos.py                    # images -> data/test_photos/images/, checksums verified
+backend/.venv/Scripts/python.exe backend/skyline/scripts/build_test_requests.py --review # requests + review sheet
+backend/.venv/Scripts/python.exe backend/skyline/scripts/validate.py --out backend/skyline/out/validation.json --app-copy frontend/public/validation.json
+```
+
+| What | Where | In git |
+|---|---|---|
+| Cases, truth, review flags | `data/test_photos/manifest.json` | yes |
+| Photos and their raw-feed labels | `data/test_photos/images/` | no |
+| One `POST /locate` body per case, and `index.json` (which image each `photo_k` is, what was left out) | `backend/cache/test_requests/` | no |
+| Review sheet: each photo with its traced line (green trusted, amber doubtful, magenta weight 0) | `backend/cache/test_review/index.html` | no |
+| Full validation report (with samples and residuals) | `backend/skyline/out/validation.json` | no |
+| The copy the `/validate/` screen loads | `frontend/public/validation.json` | yes |
+
+- `build_test_requests.py` sends a photo only if its `review.usable` isn't `false`, the skyline step finds
+  sky in it, and some samples have weight above 0. It never reads `truth`. Rerun it after any change to
+  the skyline step or the manifest; `validate.py` refuses requests built from an older manifest.
+- To add a photo: `fetch_test_photos.py --add <NASA image id>`, rebuild with `--review`, look at the
+  sheet, then set the photo's `review` (`skyline_visible`, `usable`, `notes`, `reviewed_by`) in the
+  manifest.
+
 ## API (a FastAPI router)
 
 The main server includes it: `from skyline.api import router; app.include_router(router)`.

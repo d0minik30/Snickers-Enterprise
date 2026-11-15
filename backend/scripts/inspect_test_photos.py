@@ -17,22 +17,22 @@ def haversine_m(lat1, lon1, lat2, lon2):
     h = np.sin(dp / 2)**2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2)**2
     return 2 * RADIUS_M * np.arcsin(np.sqrt(h))
 
+# One case per rover pose, several photos each (backend/CONTRACTS.md section 4).
 cases = data["cases"]
-print(f"Total cases: {len(cases)}\n")
+print(f"Total cases: {len(cases)}, photos: {sum(len(c['photos']) for c in cases)}\n")
 
 results = []
 
-for case in cases:
+for case, photo in ((c, p) for c in cases for p in c["photos"]):
     name = case["name"]
-    sol = case.get("sol")
+    sol = photo["sol"]
     truth = case["truth"]
     lat, lon = truth["lat"], truth["lon"]
     dist_base_m = haversine_m(LANDING_LAT, LANDING_LON, lat, lon)
-    heading = truth["heading_deg"]
-    
-    img_path = Path(case["image_file"])
-    label_path = Path(case["label_file"])
-    
+    heading = truth["headings_deg"][photo["image_id"]]
+
+    img_path = Path("data/test_photos/images") / f"{photo['image_id']}.png"
+
     # Check if image exists
     img_ok = img_path.exists()
     width, height = (0, 0)
@@ -50,16 +50,9 @@ for case in cases:
             top_std = float(np.std(top_quarter))
             bot_std = float(np.std(bottom_quarter))
     
-    # Read label if exists
-    camera_vector = case.get("camera_calibration", {}).get("camera_vector", "")
-    cam_elev = None
-    if camera_vector:
-        parts = camera_vector.strip("()").split(",")
-        if len(parts) == 3:
-            vx, vy, vz = float(parts[0]), float(parts[1]), float(parts[2])
-            # Elevation angle above horizontal:
-            cam_elev = np.degrees(np.arctan2(vz, np.hypot(vx, vy)))
-            
+    # Optical-axis elevation above the horizontal (+ up), from the label's attitude (fetch_test_photos.py)
+    cam_elev = truth.get("axis_elevation_deg", {}).get(photo["image_id"])
+
     results.append({
         "name": name,
         "sol": sol,
