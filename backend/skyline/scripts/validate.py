@@ -57,7 +57,8 @@ def fit_at_truth(terrain, body: dict, ids: list[str], truth: dict) -> dict:
     Split by the distance of the terrain forming the horizon: 20 m elevation data can't show what is
     within about 2 km (rocks, ledges), so 'far' is the fair measure.
     """
-    far_res, near_res = [], []
+    far_res, near_res, per_photo = [], [], []
+    circle = None  # the full horizon at the true position, for the heading search below
     for photo, image_id in zip(body['photos'], ids):
         s = [x for x in photo['samples'] if x['weight'] >= 0.5]
         if not s:
@@ -71,6 +72,11 @@ def fit_at_truth(terrain, body: dict, ids: list[str], truth: dict) -> dict:
         far = ok & (hz.dist_m > 2000)
         far_res += res[far].tolist()
         near_res += res[ok & ~far].tolist()
+        if circle is None:
+            circle = render_horizon(terrain, truth['lat'], truth['lon'], eye_height_m=photo['eye_height_m'],
+                                    azimuths_deg=HEADING_SEARCH_AZ)
+        per_photo.append({'id': photo['id'], 'image_id': image_id,
+                          **best_heading_at_truth(circle, truth['headings_deg'][image_id], az, el)})
 
     def stats(r):
         if not r:
@@ -78,7 +84,35 @@ def fit_at_truth(terrain, body: dict, ids: list[str], truth: dict) -> dict:
         r = np.array(r)
         med = float(np.median(r))
         return {'n': int(r.size), 'median_deg': round(med, 3), 'mad_deg': round(float(np.median(np.abs(r - med))), 3)}
-    return {'far': stats(far_res), 'near': stats(near_res)}
+    return {'far': stats(far_res), 'near': stats(near_res), 'photos': per_photo}
+
+
+# The label's heading is the rover's onboard yaw, and it can be off by about a degree, by a different
+# amount at each site (site 3: +0.5 to +0.9 deg; sites 6, 7, 19, 51: -0.5 to +0.3 deg, same camera model).
+# So the heading is also searched here, at the TRUE position: how far the label's heading is from the one
+# the skyline fits best there, and the up/down shift and spread at that heading. Far terrain only.
+HEADING_SEARCH_AZ = np.arange(0.0, 360.0, 0.05)
+HEADING_SEARCH_DEG = np.arange(-3.0, 3.0001, 0.02)
+
+
+def best_heading_at_truth(circle, true_heading: float, az: np.ndarray, el: np.ndarray) -> dict:
+    def fit(offset):
+        a = (true_heading + offset + az) % 360
+        model = np.interp(a, HEADING_SEARCH_AZ, circle.elev_deg, period=360)
+        dist = np.interp(a, HEADING_SEARCH_AZ, circle.dist_m, period=360)
+        r = el - model
+        r = r[np.isfinite(r) & (dist > 2000)]
+        if r.size < 10:
+            return None
+        shift = float(np.median(r))
+        return float(np.median(np.abs(r - shift))), shift, int(r.size)
+    fits = [fit(d) for d in HEADING_SEARCH_DEG]
+    if all(f is None for f in fits):
+        return {'heading_offset_deg': None, 'shift_deg': None, 'mad_deg': None, 'n_far': 0}
+    k = int(np.argmin([np.inf if f is None else f[0] for f in fits]))
+    mad, shift, n = fits[k]
+    return {'heading_offset_deg': round(float(HEADING_SEARCH_DEG[k]), 2), 'shift_deg': round(shift, 3),
+            'mad_deg': round(mad, 3), 'n_far': n}
 
 
 def load_cases() -> tuple[list[dict], dict]:
@@ -150,6 +184,10 @@ def main() -> int:
         h = ', '.join(f"{x['error_deg']:+.1f}" for x in headings)
         far = results[-1]['skyline_at_truth']['far']
         h += f"  skyline vs truth (far) {far['median_deg']:+.2f}±{far['mad_deg']:.2f}" if far else '  skyline vs truth: no far samples'
+        best_h = [p for p in results[-1]['skyline_at_truth']['photos'] if p['heading_offset_deg'] is not None]
+        if best_h:
+            h += '  label heading off by ' + ', '.join(
+                f"{p['heading_offset_deg']:+.2f} (shift {p['shift_deg']:+.2f}±{p['mad_deg']:.2f})" for p in best_h)
         print(f"{pose:>8}  {res['status']:9}  error {err:6.1f} m  (±{best['uncertainty_m']:.0f} / ±{best['uncertainty_95_m']:.0f} m)"
               f"  photos {len(ids)}  trusted {results[-1]['trusted_share']:.0%}  heading errors {h}", flush=True)
 
