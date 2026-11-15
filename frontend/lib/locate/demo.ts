@@ -1,28 +1,26 @@
 // Example photos for the "find me from a photo" demo on the map, and the engine's saved answer for them.
 // The photos are real Perseverance Navcam images (NASA/JPL-Caltech), stored in public/demo-photos/.
-// The answer is a real, earlier run of the engine on exactly these six photos (lib/locate/fixtures).
+// The answer is a real live run of the engine on exactly these three photos, on the current terrain
+// (lib/locate/fixtures/engine-pose3-770.json, the same answer the Locate screen shows when saved or offline).
 
-import fixture from '@/lib/locate/fixtures/engine-sol17-18.json';
+import fixture from '@/lib/locate/fixtures/engine-pose3-770.json';
 import { isLocateResult, type LocateRequest, type LocateResult } from '@/lib/locate/types';
 
 export type DemoPhoto = { id: string; url: string; sha256: string };
 
-/** SHA-256 of each file as published by NASA (the browse PNG). */
+/** SHA-256 of each file as published by NASA (as in data/test_photos/manifest.json). */
 const SHA256: Record<string, string> = {
-  NLF_0017_0668451937_008ECM_N0030578NCAM00195_01_290J: '7f1abe4676f90fb68b6593e40c2e5a3f2643100d1e6f0a8b397840d1f5bb3491',
-  NLF_0017_0668453452_115ECM_N0030578NCAM00186_01_290J: '8a3a9e951768cfd2e706b0c2ca35658a7d58ed313d76ef8b0fc5bde5ce74fb3f',
-  NLF_0017_0668454934_320ECM_N0030578NCAM00184_01_290J: 'e470be908ee16b740cb95cb6560ced79b11ec9a3e4887baf1b9114a0a88725bd',
-  NLF_0018_0668545642_177ECM_N0030578NCAM00190_01_290J: '1876a20347df334c478dfe6c01c8253384410265d3c718852b9b65962f61852e',
-  NLF_0018_0668547197_285ECM_N0030578NCAM00189_01_290J: '7cc5b982e325126d1f148cc625c5781c84a731cfeebd73b860ac3c5dfc719237',
-  NLF_0018_0668555532_151ECM_N0030578NCAM00188_01_290J: '30b1dce0b4898e121c6197332917520f15112179accb73e94a76eb947f2137f5',
+  NLF_0020_0668728525_175ECM_N0030770NCAM03020_01_295J: '88eb7d8ff346689d5c31189cc6ce053eed3cbe3db753151b3989c0904176ea46',
+  NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J: '8c77bc04eb0295600212c9f4bd8eb610de4d11ae285be8a72f22fb9da4771ab0',
+  NLF_0020_0668728666_168ECM_N0030770NCAM02020_01_295J: 'c7932684f7df229a82d1c5796aaddcd36ed01012c8cc06c6a866c10cda0a05b5',
 };
 
 export const DEMO_PHOTOS: DemoPhoto[] = Object.entries(SHA256).map(([id, sha256]) => ({
   id, sha256, url: `/demo-photos/${id}.png`,
 }));
 
-/** Where the rover really was for these photos (NASA Mars 2020 localized waypoint, site 3 drive 578). */
-export const DEMO_TRUTH = { lat: 18.4452799, lon: 77.45149726, label: 'Real rover position (NASA)' };
+/** Where the rover really was for these photos (NASA Mars 2020 localized waypoint, site 3 drive 770). */
+export const DEMO_TRUTH = { lat: 18.44514836, lon: 77.45185605, label: 'Real rover position (NASA)' };
 
 export type DemoAnswer = { request: LocateRequest; result: LocateResult; photoCount: number };
 

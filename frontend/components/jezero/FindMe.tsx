@@ -142,7 +142,7 @@ export function FindMe({ map, open, onOpen }: { map: L.Map | null; open: boolean
               USE EXAMPLE PHOTOS
             </button>
           </div>
-          <p className={css.hint}>Example: 6 real photos from the Perseverance rover, sols 17–18.</p>
+          <p className={css.hint}>Example: 3 real photos from the Perseverance rover, sol 20.</p>
         </>
       )}
 
