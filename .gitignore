@@ -15,6 +15,9 @@ node_modules/
 *.jpg
 *.jpeg
 *.png
+# Exception: the 6 example photos for "Where am I?" on the map. NASA's server does not let other sites
+# fetch them, so the page must serve its own copy (frontend/UX_NOTES.md).
+!frontend/public/demo-photos/*.png
 *.tif
 *.tiff
 *.img

@@ -72,3 +72,10 @@ The team said the main idea is: upload a photo of Mars on the map, and get locat
 - Locate/Validate pages were not simplified in this pass.
 - A live `/locate` server (engine team) so any uploaded photo works, not only the examples.
 - On the Mission screen the Earth map is narrow on a 1366 px laptop; could hide Control's right column there.
+
+## Fix: example photos were missing after the merge
+
+The root `.gitignore` skips every `.png`, so `public/demo-photos/` was never committed and "Use example photos"
+failed with "Could not load /demo-photos/…". NASA's server sends no CORS header, so the page cannot fetch the
+photos from NASA directly. Added a `.gitignore` exception for `frontend/public/demo-photos/*.png` only (6 files,
+6.8 MB) and committed them.
