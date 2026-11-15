@@ -1,7 +1,7 @@
 # Engine status (Person 1, `backend/marsloc`)
 
 Kept current after each stage. Numbers are measured, not targets.
-Last update: 2026-11-15, 08:30 local.
+Last update: 2026-11-15, 10:45 UTC.
 
 ## Handoff: how to continue in a new session
 
@@ -25,6 +25,30 @@ Everything of the engine is committed and pushed to `main`. To pick up:
    - **Speed rule lost real pose 3/828** (`prefilter_full_deg` in `MatcherConfig`); revisit after
      Person 3's fixes.
    - Optional, never started: `.ply` export of the terrain for viewing.
+
+## App's Locate screen against the server (tried 2026-11-15, 10:35 UTC)
+
+Works end to end, no code change needed: the app defaults to `http://localhost:8000`
+(`NEXT_PUBLIC_ENGINE_URL` at build time for another address) and the server allows the app's
+origin `http://localhost:3000` (`MARS_CORS_ORIGINS` for others). Start the server (below) and
+`npm --prefix frontend run dev`, open `http://localhost:3000/locate/`.
+
+Tried in the browser with one real Navcam photo (sol 20, pose 3/770) and its label file:
+- `POST /skyline` 200: skyline traced, 88 % of the line used, camera and time read from the label.
+- `POST /locate` 200 (CORS preflight 200): the app showed "POSITION FOUND", 18.44613° N
+  77.45712° E, ±173 m / ±298 m, facing 203.9°, dominant feature 10.25 km to the W, five
+  candidates, heat map and map overlay.
+- **Accuracy: 302 m from the true position**, called `ok`, just outside its 95 % circle (298 m).
+  The same pose with three photos is 39 m off. Another real case of a circle that is too small.
+- Without the label file the photo shows "ERROR" (`/skyline` 400: a PNG has no EXIF, so no field
+  of view). Choosing a lens by hand was not tried. For Person 3: the row shows only "ERROR"; the
+  reason would help.
+- Time shown: 27 s and 19 s. The machine was at about 60 % load from other programs: the
+  three-photo request that takes 7.6 s idle took 27 s at the same moment. So about 5–6 s idle
+  for this photo (estimate, not measured). Under load: prefilter 2.3 s, second pass 7.3 s, fine
+  search 10.0 s.
+- Not tried: several photos through the app, a phone photo, the camera capture, editing the line
+  (`/skyline/convert`), the static export on GitHub Pages (it would need a hosted server).
 
 ## Where it stands
 
@@ -206,7 +230,7 @@ Positions are random over the crater floor, the delta and the western rim area.
    bug, see above). Next is the trace on near ridges (Person 3). More photos per pose would help most.
 2. Make the circles hold with several photos (82–84 % instead of 95 %) and on real photos.
 3. Cut the second coarse pass (2.2 s of a 3.7 s single-photo request).
-4. Point the app at the server and try the Locate screen end to end (not done from my side).
+4. App: try several photos, a phone photo and line editing through the Locate screen (one Navcam photo works, see above).
 
 ## Notes for the team
 
