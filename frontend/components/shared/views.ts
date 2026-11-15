@@ -6,4 +6,5 @@ export const VIEWS = [
   { href: '/field/', label: 'FIELD', hint: 'The crew’s HUD on the surface' },
   { href: '/locate/', label: 'LOCATE', hint: 'Find a position from skyline photos' },
   { href: '/map/', label: 'MAP', hint: 'Explore Jezero: slope and sand' },
+  { href: '/validate/', label: 'VALIDATE', hint: 'Real Perseverance photos, known positions' },
 ] as const;

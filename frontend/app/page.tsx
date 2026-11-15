@@ -10,6 +10,7 @@ const OPEN_HINT: Record<string, string> = {
   '/field/': 'Open in a narrow window or on a phone',
   '/locate/': 'Needs the localization engine running',
   '/map/': 'Any window',
+  '/validate/': 'A saved run on real photos',
 };
 
 const DELAY = formatClock(SIGNAL_DELAY_MS);

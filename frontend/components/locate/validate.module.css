@@ -1,0 +1,246 @@
+/* Validation screen: the run on the left, true vs found on the Jezero map on the right
+   (phone: map first, then the run). Same look as Locate and Jezero. */
+
+.screen {
+  display: grid;
+  grid-template-rows: 40px minmax(0, 1fr);
+  min-height: 100dvh;
+  font-size: 15px;
+}
+
+@media (min-width: 900px) {
+  .screen {
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.home {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.home:hover,
+.home:focus-visible {
+  color: var(--route);
+}
+
+.place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'map' 'side';
+  min-height: 0;
+}
+
+@media (min-width: 900px) {
+  .main {
+    grid-template-columns: 380px minmax(0, 1fr);
+    grid-template-areas: 'side map';
+  }
+}
+
+.side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+@media (min-width: 900px) {
+  .side {
+    overflow-y: auto;
+    border-top: 0;
+    border-right: 1px solid var(--rule);
+  }
+}
+
+.saved {
+  padding: 8px 10px;
+  border: 1px solid var(--caution);
+  background: color-mix(in srgb, var(--caution) 10%, var(--surface));
+  color: var(--caution);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+.alert {
+  padding: 8px 12px;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.note {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.note code {
+  color: var(--text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+
+.summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--surface);
+}
+
+.summary dt,
+.sub {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.summary dd {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sub {
+  margin-top: 8px;
+}
+
+.cases {
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.caseRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px 8px 7px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--rule);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.caseRow[aria-pressed='true'] {
+  border-left-color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, var(--surface));
+}
+
+.caseRow:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.caseName {
+  font-weight: 700;
+}
+
+.tone-ok,
+.tone-caution,
+.tone-bad {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.tone-ok { color: var(--nominal); }
+.tone-caution { color: var(--caution); }
+.tone-bad { color: var(--danger); }
+
+.caseNums {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mapBox {
+  grid-area: map;
+  position: relative;
+  min-height: 55dvh;
+}
+
+.mapLoading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+
+.key {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 800;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: calc(100% - 70px);
+  padding: 6px 10px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.key i {
+  display: inline-block;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.key .kTruth,
+.key .kFound {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--surface);
+}
+
+.key .kTruth { background: var(--nominal); }
+.key .kFound { background: var(--text); }
+.key .kError { width: 14px; border-top: 2px solid var(--caution); }
+.key .k68 { width: 14px; border-top: 2px dashed var(--text); }
