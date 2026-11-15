@@ -98,7 +98,11 @@ class Terrain:
     def terrain_id(self):
         """Short fingerprint of the terrain (manifest plus size and date of every file), so
         precomputed horizons can tell whether they were made from this terrain."""
-        parts = [json.dumps(self.manifest.to_json(), sort_keys=True), "blend:%r" % (self.blend_m,)]
+        # Only what changes a height: not descriptions, not the contract version.
+        what = [(s.id, s.priority, s.vertical_offset_m, s.spec.nodata, self.blend_m[k],
+                 [(t.file, t.bounds, t.rows, t.cols) for t in s.spec.tiles])
+                for k, s in enumerate(self.sources)]
+        parts = [json.dumps(what, sort_keys=True)]
         root = self.manifest.root
         for spec in self.manifest.sources:
             for tile in spec.tiles:

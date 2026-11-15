@@ -58,7 +58,7 @@ class MatcherConfig:
     outlier_z: float = 3.0             # an outlier costs as much as a miss of this many sigma
     neutral_z: float = 1.5             # the "mediocre fit" given to what can't be judged
     min_support: float = 0.2           # share of the usable skyline that must count for a verdict
-    correlation_deg: float = 1.0       # neighbouring bins err together over about this much azimuth
+    correlation_deg: float = 3.0       # neighbouring bins err together over about this much azimuth
 
     # --- coarse search on the precomputed horizons
     position_factor: float = 0.41      # rms distance to the nearest grid point, in grid spacings
@@ -85,10 +85,14 @@ class MatcherConfig:
     max_modes: int = 12
 
     # --- verdict
-    ambiguous_below: float = 0.6       # the best place holds less than this share of the likelihood
-    min_coverage: float = 0.5          # ambiguous if less than this share of the photos' skyline is usable
+    # "ok" only if all of these hold (thresholds from scripts/validate_sim.py, see STATUS.md):
+    ambiguous_below: float = 0.6       # the best place holds at least this share of the likelihood
+    ok_fit_z: float = 1.2              # the usable skyline misses by at most this many tolerances (rms)
+    ok_support: float = 0.9            # at least this share of the usable skyline counts at the best place
+    min_coverage: float = 0.5          # at least this share of the photos' field of view is usable
+    # "no_match" if any of these holds:
     no_match_below: float = 0.5        # less than this share of the usable skyline fits
-    no_match_fit_z: float = 2.0        # or the usable skyline misses by more than this many sigma (rms)
+    no_match_fit_z: float = 2.0        # the usable skyline misses by more than this many tolerances (rms)
 
     @property
     def outlier_floor(self):

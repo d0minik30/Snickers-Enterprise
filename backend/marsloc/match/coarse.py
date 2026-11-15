@@ -152,7 +152,7 @@ class CoarseIndex:
         headings = np.arange(self.n1) * self.step1_deg + self.phase_deg
         for binned_list, meta, priors in zip(groups_binned, groups_meta, groups_priors):
             cost = None
-            for binned, (sigma, bias) in zip(binned_list, meta):
+            for binned, (sigma, bias, *_) in zip(binned_list, meta):
                 part = self.prefilter_cost(rows, binned, base_variance(sigma, self.config), bias)
                 cost = part if cost is None else cost + part
             cost = temper * cost + heading_penalty(headings, priors).astype(np.float32)[None, :]
@@ -167,21 +167,23 @@ class CoarseIndex:
         """Score of a group of photos for some candidates at some heading indices.
 
         h: horizons(..., jacobian=True) of the candidates. fitted: the extra variance that
-        remains after the offset fit. shifts: int [m, S]. Returns (score [m, S], heading
-        correction in degrees [m, S]).
+        remains after the offset fit. meta: per photo (angle sigma, horizon uncertainty, roll
+        uncertainty, heading relative to the group). shifts: int [m, S]. Returns (score [m, S],
+        heading correction in degrees [m, S]).
         """
         cfg = self.config
         m, n_shifts = shifts.shape
         row = np.arange(m)[:, None, None]
-        n_par = 3 + len(binned_list)                       # east, north, heading, one shift per photo
+        n_par = 3 + 2 * len(binned_list)       # east, north, heading; per photo an up/down shift and a tilt
+        loose = [v for _, bias, roll, _ in meta for v in (max(bias, 1e-4), max(roll, 1e-4))]
         prior = np.array([cfg.coarse_offset_m, cfg.coarse_offset_m, self.step_deg / math.sqrt(12.0)]
-                         + [max(bias, 1e-4) for _, bias in meta]) ** -2.0
+                         + loose) ** -2.0
         normal = np.zeros((m, n_shifts, n_par, n_par))
         normal[:, :, np.arange(n_par), np.arange(n_par)] = prior
         rhs = np.zeros((m, n_shifts, n_par))
 
         gathered = []
-        for p, (binned, (sigma, _)) in enumerate(zip(binned_list, meta)):
+        for p, (binned, (sigma, _, _, relative)) in enumerate(zip(binned_list, meta)):
             index = np.mod(shifts[:, :, None] + (binned.k0 + np.arange(binned.n))[None, None, :], self.n_az)
             base = np.float32(base_variance(sigma, cfg))
             photo_weight = binned.weight.astype(np.float32)
@@ -193,30 +195,30 @@ class CoarseIndex:
             keep = np.exp(-0.5 * z2)
             steer = weight * h["linear"][row, index] * keep / (keep + np.float32(cfg.outlier_floor)) \
                 / (base + fitted[row, index])
-            columns = [h["d_east"][row, index], h["d_north"][row, index], h["slope"][row, index]]
-            for a in range(3):
-                rhs[:, :, a] += (steer * columns[a] * resid).sum(axis=2, dtype=np.float64)
-                for b in range(a, 3):
-                    value = (steer * columns[a] * columns[b]).sum(axis=2, dtype=np.float64)
-                    normal[:, :, a, b] += value
+            tilt = np.sin(np.radians(binned.offsets_deg - relative)).astype(np.float32)[None, None, :]
+            columns = [h["d_east"][row, index], h["d_north"][row, index], h["slope"][row, index],
+                       np.float32(1.0), tilt]
+            where = [0, 1, 2, 3 + 2 * p, 4 + 2 * p]
+            for a in range(5):
+                weighted = steer * columns[a]
+                rhs[:, :, where[a]] += (weighted * resid).sum(axis=2, dtype=np.float64)
+                for b in range(a, 5):
+                    value = (weighted * columns[b]).sum(axis=2, dtype=np.float64)
+                    normal[:, :, where[a], where[b]] += value
                     if b != a:
-                        normal[:, :, b, a] += value
-                value = (steer * columns[a]).sum(axis=2, dtype=np.float64)     # with the photo's shift
-                normal[:, :, a, 3 + p] += value
-                normal[:, :, 3 + p, a] += value
-            normal[:, :, 3 + p, 3 + p] += steer.sum(axis=2, dtype=np.float64)
-            rhs[:, :, 3 + p] += (steer * resid).sum(axis=2, dtype=np.float64)
+                        normal[:, :, where[b], where[a]] += value
             gathered.append((resid, weight, columns, base, fitted[row, index]))
 
         theta = np.linalg.solve(normal, rhs[..., None])[..., 0]
         limit = np.array([2.0 * cfg.coarse_offset_m, 2.0 * cfg.coarse_offset_m, self.step_deg]
-                         + [max(bias, 0.0) for _, bias in meta])
+                         + [v for _, bias, roll, _ in meta for v in (max(bias, 0.0), max(roll, 0.0))])
         theta = np.clip(theta, -limit, limit)
 
         score = np.zeros((m, n_shifts))
         for p, (resid, weight, columns, base, more) in enumerate(gathered):
             left = resid - (columns[0] * theta[:, :, 0, None] + columns[1] * theta[:, :, 1, None]
-                            + columns[2] * theta[:, :, 2, None] + theta[:, :, 3 + p, None]).astype(np.float32)
+                            + columns[2] * theta[:, :, 2, None] + theta[:, :, 3 + 2 * p, None]
+                            + columns[4] * theta[:, :, 4 + 2 * p, None]).astype(np.float32)
             fit, counts = fit_terms(left, base, more, weight, cfg)
             score += score_sum(fit, counts, weight, cfg, axis=2)
         return score, theta[:, :, 2]

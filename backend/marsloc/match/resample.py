@@ -24,6 +24,7 @@ class PhotoObservation:
     eye_height_m: float = DEFAULT_EYE_HEIGHT_M
     angle_sigma_deg: float = 0.1        # expected error of a traced skyline angle
     horizon_uncertainty_deg: float = 0.0  # how far the photo's "horizontal" may be off
+    roll_uncertainty_deg: float = 0.0     # how far its roll may be off (tilts the skyline: t * sin(az_offset))
     relative_heading_deg: float | None = None   # heading minus the first photo's; None = unknown
     heading_prior_deg: float | None = None      # heading hint (from the sun), degrees from north
     heading_prior_sigma_deg: float = 3.0

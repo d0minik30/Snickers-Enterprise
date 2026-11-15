@@ -105,8 +105,9 @@ class Matcher:
         if rows.size == 0:
             raise ValueError("the precomputed horizons hold no candidate position on the terrain")
 
-        meta = [[(observations[i].angle_sigma_deg, observations[i].horizon_uncertainty_deg)
-                 for i in group.photos] for group in groups]
+        meta = [[(observations[i].angle_sigma_deg, observations[i].horizon_uncertainty_deg,
+                  observations[i].roll_uncertainty_deg, rel)
+                 for i, rel in zip(group.photos, group.relative_deg)] for group in groups]
         priors = [group.priors(observations) for group in groups]
 
         # --- pass 1: cheap cost, all candidates, all headings
@@ -232,16 +233,18 @@ def verdict(best, candidates, config):
     """"ok", "ambiguous" or "no_match" for the best candidate.
 
     no_match: the best place does not fit: too little of the usable skyline is within
-    tolerance, or it misses by too much, or too little of it is informative to judge.
-    ambiguous: it fits, but it isn't the only place that does (its share of the likelihood is
-    low, or another separate place holds a real share), or under half of the photos' field of
-    view has a usable skyline.
+    tolerance, or it misses by too much, or too little of it can be judged at all.
+    ambiguous: it isn't clearly the place: its share of the likelihood is low, another separate
+    place holds a real share, the fit is only fair, part of the skyline can't be judged there,
+    or under half of the photos' field of view has a usable skyline.
+    ok: none of the above.
     """
     if (best.score < config.no_match_below or not best.fit_z <= config.no_match_fit_z
             or best.support < config.min_support):
         return "no_match"
     rival = max((c.probability for c in candidates[1:]), default=0.0)
     if (best.probability < config.ambiguous_below or rival > 0.5 * best.probability
+            or best.fit_z > config.ok_fit_z or best.support < config.ok_support
             or best.coverage < config.min_coverage):
         return "ambiguous"
     return "ok"

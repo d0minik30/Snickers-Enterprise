@@ -36,6 +36,7 @@ class PhotoFit:
     trust: np.ndarray                  # the photo's weight x how informative the bin is, 0..1
     used: np.ndarray                   # bool: trusted and within 3 sigma
     photo_weight: float = 0.0          # sum of the photo's bin weights (its usable size)
+    horizon_tilt_deg: float = 0.0      # fitted tilt t (elevation off by t * sin(az_offset)); 0 unless allowed
     bins_total: int = 0                # bins across the photo's field of view, gaps included
 
     @property
@@ -167,7 +168,7 @@ class FineSearch:
             headings = part["heading"] + self.heading_offsets
             score = np.zeros(headings.size)
             per_photo = []
-            for index, binned in zip(group.photos, group_binned):
+            for index, binned, rel in zip(group.photos, group_binned, group.relative_deg):
                 photo = self.observations[index]
                 az = headings[:, None] + binned.offsets_deg[None, :]
                 model = self._at(part, part["elev"], az)
@@ -175,25 +176,27 @@ class FineSearch:
                 weight = (self._at(part, known, az) > 0.999) * binned.weight[None, :]   # both rays known
                 resid = binned.elev[None, :] - model
                 base = base_variance(photo.angle_sigma_deg, cfg)
-                biases = bias_grid(photo.horizon_uncertainty_deg, photo.angle_sigma_deg)
-                by_bias = np.stack([score_sum(*fit_terms(resid - b, base, more, weight, cfg), weight, cfg)
-                                    for b in biases], axis=1)            # [headings, shifts]
-                pick = np.argmax(by_bias, axis=1)
-                score += by_bias[np.arange(headings.size), pick]
-                per_photo.append((index, binned, biases[pick]))
+                # a wrong "horizontal": a constant shift and, for a roll error, a tilt t * sin(az_offset)
+                tilt_shape = np.sin(np.radians(binned.offsets_deg - rel))[None, :]
+                combos = np.array([(b, t)
+                                   for t in bias_grid(photo.roll_uncertainty_deg, photo.angle_sigma_deg, 1.0, 9)
+                                   for b in bias_grid(photo.horizon_uncertainty_deg, photo.angle_sigma_deg)])
+                by_combo = np.stack([score_sum(*fit_terms(resid - b - t * tilt_shape, base, more, weight, cfg),
+                                               weight, cfg) for b, t in combos], axis=1)   # [headings, combos]
+                pick = np.argmax(by_combo, axis=1)
+                score += by_combo[np.arange(headings.size), pick]
+                per_photo.append((index, binned, combos[pick]))
             ll = self.temper * score - 0.5 * heading_penalty(headings, priors)
             total += float(logsumexp(ll)) + math.log(cfg.fine_heading_step_deg)
             top = int(np.argmax(ll))
             best_headings.append(float(headings[top] % 360.0))
             if detail:
-                for (index, binned, bias_by_heading), rel in zip(per_photo, group.relative_deg):
-                    fits[index] = self._photo_fit(part, extra, known, binned, index, rel,
-                                                  float(headings[top]), float(bias_by_heading[top]),
-                                                  position_error_m)
+                for (index, binned, combo_by_heading), rel in zip(per_photo, group.relative_deg):
+                    fits[index] = self._photo_fit(part, extra, known, binned, index, rel, float(headings[top]),
+                                                  float(combo_by_heading[top, 0]), float(combo_by_heading[top, 1]))
         return (total, best_headings, fits) if detail else (total, best_headings)
 
-    def _photo_fit(self, part, extra, known, binned, index, relative_deg, group_heading, bias,
-                   position_error_m):
+    def _photo_fit(self, part, extra, known, binned, index, relative_deg, group_heading, bias, tilt):
         cfg = self.config
         photo = self.observations[index]
         az = group_heading + binned.offsets_deg
@@ -202,7 +205,8 @@ class FineSearch:
         more = self._at(part, extra, az)
         sigma = np.sqrt(base + more)
         seen = binned.weight > 0
-        resid = np.where(seen, binned.elev - bias - model, np.nan)
+        resid = np.where(seen, binned.elev - bias - tilt * np.sin(np.radians(binned.offsets_deg - relative_deg))
+                         - model, np.nan)
         _, weight = fit_terms(np.nan_to_num(resid), base, more,
                               (self._at(part, known, az) > 0.999) * binned.weight, cfg)
         used = seen & (weight > 0) & (np.abs(np.where(seen, resid, 0.0)) <= 3.0 * sigma)
@@ -211,7 +215,8 @@ class FineSearch:
                         observed_elev_deg=np.where(seen, binned.elev, np.nan), model_elev_deg=model,
                         residual_deg=resid, distance_m=self._at(part, part["dist"], az),
                         sigma_deg=sigma, trust=weight, used=used,
-                        photo_weight=float(binned.weight.sum()), bins_total=int(binned.n))
+                        photo_weight=float(binned.weight.sum()), bins_total=int(binned.n),
+                        horizon_tilt_deg=tilt)
 
     # ------------------------------------------------------------ searching
 

@@ -1,4 +1,4 @@
-# Engine contracts — DRAFT v0.2 (not agreed yet)
+# Engine contracts — DRAFT v0.3 (not agreed yet)
 
 The three file formats around the localization engine in `backend/`:
 
@@ -10,8 +10,13 @@ Nothing here is final until all three of us agree. After that, a change needs a 
 `contract_version` and a heads-up to the team.
 
 **Changed in 0.2:** section 1 only. Along its edge a source is now blended into the source beneath
-it (`edge_blend_m`) instead of switching hard. Sections 2 and 3 are as in 0.1: a request may say
-`"0.1"` or `"0.2"`, and the result repeats the request's value.
+it (`edge_blend_m`) instead of switching hard.
+
+**Changed in 0.3** (from Person 3's review, `backend/skyline/CONTRACT_REVIEW.md`): section 2 gains the
+optional `roll_uncertainty_deg` per photo and the `lens_model` value `cahvore`; section 3 gains
+`photos[].horizon_tilt_deg`; an unknown `contract_version` is refused with HTTP 422; `/locate`,
+`/health` and the skyline step's `/skyline` routes are served by one server. Nothing was removed:
+a request may say `"0.1"`, `"0.2"` or `"0.3"`, and the result repeats the request's value.
 
 ## 0. Conventions shared by all three
 
@@ -175,9 +180,10 @@ One request = one standing position, one or more photos taken from it (within a 
 | `id` | yes | Any string; echoed in the result |
 | `camera.hfov_deg`, `vfov_deg` | yes | Full horizontal and vertical field of view. A stitched panorama may have `hfov_deg` up to 360 |
 | `camera.width_px`, `height_px` | yes | Image size. With the field of view it tells the engine how fine one pixel is, which sets the expected angle noise |
-| `camera.lens_model` | yes | `rectilinear`, `fisheye_equidistant`, `cylindrical` or `other`. For the record and for diagnostics; the engine does not undo lens distortion, the samples must already be angles |
+| `camera.lens_model` | yes | `rectilinear`, `fisheye_equidistant`, `cylindrical`, `cahvore` or `other`. For the record and for diagnostics; the engine does not undo lens distortion, the samples must already be angles |
 | `eye_height_m` | no, default 1.7 | Camera height above the ground |
 | `horizon_uncertainty_deg` | no, default 0 | How far the "local horizontal" used for `elev_deg` may be off (leftover pitch error). If above 0, the engine fits one constant up/down shift per photo within ± this value |
+| `roll_uncertainty_deg` | no, default 0 | How far the camera's roll may be off. A roll error tilts the skyline: at azimuth offset `a` the elevation is off by about `t · sin(a)`. If above 0, the engine also fits that tilt `t` per photo within ± this value (new in 0.3) |
 | `relative_heading_deg` | no, default `null` | Heading of this photo's optical axis minus the heading of the first photo's, clockwise positive. `null` = unknown. The first photo has 0 or `null`. Photos with a number turn together with the first photo; photos with `null` are matched at their own free heading |
 | `time_utc` | no | When the photo was taken, ISO 8601, UTC |
 | `sun` | no | Centre of the sun in the image: `az_offset_deg` (same convention as samples) and optionally `elev_deg`. Needs `time_utc`. The engine turns it into a heading hint; it is a hint, not a constraint |
@@ -212,7 +218,8 @@ One request = one standing position, one or more photos taken from it (within a 
 | `include_residuals` | true | Set false to leave the per-sample residual lists out |
 
 Limits: at most 8 photos per request. A request that breaks the contract gets HTTP 422 with a
-message naming the field.
+message naming the field. That includes a `contract_version` the engine does not know: a stale
+app fails loudly instead of being half understood.
 
 ## 3. Result (engine → Person 3): response of `POST /locate`
 
@@ -298,12 +305,18 @@ message naming the field.
 | `dominant_feature` | The most prominent distant piece of the matched skyline inside the photos, or `null` if the skyline has none. `lat`/`lon`/`elevation_m`: the terrain point that forms it. `distance_m`: ground distance from the camera. `distance_check_m`: the same distance recomputed from the height difference and `elev_angle_deg` with curvature; a big gap between the two means don't trust it. `name`: the nearest named place or terrain feature from `data/output/`, else `null`. `photo_id` and `az_offset_deg`: where to label it in the photo |
 | `photos[].heading_deg` | Direction each photo's optical axis faced, clockwise from north |
 | `photos[].horizon_shift_deg` | The constant up/down shift the engine fitted (0 unless `horizon_uncertainty_deg` was given) |
+| `photos[].horizon_tilt_deg` | The tilt `t` the engine fitted (0 unless `roll_uncertainty_deg` was given; new in 0.3) |
 | `photos[].rms_residual_deg`, `median_abs_residual_deg`, `inlier_fraction` | How far this photo's trusted skyline is from the matched one |
 | `photos[].residuals` | Per sample bin: what was observed, what the terrain gives at the matched position (`model_elev_deg`, so the app can draw the matched skyline over the photo), their difference, how far away the terrain forming it is, and whether the bin counted (`used` is false for weight 0 and rejected outliers). Bins formed by terrain closer than about 1–2 km count less: 20 m elevation data can't show rocks, ripples and ledges that close |
 | `engine` | Version, the terrain sources in use, candidate grid spacing and timings |
 
-`GET /health` returns `{"status": "ok", "contract_version": "0.1", "terrain_loaded": true,
+`GET /health` returns `{"status": "ok", "contract_version": "0.3", "terrain_loaded": true,
 "skylines_loaded": true}`.
+
+**One server.** `POST /locate` and `GET /health` are served by the same FastAPI app as the skyline
+step's routes (`/skyline`, `/skyline/convert`, from `backend/skyline/api.py`), so the app needs one
+base URL. CORS allows `http://localhost:3000` and the hosted site's address. Errors: FastAPI's 422
+list (`detail: [{loc, msg}]`) for contract violations; other 4xx carry a `detail` string.
 
 ## 4. Test cases with known positions (Persons 2 and 3 → engine)
 
