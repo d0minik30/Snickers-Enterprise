@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { ScreenMenu } from '@/components/shared/ScreenMenu';
 import { useEffect, useState } from 'react';
 import { earthClock, marsClock } from '@/components/control/controlModel';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
@@ -44,9 +44,10 @@ export function TopBar({ mode, onMode }: Props) {
 
   return (
     <header className={styles.topBar}>
-      <Link href="/" className={styles.brand} title="All screens">
+      <ScreenMenu className={styles.brand} label="Mars Map: all screens">
         MARS MAP <span className={styles.brandView}>/ CONTROL</span>
-      </Link>
+        <span className={styles.brandCaret} aria-hidden="true">▾</span>
+      </ScreenMenu>
       <div role="tablist" aria-label="Mode" className={styles.tabs}>
         {tab('plan', 'PLAN')}
         {tab('live', 'LIVE')}

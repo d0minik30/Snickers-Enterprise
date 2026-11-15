@@ -181,6 +181,29 @@
   min-height: 0;
 }
 
+/* Menu: the way out to the other screens. Mirrors the north pointer on the other side of the map. */
+:where(.screen) .menuButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+}
+
+:where(.screen) .menuButton[aria-expanded='true'] {
+  background: var(--text);
+  color: var(--surface);
+}
+
+.mapArea > div:has(> .menuButton) {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+}
+
 .north {
   position: absolute;
   top: 10px;
@@ -268,6 +291,46 @@
   padding: 24px var(--pad-x);
   background: var(--surface);
   text-align: center;
+}
+
+.panelKicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.panelSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 300px;
+  margin-top: 14px;
+  padding: 14px 16px 14px 34px;
+  border: 1px solid var(--rule);
+  font-size: 16px;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.panelSteps li::marker {
+  color: var(--route);
+  font-weight: 700;
+}
+
+.panelLink {
+  margin-top: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.panelLink:active {
+  background: var(--text);
+  color: var(--surface);
 }
 
 .panelDocked {

@@ -1,6 +1,7 @@
 import type { FieldState } from '@/lib/mission/field';
 import { PACE_MPS, SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import { formatClock, formatDistance } from '@/lib/nav/format';
+import Link from 'next/link';
 import styles from './field.module.css';
 
 type Props = { state: FieldState; onStart: () => void };
@@ -18,8 +19,15 @@ export function StatusPanel({ state, onStart }: Props) {
     case 'awaiting-route':
       return (
         <div className={styles.panel} role="status">
+          <p className={styles.panelKicker}>FIELD · ON THE SURFACE</p>
           <p className={styles.panelTitle}>AWAITING ROUTE FROM CONTROL</p>
           <p className={styles.panelNote}>A route from Earth takes {formatClock(SIGNAL_DELAY_MS)} to arrive.</p>
+          <ol className={styles.panelSteps}>
+            <li>Open <b>Control</b> in a wide window.</li>
+            <li>Pick a route and press <b>Send route to field</b>.</li>
+            <li>It lands here after the delay. Then press <b>Start traverse</b>.</li>
+          </ol>
+          <Link href="/control/" className={styles.panelLink} target="_blank" rel="noreferrer">OPEN CONTROL IN A NEW WINDOW →</Link>
         </div>
       );
     case 'ready': {

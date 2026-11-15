@@ -1,0 +1,64 @@
+/* The list of every screen, opened from a button. "Instrument" look: solid block, 1 px rules, no shadow. */
+
+.root {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000; /* above the maps and their controls */
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  background: var(--surface);
+  border: 1px solid var(--text);
+}
+
+.right {
+  left: auto;
+  right: 0;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 14px 12px;
+  border-left: 3px solid transparent;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+}
+
+.item + .item {
+  border-top: 1px solid var(--rule);
+}
+
+.item:hover,
+.item:focus-visible {
+  background: color-mix(in srgb, var(--text) 8%, var(--surface));
+  outline: none;
+}
+
+.item[aria-current='page'] {
+  border-left-color: var(--route);
+}
+
+.itemLabel {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text);
+}
+
+.itemHint {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--muted);
+}

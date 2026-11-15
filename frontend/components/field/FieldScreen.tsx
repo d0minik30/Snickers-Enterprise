@@ -10,6 +10,7 @@ import { CommsBar, LogSheet, ReportSheet, type FieldPanel } from '@/components/f
 import { StatusBanner, StatusPanel } from '@/components/field/StatusPanel';
 import { fieldStateAt } from '@/lib/mission/field';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
+import { ScreenMenu } from '@/components/shared/ScreenMenu';
 import styles from './field.module.css';
 
 const MarsMap = dynamic(() => import('@/components/map/MarsMap'), { ssr: false });
@@ -66,6 +67,12 @@ export default function FieldScreen() {
         )}
         {cue.routeChangeId && <div key={cue.routeChangeId} className={styles.routePulse} aria-hidden="true" />}
         {hydrated && <StatusPanel state={state} onStart={start} />}
+        {/* After the panel in the tree, so it stays on top of the waiting screen too. */}
+        <ScreenMenu className={styles.menuButton} label="Menu: all screens">
+          <svg width="20" height="16" viewBox="0 0 20 16" aria-hidden="true">
+            <path d="M0 1H20M0 8H20M0 15H20" stroke="currentColor" strokeWidth="2" />
+          </svg>
+        </ScreenMenu>
         {hydrated && panel === 'compose' && <ReportSheet onSend={report} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
         {hydrated && panel === 'log' && <LogSheet state={state} onAck={ack} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
       </div>
