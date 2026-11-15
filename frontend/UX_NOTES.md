@@ -88,3 +88,13 @@ photos from NASA directly. Added a `.gitignore` exception for `frontend/public/d
   bar (the Send button already says "Reaches Mars in 11:20"), and the "MARS MAP / CONTROL" title inside the Mission
   screen (the Mission screen has its own). `PlanDetailRail.tsx` deleted.
 - Crew view: before a route arrives it shows only "Waiting for a route from Earth", not empty boxes full of "--".
+
+## Landing page redesign (v3)
+
+- Full-screen hero on **live NASA imagery of Jezero** (MRO CTX tiles from Mars Trek, warmed to Mars colours
+  with a CSS filter, since the tiles are greyscale), with a pulsing "YOU ARE HERE" pin on the landing site.
+- Headline "Lost on Mars? Take a photo." One sentence on how it works. Buttons: **Find me from a photo**
+  (→ map) and **Run a mission**. A small proof line: 74 m from NASA's real rover position on 6 Perseverance photos.
+- "How it works" in 3 steps with pictures: a real Navcam photo, a skyline illustration, a map tile with a pin.
+- "Also: run a mission" with 3 numbers (11:20 delay, 3 routes, up to 1000×). Small footer with the other pages.
+- No images added to the repo: the hero and step 3 load from NASA; step 1 reuses an example photo.
