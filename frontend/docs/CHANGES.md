@@ -44,7 +44,16 @@ The traveller walking the route is simulated; that is the demo.
 
 ## Interface
 
-- One navigation row for every screen (`components/shared/SiteNav.tsx`, list in `components/shared/views.ts`).
+- **Getting around.** Every screen is listed once, in `components/shared/views.ts`; add a screen there and it
+  appears everywhere:
+  - a row of links on Map, Locate and Validate (`components/shared/SiteNav.tsx`);
+  - a screens menu where a row does not fit (`components/shared/ScreenMenu.tsx`): Control's "MARS MAP / CONTROL ▾"
+    brand, and the ☰ button on the Field map. It closes on Escape or a click outside;
+  - the landing page cards.
+- **The two demo windows point at each other.** Field's waiting screen lists the three steps to start and opens
+  Control in a new window; Control's Plan rail opens Field in a new window.
+- **Empty states say what to do next.** Control Live before any route is sent offers a button back to Plan.
+  The landing page sends Locate visitors to `/locate/?result=saved` when no engine server is running.
 - A landing page that explains the project, links each screen with where to open it, gives a six-step
   presenting script and lists the data sources.
 - Map labels on Control and Field sit on a decluttered layer, so they never overlap; priority in
