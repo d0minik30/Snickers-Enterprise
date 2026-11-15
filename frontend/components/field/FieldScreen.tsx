@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { fieldCamera, simpleCells, fieldCue, fieldOverlays, latestUnacked, nextMoveView } from '@/components/field/fieldModel';
 import { MessageStrip } from '@/components/field/MessageStrip';
@@ -14,7 +15,7 @@ import { ScreenMenu } from '@/components/shared/ScreenMenu';
 import { useEmbedded } from '@/components/shared/embedded';
 import { MissionComplete } from '@/components/mission/MissionComplete';
 import { useMissionComplete } from '@/components/mission/useMissionComplete';
-import { DESTINATION } from '@/lib/planner';
+import { DESTINATION, PHOTO_FIX_ERROR_M } from '@/lib/planner';
 import styles from './field.module.css';
 
 const MarsMap = dynamic(() => import('@/components/map/MarsMap'), { ssr: false });
@@ -59,10 +60,13 @@ export default function FieldScreen() {
       <div className={styles.mapArea}>
         {hydrated && <MarsMap overlays={overlays} camera={camera} />}
         {hydrated && (state.status === 'moving' || state.status === 'holding') && (
-          <button type="button" data-testid="field-photo-fix" className={styles.fixButton} onClick={photoFix}>
-            PHOTO FIX
-            <span className={styles.fixButtonNote}>find my position</span>
-          </button>
+          <div className={styles.fixGroup}>
+            <button type="button" data-testid="field-photo-fix" className={styles.fixButton} onClick={photoFix}>
+              PHOTO FIX
+              <span className={styles.fixButtonNote}>find my position · simulated, ±{PHOTO_FIX_ERROR_M} m from real engine runs</span>
+            </button>
+            <Link href="/locate/" prefetch={false} className={styles.realFix} data-testid="field-real-fix">TAKE A REAL FIX →</Link>
+          </div>
         )}
         {hydrated && state.pos && (
           <div className={styles.north} aria-label={`North is ${Math.round(state.headingDeg)} degrees to the left`}>

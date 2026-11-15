@@ -44,7 +44,7 @@ describe('fieldStateAt', () => {
     expect(before.posErrorM).toBeCloseTo(1 + 0.02 * PACE * 199, 2); // from the surveyed base
     const after = fieldStateAt([sent, start, fix], 1_000_000);
     expect(after).toMatchObject({ lastFixMs: 900_000, lastFixKind: 'photo' });
-    expect(after.posErrorM).toBeCloseTo(15 + 0.02 * PACE * 100, 2); // a photo fix is good to about 15 m
+    expect(after.posErrorM).toBeCloseTo(47 + 0.02 * PACE * 100, 2); // a photo fix: ±47 m (68 %) in a real engine run
   });
   it('ignores a photo fix taken before the traverse started', () => {
     const early: MissionEvent = { id: 'p0', tMs: 690_000, type: 'photo-fix', origin: 'field' };

@@ -39,11 +39,18 @@ describe('fieldCells and fieldBars', () => {
     expect(fieldBars(moving).map(b => b.label)).toEqual(['Slope', 'Climb left']);
   });
   it('turns the last fix amber when it is stale and the error amber when it is large', () => {
-    const late = fieldStateAt([sent, start], 700_000 + 481_000);
-    expect(fieldCells(late)[4]).toMatchObject({ value: '08:01', tone: 'caution' });
+    const late = fieldStateAt([sent, start], 700_000 + 2_401_000);
+    expect(fieldCells(late)[4]).toMatchObject({ value: '40:01', tone: 'caution' });
     expect(fieldCells(moving)[3]).toMatchObject({ value: '±14', tone: 'nominal' }); // 650 m since the base
-    expect(fieldCells(fieldStateAt([sent, start], 2_450_000))[3].tone).toBe('caution'); // about 1.9 km: ±39 m
+    const long = { ...sent, route: straightRoute(6000) };
+    expect(fieldCells(fieldStateAt([long, start], 700_000 + 4_700_000))[3].tone).toBe('caution'); // about 5.1 km: ±103 m
   });
+  it('keeps the error green right after a photo fix (±47 m, from a real engine run)', () => {
+    const fix: MissionEvent = { id: 'p1', tMs: 900_000, type: 'photo-fix', origin: 'field' };
+    expect(fieldCells(fieldStateAt([sent, start, fix], 1_000_000))[3]).toMatchObject({ value: '±50', tone: 'nominal' });
+  });
+  it('shows dashes for the error before a route arrives', () =>
+    expect(fieldCells(fieldStateAt([sent], 100_000))[3]).toEqual({ label: 'Pos error', value: '--', tone: 'plain' }));
   it('shows remaining distance, ETA and pace while moving', () => {
     const [distance, eta, pace] = fieldCells(moving);
     expect(distance).toMatchObject({ value: '1.35', unit: 'km' }); // 2000 - 650

@@ -51,8 +51,18 @@ export default function Home() {
         </ul>
       </section>
 
+      <section className={styles.more} aria-labelledby="data">
+        <h2 id="data" className={styles.sectionTitle}>The data</h2>
+        <ul className={styles.moreList}>
+          <li><b>Terrain</b> HiRISE 1 m and CTX 20 m elevation models (USGS), the 3D terrain the photos are matched to.</li>
+          <li><b>Places</b> The base at the Perseverance landing site, and four mission sites: Western Delta Deposit, Western Breach, Northern Delta Deposit and Western Inflow Channel.</li>
+          <li><b>Clocks</b> A sped-up demo clock (UTC and Jezero local solar time with the sol number), not the real time now.</li>
+          <li><b>Simulated</b> The crew walking the route. Field's photo fix uses the accuracy of a real engine run (±47 m); Locate takes a real one.</li>
+        </ul>
+      </section>
+
       <footer className={styles.footer}>
-        Imagery and terrain: NASA / JPL-Caltech / USGS, via NASA Mars Trek. Geology: USGS SIM 3464 (Sun &amp; Stack, 2020).
+        Imagery: NASA / JPL-Caltech / USGS, via NASA Mars Trek. Terrain: NASA / JPL-Caltech / University of Arizona / USGS. Geology: USGS SIM 3464 (Sun &amp; Stack, 2020).
       </footer>
     </main>
   );

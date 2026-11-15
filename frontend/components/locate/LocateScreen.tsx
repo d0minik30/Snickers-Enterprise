@@ -25,13 +25,14 @@ type Saved = { request: LocateRequest; result: LocateResult; note: string };
  * engine server is not running. Loaded only on request, and checked like a live answer.
  */
 async function loadSaved(prefix: string): Promise<Saved | null> {
-  const m = await import('@/lib/locate/fixtures/engine-sol17-18.json');
-  const file = m.default as unknown as { source: { photos: string[]; run_utc: string }; request: LocateRequest; result: unknown };
+  const m = await import('@/lib/locate/fixtures/engine-pose3-770.json');
+  const file = m.default as unknown as { source: { photos: string[]; pose: string; sol: number; run_utc: string }; request: LocateRequest; result: unknown };
   if (!isLocateResult(file.result)) return null;
+  const { photos, pose, sol, run_utc } = file.source;
   return {
     request: file.request,
     result: file.result,
-    note: `${prefix ? `${prefix} · ` : ''}SAVED ENGINE RESPONSE · ${file.source.photos.length} Perseverance Navcam photos, sols 17–18, run ${file.source.run_utc.slice(0, 10)}. Not a live request.`,
+    note: `${prefix ? `${prefix} · ` : ''}SAVED ENGINE RESPONSE · pose ${pose}, sol ${sol}, ${photos.length} Perseverance Navcam photos, run ${run_utc.slice(0, 10)}. Not a live request.`,
   };
 }
 

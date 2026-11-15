@@ -35,10 +35,11 @@ describe('controlModel', () => {
   });
 
   it('plans photo fixes to stay within the target error', () => {
-    const p = fixPlan(straightRoute(2000)); // fix error 15 m, drift 2 %: within ±25 m means a fix every 500 m
-    expect(p.everyM).toBeCloseTo(500, 6);
-    expect(p.fixes).toBe(3); // at 500, 1000 and 1500 m
-    expect(p.noFixErrorM).toBeCloseTo(1 + 0.02 * 2000, 6);
+    // fix error 47 m (a real engine run, 68 %), drift 2 %: within ±100 m means a fix every 2650 m
+    const p = fixPlan(straightRoute(6000));
+    expect(p.everyM).toBeCloseTo(2650, 6);
+    expect(p.fixes).toBe(2); // at 2650 and 5300 m
+    expect(p.noFixErrorM).toBeCloseTo(1 + 0.02 * 6000, 6);
   });
 
   it('draws the selected route in magenta and the others as alternatives', () => {

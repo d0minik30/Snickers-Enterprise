@@ -30,9 +30,10 @@ server exists, `py -3.10 ../backend/skyline/scripts/dev_server.py` serves the sk
 8000; Locate then traces and edits skylines, and says plainly that the engine has no `/locate` yet.
 The in-app camera needs a secure page: `https://`, or `localhost` on the same computer.
 
-`/locate/?result=saved` shows a saved, real answer of the engine (six Perseverance Navcam photos from
-sols 17–18), marked as saved, so the result view can be seen without the engine running. It is made by
-`../backend/skyline/scripts/engine_result.py` (see `../backend/skyline/README.md`).
+`/locate/?result=saved` shows a saved, real answer of the engine (three Perseverance Navcam photos, pose
+3/770, sol 20), marked as saved, so the result view can be seen without the engine running. The same answer
+is shown, marked OFFLINE DEMO, when the engine can't be reached. It was saved from a live run of the Locate
+screen against `POST /locate` (`lib/locate/fixtures/engine-pose3-770.json`).
 
 ## Run it
 

@@ -74,7 +74,7 @@ describe('result geometry', () => {
 
 describe('the saved real engine answer', () => {
   it('passes the same contract check as a live answer', async () => {
-    const file = (await import('@/lib/locate/fixtures/engine-sol17-18.json')).default as unknown as { result: unknown };
+    const file = (await import('@/lib/locate/fixtures/engine-pose3-770.json')).default as unknown as { result: unknown };
     expect(isLocateResult(file.result)).toBe(true);
   });
 });

@@ -232,10 +232,30 @@
 }
 
 /* Photo fix: send skyline photos to the localization engine. Big enough for a gloved thumb. */
-:where(.screen) .fixButton {
+.fixGroup {
   position: absolute;
   left: 10px;
   bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: calc(100% - 20px);
+}
+
+/* Opens the Locate screen, where real photos go to the engine. */
+.realFix {
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+}
+
+:where(.screen) .fixButton {
   display: flex;
   flex-direction: column;
   align-items: flex-start;

@@ -102,8 +102,8 @@ export function recommendationText(routes: Route[], traveller: TravellerKind = '
 
 // ---------------------------------------------------------------- photo fixes
 
-/** The position error the crew should stay within; a photo fix is due before drift passes it. */
-export const FIX_TARGET_M = 25;
+/** The position error the crew should stay within; a photo fix is due before drift passes it. A fix alone is ±47 m. */
+export const FIX_TARGET_M = 100;
 
 /**
  * How often the crew needs a photo fix on a route to stay within FIX_TARGET_M, and how far drift would grow

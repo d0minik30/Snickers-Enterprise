@@ -9,8 +9,8 @@ import type { Route } from '@/lib/planner/types';
 export type Cell = { label: string; value: string; unit?: string; tone: 'plain' | 'nominal' | 'caution' };
 export type BarCell = { label: string; value: string; unit: string; fraction: number };
 
-export const FIX_STALE_MS = 8 * 60_000; // about 500 m on foot: a photo fix is due (FIX_TARGET_M in controlModel)
-export const ERROR_OK_M = 25; // the error the crew aims to stay within
+export const FIX_STALE_MS = 40 * 60_000; // about 2.6 km on foot: a photo fix is due (fixPlan in controlModel)
+export const ERROR_OK_M = 100; // the error the crew aims to stay within (FIX_TARGET_M in controlModel)
 export const CUE_MS = 4 * 60_000; // how long the "fix acquired" and "route changed" cues stay up
 export const RANGE_RING_M = 100;
 export const FOLLOW_ZOOM = 15.5;
@@ -69,7 +69,9 @@ export function fieldCells(state: FieldState): Cell[] {
     { label: 'Distance', value: state.route ? remaining.value : '--', unit: state.route ? remaining.unit : undefined, tone: 'plain' },
     { label: 'ETA', value: moving ? formatClock((remainingM(state) / state.paceMps) * 1000) : NO_TIME, tone: 'plain' },
     { label: state.traveller === 'rover' ? 'Speed' : 'Pace', value: (state.paceMps * 3.6).toFixed(1), unit: 'km/h', tone: 'plain' },
-    { label: 'Pos error', value: `±${error}`, unit: 'm', tone: error <= ERROR_OK_M ? 'nominal' : 'caution' },
+    state.route
+      ? { label: 'Pos error', value: `±${error}`, unit: 'm', tone: error <= ERROR_OK_M ? 'nominal' : 'caution' }
+      : { label: 'Pos error', value: '--', tone: 'plain' },
     {
       label: 'Last fix',
       value: fixAge === null ? NO_TIME : formatClock(fixAge),
