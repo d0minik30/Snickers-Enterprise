@@ -23,6 +23,8 @@ export type ContractPhoto = {
 
 /** How the skyline API set the camera up: for the app, not sent to the engine. */
 export type Diagnostics = {
+  /** False when even the top of the photo looks below the horizon: no skyline can be in it. */
+  sky_visible?: boolean;
   camera_model: 'pinhole' | 'cahvore';
   camera_source: string;
   level_source: 'label' | 'sensor' | 'manual' | 'assumed';

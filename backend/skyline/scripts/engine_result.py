@@ -42,6 +42,8 @@ SAMPLES = BACKEND / 'skyline' / 'samples'
 
 def relative_headings(diagnostics: list[dict]) -> list[float | None]:
     """Same rule as the app (frontend/lib/locate/session.ts): one rover pose turns together."""
+    if not diagnostics:
+        return []
     first = diagnostics[0]
     shared = len(diagnostics) > 1 and first['rover_pose'] is not None and all(
         d['rover_pose'] == first['rover_pose'] and d['rover_axis_azimuth_deg'] is not None for d in diagnostics)
@@ -51,12 +53,23 @@ def relative_headings(diagnostics: list[dict]) -> list[float | None]:
     return [round(((d['rover_axis_azimuth_deg'] - base + 540) % 360) - 180, 4) for d in diagnostics]
 
 
-def locate_body(image_ids: list[str]) -> dict:
+def locate_body(image_ids: list[str], skipped: list[str] | None = None) -> dict:
+    """The POST /locate body for these photos. Photos with no sky in them are left out (and listed in
+    `skipped`): their skyline is all weight 0, so they could only add noise."""
     photos, diags = [], []
     for image_id in image_ids:
         png, meta = SAMPLES / f'{image_id}.png', SAMPLES / f'{image_id}.json'
         img, exif = load_image(png.read_bytes())
-        out = process(img, camera_setup(img.shape[1], img.shape[0], {}, exif, json.loads(meta.read_text())))
+        try:
+            out = process(img, camera_setup(img.shape[1], img.shape[0], {}, exif, json.loads(meta.read_text())))
+        except ValueError:  # e.g. the camera points almost straight down: no skyline, no azimuth
+            if skipped is not None:
+                skipped.append(image_id)
+            continue
+        if not out.diagnostics['sky_visible'] or not any(s['weight'] > 0 for s in out.photo['samples']):
+            if skipped is not None:
+                skipped.append(image_id)
+            continue
         photos.append(out.photo)
         diags.append(out.diagnostics)
     rel = relative_headings(diags)

@@ -26,6 +26,17 @@ PROCESS_WIDTH = 2048
 # horizon_uncertainty_deg). Starting values, to calibrate on the test photos with known positions.
 HORIZON_UNCERTAINTY_DEG = {'label': 0.3, 'sensor': 1.0, 'manual': 1.0, 'assumed': 5.0}
 
+# If even the top of the photo looks below this, no skyline can be in it (a tile cut from the lower
+# half of the sensor, a camera pointed at the ground): every weight becomes 0 and diagnostics say so.
+MIN_SKY_ELEV_DEG = -1.5
+
+
+def _sky_visible(setup: CameraSetup) -> bool:
+    W = setup.camera.width
+    u = np.linspace(0, W - 1, 9)
+    _, el = points_to_angles(setup.camera, setup.level, u, np.zeros_like(u))
+    return bool(np.max(el) >= MIN_SKY_ELEV_DEG)
+
 
 @dataclass
 class Output:
@@ -62,6 +73,7 @@ def _diagnostics(setup: CameraSetup, step: float) -> dict:
     cam = camera_summary(setup.camera, setup.level)
     axis = setup.rover_axis_azimuth_deg
     return {
+        'sky_visible': _sky_visible(setup),
         'camera_model': cam['model'], 'camera_source': setup.camera_source, 'level_source': setup.level.source,
         'pitch_deg': cam['pitch_deg'], 'roll_deg': cam['roll_deg'], 'az_step_deg': step,
         'rover_axis_azimuth_deg': None if axis is None else round(axis, 4),
@@ -87,6 +99,9 @@ def process(image: np.ndarray, setup: CameraSetup, step: float = DEFAULT_STEP_DE
         work_f = paint_over(work_f, sun_found[2])
     trace = trace_skyline(work_f)
     trust = column_trust(trace)
+    if not _sky_visible(setup):
+        trust.weight[:] = 0.0
+        trust.reason = ['top'] * len(trust.reason)  # the real skyline is above this photo
 
     cols = np.arange(trace.width)
     u = (cols + 0.5) * f - 0.5  # back to the photo's own pixel centres

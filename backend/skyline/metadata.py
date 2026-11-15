@@ -127,15 +127,15 @@ def setup_from_m2020_record(record: dict, width: int, height: int, spec: dict) -
     if not text:
         raise SpecError('label has no camera model (camera.camera_model_component_list)')
     ext = record.get('extended') or {}
-    sub = str(ext.get('subframeRect', '')).strip('()').split(',')
     dim = str(ext.get('dimension', '')).strip('()').split(',')
     try:
         model_w, model_h = int(dim[0]), int(dim[1])
     except (ValueError, IndexError) as e:
         raise SpecError('label has no image dimension (extended.dimension)') from e
-    # A crop that does not start at the sensor's top-left corner would need the model shifted.
-    if len(sub) == 4 and (sub[0].strip(), sub[1].strip()) != ('1', '1'):
-        raise SpecError('cropped (subframe) Perseverance images are not supported yet; use a full frame')
+    # The feed gives the camera model in the delivered image's own pixels, crops (subframeRect) and
+    # downsampling (scaleFactor) included: the optical axis of a 1296 x 976 full-resolution tile lands at
+    # the sensor centre minus the tile's offset. So no shift is needed here, only a resize if the photo
+    # was resized after download.
     model = Cahvore.from_components(text, model_w, model_h)
     if (width, height) != (model_w, model_h):
         model = scaled_cahvore(model, width, height)

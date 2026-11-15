@@ -96,3 +96,16 @@ def test_image_borders_are_not_trusted():
     assert w[0] == 0 and w[-1] == 0
     assert out.diagnostics['level_source'] == 'assumed'  # no tilt given: said so, not hidden
     assert out.photo['horizon_uncertainty_deg'] == 5.0
+
+
+def test_a_photo_with_no_sky_in_it_is_not_trusted_at_all():
+    """A camera pointed well down (or a tile cut from the bottom of the sensor) can't show the skyline."""
+    cam = Pinhole.from_fov(960, 720, 60)
+    level = level_from_gravity(gravity_from_pitch_roll(-40, 0), cam.forward, 'sensor')
+    out = process(render(cam, level), camera_setup(960, 720, {'hfov_deg': 60, 'pitch_deg': -40, 'roll_deg': 0,
+                                                             'level_source': 'sensor'}))
+    assert out.diagnostics['sky_visible'] is False
+    assert all(s['weight'] == 0 for s in out.photo['samples'])
+    level_cam = process(render(cam, level_from_gravity(gravity_from_pitch_roll(0, 0), cam.forward, 'm')),
+                        camera_setup(960, 720, {'hfov_deg': 60}))
+    assert level_cam.diagnostics['sky_visible'] is True

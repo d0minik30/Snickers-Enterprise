@@ -197,7 +197,9 @@ export function relativeHeadings(photos: { diagnostics: Diagnostics | null }[]):
 
 /** The POST /locate body (CONTRACTS.md section 2) for the traced photos, in the order shown. */
 export function buildLocateRequest(s: Session): LocateRequest {
-  const traced = s.photos.filter((p): p is PhotoEntry & { photo: ContractPhoto } => p.status === 'traced' && p.photo !== null);
+  // A photo with no trusted skyline (no sky in it, or all erased) would only add noise: leave it out.
+  const traced = s.photos.filter((p): p is PhotoEntry & { photo: ContractPhoto } =>
+    p.status === 'traced' && p.photo !== null && p.photo.samples.some(x => x.weight > 0));
   const rel = relativeHeadings(traced);
   return {
     contract_version: CONTRACT_VERSION,

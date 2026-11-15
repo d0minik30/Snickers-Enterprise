@@ -13,6 +13,7 @@ export function photoStatus(p: PhotoEntry): { text: string; tone: 'busy' | 'bad'
   if (p.status === 'error') return { text: 'ERROR', tone: 'bad' };
   if (p.angles === 'stale' || p.angles === 'updating') return { text: 'UPDATING…', tone: 'busy' };
   if (p.angles === 'failed') return { text: 'ANGLES FAILED', tone: 'bad' };
+  if (p.diagnostics?.sky_visible === false) return { text: 'NO SKY IN PHOTO', tone: 'weak' };
   const share = p.trace ? trustedShare(p.trace) : 0;
   return { text: `${Math.round(share * 100)} % USED`, tone: share >= 0.3 ? 'ok' : 'weak' };
 }

@@ -126,3 +126,10 @@ describe('locate request state', () => {
     expect(reduce(idle, { type: 'locate-done', result: contractResult, at: 'y' }).locate.status).toBe('idle');
   });
 });
+
+describe('buildLocateRequest leaves out photos with nothing to match', () => {
+  it('skips a photo whose skyline is all weight 0', () => {
+    const s = run([...done('a'), ...done('b', skylineResponse(0))]);
+    expect(buildLocateRequest(s).photos.map(p => p.id)).toEqual(['photo_1']);
+  });
+});
