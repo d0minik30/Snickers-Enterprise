@@ -8,7 +8,7 @@ import { PlanRail } from '@/components/control/PlanRail';
 import { SignalTimeline } from '@/components/control/SignalTimeline';
 import { TopBar } from '@/components/control/TopBar';
 import {
-  liveOverlays, planReroute, type OxygenCheck, type RerouteOption, newestRoute, planFitPoints, planOverlays, rerouteBlocker, routeSentEvent, type RerouteBlocker,
+  chosenOption, liveOverlays, planReroute, type OxygenCheck, type RerouteOption, newestRoute, planFitPoints, planOverlays, rerouteBlocker, routeSentEvent, type RerouteBlocker,
 } from '@/components/control/controlModel';
 import { buildTimeline } from '@/components/control/timelineModel';
 import { usePlanDraft, type PlanDraft } from '@/components/control/usePlanDraft';
@@ -128,19 +128,20 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
   /**
    * Works out a new route and sends it if it keeps the oxygen (battery) reserve; otherwise holds it back
    * as an OXYGEN CHECK for Control. Reads the view at this moment, not the last render. With `choose`,
-   * it works the options out again (time has passed) and sends that one.
+   * it works the options out again (time has passed) and sends exactly that one; if it no longer
+   * exists, the card comes back with the new options instead of something Control did not pick.
    */
   const reroute = useCallback((hazard: Hazard | null, choose?: RerouteOption['kind']) => {
     const store = getMissionStore();
     const current = controlViewAt(store.getSnapshot().log, store.now());
     const blocked = rerouteBlocker(current, hazard);
-    const plan = blocked ? null : planReroute(current, hazard);
+    const plan = blocked ? null : planReroute(current, hazard, { alwaysCheck: choose !== undefined });
     setPending(null);
     if (!plan) return setNotice(blocked ?? 'too-late');
     setNotice(null);
     if (!('send' in plan) && !choose) return setPending({ check: plan.check, hazard });
-    const option = 'send' in plan ? plan.send : plan.check.options.find(o => o.kind === choose)
-      ?? plan.check.options.find(o => o.kind === plan.check.pick)!;
+    const option = 'send' in plan ? plan.send : chosenOption(plan.check, choose!);
+    if (!option) return setPending({ check: (plan as { check: OxygenCheck }).check, hazard });
     store.append({ type: 'route-changed', origin: 'control', reason: hazard ? 'hazard' : 'replan', route: option.route, hazards: option.hazards });
     if (option.kind === 'back') {
       const what = current.traveller === 'rover' ? 'battery' : 'oxygen';

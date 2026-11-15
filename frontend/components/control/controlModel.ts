@@ -441,7 +441,8 @@ export type OxygenCheck = { options: RerouteOption[]; pick: RerouteOption['kind'
  * back to the trip's start, or sending it anyway; `pick` is the app's recommendation. Null exactly when
  * `buildReroute` is null (too late, too close, nothing to plan).
  */
-export function planReroute(view: ControlView, newHazard: Hazard | null): { send: RerouteOption } | { check: OxygenCheck } | null {
+export function planReroute(view: ControlView, newHazard: Hazard | null, { alwaysCheck = false }: { alwaysCheck?: boolean } = {}):
+  { send: RerouteOption } | { check: OxygenCheck } | null {
   const plain = buildReroute(view, newHazard);
   const newest = newestRoute(view);
   const atBranch = branchPercent(view);
@@ -457,19 +458,20 @@ export function planReroute(view: ControlView, newHazard: Hazard | null): { send
   };
 
   const anyway = option('anyway', plain.route);
-  if (anyway.keepsReserve) return { send: anyway };
+  if (anyway.keepsReserve && !alwaysCheck) return { send: anyway };
 
-  const branch = pointAlong(newest.points, branchDistM).pos;
-  const spliced = (to: LatLon, profile: RouteProfile) => {
-    const tail = replan(branch, to, plain.hazards, profile);
-    return tail ? spliceRoute(newest, branchDistM, tail) : null;
+  const spliced = (atDistM: number, to: LatLon, profile: RouteProfile) => {
+    const tail = replan(pointAlong(newest.points, atDistM).pos, to, plain.hazards, profile);
+    return tail ? spliceRoute(newest, atDistM, tail) : null;
   };
   const around = PROFILES
-    .map(p => spliced(newest.points[newest.points.length - 1], p))
+    .map(p => spliced(branchDistM, newest.points[newest.points.length - 1], p))
     .filter((r): r is Route => r !== null)
     .map(r => option('around', r))
     .reduce<RerouteOption | null>((best, o) => (!best || o.endPercent > best.endPercent ? o : best), null);
-  const backRoute = spliced(newest.points[0], newest.profile);
+  // Turning back starts where the crew will be: a holding crew turns round on the spot, not after
+  // walking on to the branch point (towards the danger it is turning away from).
+  const backRoute = spliced(fromDistM, newest.points[0], newest.profile);
   const back = backRoute ? option('back', backRoute) : null;
 
   const options = [around, back, around && around.route.id === anyway.route.id ? null : anyway]
@@ -477,6 +479,17 @@ export function planReroute(view: ControlView, newHazard: Hazard | null): { send
   const keeper = [around, back].find(o => o?.keepsReserve);
   const pick = keeper ?? options.reduce((best, o) => (o.endPercent > best.endPercent ? o : best));
   return { check: { options, pick: pick.kind, noneKeeps: !keeper } };
+}
+
+/**
+ * The option Control clicked, from options worked out again at click time. SEND ANYWAY is the same
+ * route as GO AROUND when the two were merged. Null when that option no longer exists: the caller asks
+ * again rather than sending something Control did not pick.
+ */
+export function chosenOption(check: OxygenCheck, kind: RerouteOption['kind']): RerouteOption | null {
+  const exact = check.options.find(o => o.kind === kind);
+  if (exact) return exact;
+  return kind === 'anyway' ? check.options.find(o => o.kind === 'around') ?? null : null;
 }
 
 export function uplinkText(u: Uplink): string {

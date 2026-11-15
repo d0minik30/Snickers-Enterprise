@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { branchPercent, buildReroute, liveOverlays, liveProgress, planReroute, projectedArrivalPercent, rerouteBlocker, uplinkText } from '@/components/control/controlModel';
+import { branchPercent, buildReroute, chosenOption, liveOverlays, liveProgress, planReroute, projectedArrivalPercent, rerouteBlocker, uplinkText } from '@/components/control/controlModel';
 import { RESERVE_PERCENT, costPercent, lifeSupportAt } from '@/lib/mission/lifeSupport';
 import { controlViewAt, predictBranchDistM } from '@/lib/mission/control';
 import { PACE_MPS, SIGNAL_DELAY_MS, type MissionEvent } from '@/lib/mission/types';
@@ -139,10 +139,11 @@ describe('oxygen on reroutes', () => {
   const [safest] = planRoutes(DEFAULT_START, DEFAULT_END, PRESET_HAZARDS);
   const s2: MissionEvent = { ...sent, route: safest, hazards: PRESET_HAZARDS };
   const nearEnd = (): Hazard => ({ id: 'hz', center: pointAlong(safest.points, safest.lengthM - 300).pos, radiusM: FLAG_RADIUS_M, label: 'Flagged', source: 'control' });
-  // Hold arrives 10 s after Start; the crew then stands still for nine hours.
-  const hold: MissionEvent = { id: 'h1', tMs: 30_000, type: 'message', origin: 'control', text: 'Hold.', order: 'hold' };
+  // Hold lands after about 600 m of walking; the crew then stands still for nine hours.
+  const HOLD_SENT_MS = 574_000;
+  const hold: MissionEvent = { id: 'h1', tMs: HOLD_SENT_MS, type: 'message', origin: 'control', text: 'Hold.', order: 'hold' };
   const HELD_MS = 9 * 3_600_000;
-  const heldView = () => controlViewAt([s2, start, hold], 710_000 + SIGNAL_DELAY_MS + HELD_MS);
+  const heldView = () => controlViewAt([s2, start, hold], HOLD_SENT_MS + 2 * SIGNAL_DELAY_MS + HELD_MS);
 
   it('costs the wait for a new route as rest while the crew holds', () => {
     const v = heldView();
@@ -174,9 +175,28 @@ describe('oxygen on reroutes', () => {
     expect(r.check.noneKeeps).toBe(false);
     const back = r.check.options.find(o => o.kind === 'back')!;
     expect(distanceM(back.route.points.at(-1)!, safest.points[0])).toBeLessThan(1);
+    // A holding crew turns back from where it stands: no walk out to the branch point first.
+    const stand = heldView().received.distM;
+    expect(stand).toBeGreaterThan(500);
+    expect(back.route.lengthM).toBeLessThan(2 * stand + 200);
     // A holding crew walks from where it stands, not from the branch point.
     const atBranch = branchPercent(heldView())!;
     expect(back.endPercent).toBeCloseTo(atBranch - costPercent('astronaut', back.route.lengthM - heldView().received.distM, 0), 6);
+  });
+
+  it('sends only what Control clicked: SEND ANYWAY maps to GO AROUND when they are the same route, a missing option is not swapped', () => {
+    const r = planReroute(heldView(), nearEnd())!;
+    if (!('check' in r)) throw new Error('expected a check');
+    const around = r.check.options.find(o => o.kind === 'around')!;
+    const merged = { ...r.check, options: r.check.options.filter(o => o.kind !== 'anyway') };
+    expect(chosenOption(merged, 'anyway')).toBe(around);
+    expect(chosenOption(r.check, 'back')!.kind).toBe('back');
+    expect(chosenOption({ ...r.check, options: r.check.options.filter(o => o.kind !== 'back') }, 'back')).toBeNull();
+  });
+
+  it('can list the options even when the reroute keeps the reserve, for a click that comes later', () => {
+    const r = planReroute(controlViewAt([s2, start], 700_000), nearEnd(), { alwaysCheck: true });
+    expect(r && 'check' in r).toBe(true);
   });
 
   it('has nothing to offer when it is too late', () =>

@@ -31,8 +31,8 @@ export function MissionComplete({ summary, place, note, onClose }: Props) {
   const d = formatDistance(summary.distanceM);
   return (
     <div className={styles.doneToast} role="status" data-testid="mission-complete" style={{ animationDuration: `${SHOW_MS}ms` }}>
-      <span className={styles.doneKicker}>MISSION COMPLETE</span>
-      <span className={styles.doneTitle}>Arrived at {place}</span>
+      <span className={styles.doneKicker}>{summary.returned ? 'BACK AT THE START' : 'MISSION COMPLETE'}</span>
+      <span className={styles.doneTitle}>{summary.returned ? 'Turned back before the destination' : `Arrived at ${place}`}</span>
       <span className={styles.doneStat}>{d.value} {d.unit} · {formatClock(summary.tripMs)} · {summary.photoFixes} photo fixes</span>
       {note && <span className={styles.doneNote}>{note}</span>}
     </div>
