@@ -1,0 +1,137 @@
+{
+ "source": {
+  "what": "Test fixture derived from engine-pose3-770.json (a real engine answer), edited by hand.",
+  "note": "status set to ambiguous; a warning added. Residuals left out."
+ },
+ "result": {
+  "contract_version": "0.1",
+  "status": "ambiguous",
+  "warnings": [
+   "another place 1.2 km away fits nearly as well"
+  ],
+  "best": {
+   "lat": 18.444917,
+   "lon": 77.452064,
+   "east_m": 71.1,
+   "north_m": 12.9,
+   "heading_deg": 203.37,
+   "score": 1,
+   "probability": 1,
+   "ground_elevation_m": -2568.2,
+   "uncertainty_m": 47,
+   "uncertainty_95_m": 76
+  },
+  "candidates": [
+   {
+    "rank": 1,
+    "lat": 18.444917,
+    "lon": 77.452064,
+    "east_m": 71.1,
+    "north_m": 12.9,
+    "heading_deg": 203.37,
+    "score": 1,
+    "probability": 1
+   },
+   {
+    "rank": 2,
+    "lat": 18.464917,
+    "lon": 77.452064,
+    "east_m": 71.1,
+    "north_m": 1197.9,
+    "heading_deg": 203.37,
+    "score": 0.7,
+    "probability": 0.3
+   }
+  ],
+  "likelihood_grid": {
+   "bounds": [
+    [
+     18.440805,
+     77.4492854
+    ],
+    [
+     18.4475533,
+     77.4564
+    ]
+   ],
+   "rows": 2,
+   "cols": 2,
+   "cell_size_m": {
+    "north_south": 200,
+    "east_west": 200
+   },
+   "scale": 255,
+   "values": [
+    [
+     255,
+     0
+    ],
+    [
+     23,
+     1
+    ]
+   ]
+  },
+  "dominant_feature": {
+   "name": null,
+   "lat": 18.55556,
+   "lon": 77.30189,
+   "east_m": -8367.76,
+   "north_m": 6574.63,
+   "elevation_m": -1742.18,
+   "distance_m": 10689.75,
+   "distance_check_m": 10704.36,
+   "azimuth_deg": 307.87,
+   "elev_angle_deg": 4.31,
+   "prominence_deg": 3.5,
+   "photo_id": "photo_3",
+   "az_offset_deg": -39.7
+  },
+  "photos": [
+   {
+    "id": "photo_1",
+    "heading_deg": 203.37,
+    "horizon_shift_deg": 0,
+    "horizon_tilt_deg": 0,
+    "rms_residual_deg": 0.022,
+    "median_abs_residual_deg": 0.014,
+    "inlier_fraction": 1
+   },
+   {
+    "id": "photo_2",
+    "heading_deg": 275.38,
+    "horizon_shift_deg": -0.1,
+    "horizon_tilt_deg": 0,
+    "rms_residual_deg": 0.023,
+    "median_abs_residual_deg": 0.018,
+    "inlier_fraction": 1
+   },
+   {
+    "id": "photo_3",
+    "heading_deg": 347.56,
+    "horizon_shift_deg": -0.1,
+    "horizon_tilt_deg": 0,
+    "rms_residual_deg": 0.049,
+    "median_abs_residual_deg": 0.035,
+    "inlier_fraction": 1
+   }
+  ],
+  "engine": {
+   "version": "0.1.0",
+   "contract_version": "0.3",
+   "terrain_sources": [
+    "hirise_1m",
+    "ctx_20m",
+    "mola_200m"
+   ],
+   "candidate_spacing_m": 200,
+   "timing_ms": {
+    "prefilter": 1919.8,
+    "likelihood": 2498.4,
+    "fine": 6323.4,
+    "summary": 0.7,
+    "total": 10742.3
+   }
+  }
+ }
+}

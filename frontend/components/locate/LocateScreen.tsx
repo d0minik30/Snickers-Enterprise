@@ -264,7 +264,7 @@ function PhotoView({ photo, dispatch }: { photo: PhotoEntry; dispatch: React.Dis
       {photo.status === 'error' && (
         <p className={css.alert} role="alert" data-testid="photo-error">{friendlyError(photo.error ?? '')}</p>
       )}
-      {(photo.status === 'queued' || photo.status === 'tracing') && <p className={css.busy}>TRACING THE SKYLINE…</p>}
+      {(photo.status === 'queued' || photo.status === 'tracing') && <p className={css.busy}>SKYLINE EXTRACTION…</p>}
       {photo.angles === 'failed' && <p className={css.alert} role="alert">Angles not updated: {photo.anglesError}</p>}
       <SkylineEditor
         url={photo.url}

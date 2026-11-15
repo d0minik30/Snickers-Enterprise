@@ -250,6 +250,47 @@
   color: var(--nominal);
 }
 
+.note {
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--caution);
+}
+
+.candidates,
+.warnings {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--rule);
+}
+
+.candidates li {
+  display: grid;
+  grid-template-columns: 2em 1fr auto;
+  gap: 8px;
+  padding: 7px 12px;
+  font-size: 15px;
+}
+
+.candidates li + li,
+.warnings li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.rank {
+  color: var(--caution);
+  font-weight: 700;
+}
+
+.warnings li {
+  padding: 7px 12px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--caution);
+}
+
 .saved {
   font-size: 13px;
   line-height: 1.35;

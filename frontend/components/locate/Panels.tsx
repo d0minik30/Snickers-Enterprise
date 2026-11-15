@@ -190,7 +190,11 @@ export function LocateBar({ session, blocker, onLocate }: { session: Session; bl
   return (
     <section className={css.locateBar} aria-label="Locate" aria-live="polite">
       <div className={css.locateText}>
-        {locate.status === 'sending' && <span className={css['status-busy']}>ASKING THE ENGINE…</span>}
+        {locate.status === 'sending' && (
+          <span className={css['status-busy']}>
+            COARSE SEARCH → FINE SEARCH… about {4 * locate.request.photos.length}–{6 * locate.request.photos.length} s
+          </span>
+        )}
         {locate.status === 'failed' && <span className={css['status-bad']} data-testid="locate-error">{locate.error}</span>}
         {locate.status === 'answered' && (
           <span className={css['status-ok']} data-testid="locate-answer">

@@ -52,24 +52,43 @@ export function resultExtent(r: LocateResult): LatLon[] {
   const pts: LatLon[] = [r.best, ...r.candidates];
   const span = Math.max(r.best.uncertainty_95_m, r.best.uncertainty_m, 300);
   for (const b of [0, 90, 180, 270]) pts.push(destination(r.best, b, span));
-  if (r.dominant_feature) pts.push(r.dominant_feature);
+  const f = featurePoint(r);
+  if (f) pts.push(f);
   return pts;
 }
 
-/** Where to draw each photo's wedge: from the best position, using each photo's matched heading. */
+/** Where the dominant feature is, or null when there is none or the engine could not place it. */
+export function featurePoint(r: LocateResult): LatLon | null {
+  const f = r.dominant_feature;
+  return f && typeof f.lat === 'number' && typeof f.lon === 'number' ? { lat: f.lat, lon: f.lon } : null;
+}
+
+/**
+ * Where to draw each photo's wedge: from the best position, using each photo's matched heading.
+ * A photo whose heading the engine could not compute (null) gets no wedge.
+ */
 export function photoWedges(r: LocateResult, hfovById: Record<string, number>, rangeM: number) {
-  return r.photos.map(p => ({
+  return r.photos.flatMap(p => p.heading_deg === null ? [] : [{
     id: p.id,
     headingDeg: p.heading_deg,
     points: fovWedge(r.best, p.heading_deg, hfovById[p.id] ?? 60, rangeM),
-  }));
+  }]);
 }
 
 /** The line from the camera to the dominant feature, with its length and direction. */
 export function featureLine(r: LocateResult): { points: [LatLon, LatLon]; distanceM: number; bearingDeg: number } | null {
-  const f = r.dominant_feature;
+  const f = featurePoint(r);
   if (!f) return null;
   return { points: [r.best, f], distanceM: distanceM(r.best, f), bearingDeg: bearingDeg(r.best, f) };
+}
+
+/**
+ * True when the feature's distance, recomputed from its height and angle (`distance_check_m`), is more
+ * than 20 % off its ground distance. False when either number is missing: no check, no claim.
+ */
+export function featureDistanceDisagrees(f: LocateResult['dominant_feature']): boolean {
+  if (!f || typeof f.distance_m !== 'number' || typeof f.distance_check_m !== 'number') return false;
+  return Math.abs(f.distance_m - f.distance_check_m) > 0.2 * f.distance_m;
 }
 
 /** Headline numbers in plain words, for the result panel. */

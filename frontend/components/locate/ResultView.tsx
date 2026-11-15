@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import type L from 'leaflet';
 import type { OverlayState } from '@/components/jezero/JezeroMap';
-import { circle, featureLine, heatmapPixels, photoWedges, resultExtent, verdict } from '@/lib/locate/resultGeo';
+import { circle, featureLine, featurePoint, featureDistanceDisagrees, heatmapPixels, photoWedges, resultExtent, verdict } from '@/lib/locate/resultGeo';
 import type { LocateRequest, LocateResult } from '@/lib/locate/types';
 import { distanceM } from '@/lib/nav/geo';
 import { formatDistance } from '@/lib/nav/format';
@@ -31,6 +31,10 @@ const fmtDist = (m: number) => {
 };
 const fmtLatLon = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(5)}° ${lat >= 0 ? 'N' : 'S'}  ${Math.abs(lon).toFixed(5)}° ${lon >= 0 ? 'E' : 'W'}`;
+/** "—" for a number the engine could not compute (null): never a made-up value. */
+const DASH = '—';
+const orDash = (v: number | null | undefined, fmt: (n: number) => string) => (typeof v === 'number' ? fmt(v) : DASH);
+const pct = (v: number | null | undefined) => orDash(v, n => `${Math.round(n * 100)} %`);
 const compass = (deg: number) => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 
 function cssVar(name: string, fallback: string): string {
@@ -75,21 +79,22 @@ export function ResultView({ result, request, savedNote }: Props) {
           </div>
           <div><dt>WITHIN (68 %)</dt><dd data-testid="best-uncertainty">± {fmtDist(result.best.uncertainty_m)}</dd></div>
           <div><dt>WITHIN (95 %)</dt><dd>± {fmtDist(result.best.uncertainty_95_m)}</dd></div>
-          <div><dt>FACING (PHOTO 1)</dt><dd>{result.best.heading_deg.toFixed(1)}° {compass(result.best.heading_deg)}</dd></div>
-          <div><dt>SKYLINE FIT</dt><dd>{Math.round(result.best.score * 100)} % of the trusted line</dd></div>
-          <div><dt>SHARE OF LIKELIHOOD</dt><dd>{Math.round(result.best.probability * 100)} %</dd></div>
-          <div><dt>GROUND HEIGHT</dt><dd>{Math.round(result.best.ground_elevation_m)} m</dd></div>
+          <div><dt>FACING (PHOTO 1)</dt><dd>{orDash(result.best.heading_deg, h => `${h.toFixed(1)}° ${compass(h)}`)}</dd></div>
+          <div><dt>SKYLINE FIT</dt><dd>{orDash(result.best.score, n => `${Math.round(n * 100)} % of the trusted line`)}</dd></div>
+          <div><dt>SHARE OF LIKELIHOOD</dt><dd>{pct(result.best.probability)}</dd></div>
+          <div><dt>GROUND HEIGHT</dt><dd data-testid="best-ground">{orDash(result.best.ground_elevation_m, n => `${Math.round(n)} m`)}</dd></div>
         </dl>
 
         <h3 className={css.sub}>DOMINANT FEATURE</h3>
         {result.dominant_feature && line ? (
-          <p className={css.body}>
-            {result.dominant_feature.name ?? 'Unnamed terrain'}, {fmtDist(result.dominant_feature.distance_m)} to the{' '}
-            {compass(line.bearingDeg)} ({line.bearingDeg.toFixed(0)}°), {result.dominant_feature.elev_angle_deg.toFixed(1)}° above the horizon.
-            {Math.abs(result.dominant_feature.distance_m - result.dominant_feature.distance_check_m) > 0.2 * result.dominant_feature.distance_m
-              && ' The distance check disagrees: treat it with care.'}
+          <p className={css.body} data-testid="dominant-feature">
+            {result.dominant_feature.name ?? 'Unnamed terrain'}, {fmtDist(result.dominant_feature.distance_m ?? line.distanceM)} to the{' '}
+            {compass(line.bearingDeg)} ({line.bearingDeg.toFixed(0)}°)
+            {typeof result.dominant_feature.elev_angle_deg === 'number'
+              && `, ${result.dominant_feature.elev_angle_deg.toFixed(1)}° above the horizon`}.
+            {featureDistanceDisagrees(result.dominant_feature) && ' The distance check disagrees: treat it with care.'}
           </p>
-        ) : <p className={css.note}>The engine did not name one for this answer.</p>}
+        ) : !result.dominant_feature && <p className={css.note}>The engine did not name one for this answer.</p>}
 
         {result.warnings.length > 0 && (
           <>
@@ -104,8 +109,8 @@ export function ResultView({ result, request, savedNote }: Props) {
             <li key={c.rank}>
               <span className={css.rank}>{c.rank}</span>
               <span>{c.rank === 1 ? 'best' : `${fmtDist(distanceM(result.best, c))} away`}</span>
-              <span>{Math.round(c.probability * 100)} %</span>
-              <span>fit {Math.round(c.score * 100)} %</span>
+              <span>{pct(c.probability)}</span>
+              <span>fit {pct(c.score)}</span>
             </li>
           ))}
         </ol>
@@ -115,9 +120,9 @@ export function ResultView({ result, request, savedNote }: Props) {
           {result.photos.map(p => (
             <li key={p.id}>
               <span className={css.rank}>{p.id.replace('photo_', '')}</span>
-              <span>{p.heading_deg.toFixed(1)}° {compass(p.heading_deg)}</span>
-              <span>{Math.round(p.inlier_fraction * 100)} % fits</span>
-              <span>±{p.rms_residual_deg.toFixed(2)}°</span>
+              <span>{orDash(p.heading_deg, h => `${h.toFixed(1)}° ${compass(h)}`)}</span>
+              <span>{pct(p.inlier_fraction)} fits</span>
+              <span>{orDash(p.rms_residual_deg, n => `±${n.toFixed(2)}°`)}</span>
             </li>
           ))}
         </ol>
@@ -199,7 +204,7 @@ function useResultLayers(map: L.Map | null, result: LocateResult, hfovById: Reco
         Lf.polyline(line.points.map(ll), { pane: 'result', color: nominal, weight: 2, dashArray: '6 6' })
           .bindTooltip(`${(line.distanceM / 1000).toFixed(1)} km`, { permanent: true, direction: 'center' })
           .addTo(group);
-        Lf.circleMarker(ll(result.dominant_feature!), { pane: 'result', radius: 5, color: nominal, fillColor: nominal, fillOpacity: 1 })
+        Lf.circleMarker(ll(featurePoint(result)!), { pane: 'result', radius: 5, color: nominal, fillColor: nominal, fillOpacity: 1 })
           .addTo(group);
       }
       Lf.polygon(circle(result.best, result.best.uncertainty_95_m).map(ll), {

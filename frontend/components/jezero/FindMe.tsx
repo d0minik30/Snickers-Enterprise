@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import type L from 'leaflet';
 import { DEMO_PHOTOS, DEMO_TRUTH, demoAnswerFor, sha256Hex } from '@/lib/locate/demo';
 import { ENGINE_URL, EngineError, postLocate, postSkyline } from '@/lib/locate/engine';
-import { circle, fovWedge } from '@/lib/locate/resultGeo';
+import { circle, photoWedges } from '@/lib/locate/resultGeo';
 import { CONTRACT_VERSION, type LocateRequest, type LocateResult } from '@/lib/locate/types';
-import { distanceM } from '@/lib/nav/geo';
+import { bearingDeg, distanceM } from '@/lib/nav/geo';
 import { formatDistance } from '@/lib/nav/format';
 import css from './findMe.module.css';
 
@@ -19,6 +19,8 @@ const compass = (deg: number) =>
   ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 const fmtLatLon = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(4)}° ${lon >= 0 ? 'E' : 'W'}`;
+
+const compassFrom = (from: { lat: number; lon: number }, to: { lat: number; lon: number }) => compass(bearingDeg(from, to));
 
 let counter = 0;
 const newId = () => `p${Date.now()}-${counter++}`;
@@ -77,7 +79,7 @@ export function FindMe({ map, open, onOpen }: { map: L.Map | null; open: boolean
     setError(null);
     setAnswer(null);
     try {
-      setProgress('Looking at the photos…');
+      setProgress('Surface Photo: reading your photos…');
       const hashed = await Promise.all(photos.map(async p => ({ sha256: await sha256Hex(p.file), name: p.name })));
       const saved = demoAnswerFor(hashed);
       if (saved) {
@@ -88,10 +90,10 @@ export function FindMe({ map, open, onOpen }: { map: L.Map | null; open: boolean
       // Any other photo goes to the live engine.
       const traced = [];
       for (const [i, p] of photos.entries()) {
-        setProgress(`Reading the skyline in photo ${i + 1} of ${photos.length}…`);
+        setProgress(`Skyline Extraction: photo ${i + 1} of ${photos.length}…`);
         traced.push(await postSkyline(p.file, p.name, {}, null));
       }
-      setProgress('Comparing the skyline with the Mars terrain…');
+      setProgress(`Coarse Search → Fine Search: matching the skyline to the Mars terrain (about ${4 * photos.length}–${6 * photos.length} s)…`);
       const request: LocateRequest = {
         contract_version: CONTRACT_VERSION,
         photos: traced.map((t, i) => ({ ...t.photo, id: `photo_${i + 1}` })),
@@ -172,10 +174,22 @@ export function FindMe({ map, open, onOpen }: { map: L.Map | null; open: boolean
           <p className={`${css.verdict} ${r.status === 'ok' ? css.ok : css.caution}`}>
             {r.status === 'ok' ? 'FOUND YOU' : r.status === 'ambiguous' ? 'NOT SURE: SEVERAL PLACES FIT' : 'NO GOOD MATCH'}
           </p>
+          {r.status === 'no_match' && (
+            <p className={css.note}>Nothing fits well enough. The pin is only the least bad place: do not rely on it.</p>
+          )}
+          {r.status === 'ambiguous' && (
+            <p className={css.note}>Another, separate place fits nearly as well. The numbered rings on the map are the other places.</p>
+          )}
           <dl className={css.facts}>
-            <div><dt>You are here</dt><dd>{fmtLatLon(r.best.lat, r.best.lon)}</dd></div>
-            <div><dt>Accurate to</dt><dd>± {fmtDist(r.best.uncertainty_95_m)}</dd></div>
-            <div><dt>First photo faces</dt><dd>{compass(r.best.heading_deg)} ({Math.round(r.best.heading_deg)}°)</dd></div>
+            <div><dt>{r.status === 'no_match' ? 'Least bad place' : 'You are here'}</dt><dd>{fmtLatLon(r.best.lat, r.best.lon)}</dd></div>
+            <div>
+              <dt>Accurate to</dt>
+              <dd data-testid="findme-accuracy">{r.status === 'no_match' ? 'can’t be trusted' : `± ${fmtDist(r.best.uncertainty_95_m)}`}</dd>
+            </div>
+            <div>
+              <dt>First photo faces</dt>
+              <dd>{r.best.heading_deg === null ? '—' : `${compass(r.best.heading_deg)} (${Math.round(r.best.heading_deg)}°)`}</dd>
+            </div>
             {answer.truth && (
               <div className={css.check}>
                 <dt>Real position (NASA)</dt>
@@ -183,6 +197,22 @@ export function FindMe({ map, open, onOpen }: { map: L.Map | null; open: boolean
               </div>
             )}
           </dl>
+          {r.status !== 'ok' && r.candidates.length > 1 && (
+            <ol className={css.candidates} data-testid="findme-candidates" aria-label="Other places that fit">
+              {r.candidates.slice(1).map(c => (
+                <li key={c.rank}>
+                  <span className={css.rank}>{c.rank}</span>
+                  <span>{fmtDist(distanceM(r.best, c))} {compassFrom(r.best, c)}</span>
+                  <span>{c.probability === null ? '—' : `${Math.round(c.probability * 100)} %`}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {r.warnings.length > 0 && (
+            <ul className={css.warnings} data-testid="findme-warnings" aria-label="Warnings">
+              {r.warnings.map(w => <li key={w}>{w}</li>)}
+            </ul>
+          )}
           {answer.saved && (
             <p className={css.saved}>Saved answer from our engine for these {answer.request.photos.length} example photos.</p>
           )}
@@ -207,25 +237,39 @@ function useAnswerOnMap(map: L.Map | null, answer: Answer | null) {
       const ll = (p: { lat: number; lon: number }) => [p.lat, p.lon] as [number, number];
       group = Lf.layerGroup().addTo(map);
 
-      for (const p of r.photos) {
-        const hfov = answer.request.photos.find(q => q.id === p.id)?.camera.hfov_deg ?? 60;
-        Lf.polygon(fovWedge(r.best, p.heading_deg, hfov, 250).map(ll), {
+      const caution = getComputedStyle(document.documentElement).getPropertyValue('--caution').trim() || '#FFB000';
+      const hfovById = Object.fromEntries(answer.request.photos.map(q => [q.id, q.camera.hfov_deg]));
+      for (const w of photoWedges(r, hfovById, 250)) {
+        Lf.polygon(w.points.map(ll), {
           color: text, weight: 1, opacity: 0.5, fillColor: text, fillOpacity: 0.04, interactive: false,
         }).addTo(group);
       }
+      // 95 % circle; for no_match it is drawn dashed and unfilled: the engine says not to trust it.
+      const trusted = r.status !== 'no_match';
       const radius = Math.max(r.best.uncertainty_95_m, 15);
-      Lf.polygon(circle(r.best, radius).map(ll), { color: route, weight: 2, fillColor: route, fillOpacity: 0.2, interactive: false }).addTo(group);
+      Lf.polygon(circle(r.best, radius).map(ll), {
+        color: route, weight: 2, dashArray: trusted ? undefined : '6 6',
+        fill: trusted, fillColor: route, fillOpacity: 0.2, interactive: false,
+      }).addTo(group);
+      // The other places that fit, numbered by rank, whenever the answer is not a clear one.
+      const others = r.status === 'ok' ? [] : r.candidates.slice(1);
+      for (const c of others) {
+        Lf.circleMarker(ll(c), { radius: 8, color: caution, weight: 2, fill: false })
+          .bindTooltip(String(c.rank), { permanent: true, direction: 'right', offset: [8, 0], className: 'findme-label' })
+          .addTo(group);
+      }
       if (answer.truth) {
         Lf.circleMarker(ll(answer.truth), { radius: 6, color: '#0A0A0B', weight: 2, fillColor: text, fillOpacity: 1 })
           .bindTooltip('REAL POSITION (NASA)', { permanent: true, direction: 'left', offset: [-8, 0], className: 'findme-label' })
           .addTo(group);
       }
       Lf.circleMarker(ll(r.best), { radius: 9, color: '#0A0A0B', weight: 3, fillColor: route, fillOpacity: 1 })
-        .bindTooltip('YOU ARE HERE', { permanent: true, direction: 'top', offset: [0, -10], className: 'findme-label findme-here' })
+        .bindTooltip(trusted ? 'YOU ARE HERE' : 'LEAST BAD PLACE', { permanent: true, direction: 'top', offset: [0, -10], className: 'findme-label findme-here' })
         .addTo(group);
 
       const pts = [ll(r.best), ...circle(r.best, Math.max(radius * 3, 150)).map(ll)];
       if (answer.truth) pts.push(ll(answer.truth));
+      for (const c of others) pts.push(ll(c));
       map.flyToBounds(Lf.latLngBounds(pts), { padding: [60, 60], duration: 2.5, maxZoom: 18 });
     });
     return () => {

@@ -56,14 +56,15 @@ describe('result geometry', () => {
   it('measures the line to the dominant feature', () => {
     const line = featureLine(contractResult)!;
     // Agrees with the example's own distance_m (9530 m) and azimuth_deg (274.6) to within rounding.
-    expect(line.distanceM).toBeCloseTo(contractResult.dominant_feature!.distance_m, -2);
-    expect(line.bearingDeg).toBeCloseTo(contractResult.dominant_feature!.azimuth_deg, 0);
+    expect(line.distanceM).toBeCloseTo(contractResult.dominant_feature!.distance_m as number, -2);
+    expect(line.bearingDeg).toBeCloseTo(contractResult.dominant_feature!.azimuth_deg as number, 0);
     expect(featureLine({ ...contractResult, dominant_feature: null })).toBeNull();
   });
   it('frames best, its 95 % circle, the candidates and the feature', () => {
     const pts = resultExtent(contractResult);
     expect(pts).toContainEqual(contractResult.candidates[1]);
-    expect(pts.some(p => p === contractResult.dominant_feature)).toBe(true);
+    const f = contractResult.dominant_feature!;
+    expect(pts).toContainEqual({ lat: f.lat, lon: f.lon });
   });
   it('words the status plainly', () => {
     expect(verdict(contractResult).tone).toBe('ok');

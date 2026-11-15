@@ -80,14 +80,35 @@ export type LocateRequest = {
 
 export type LatLonEN = { lat: number; lon: number; east_m: number; north_m: number };
 
-export type Candidate = LatLonEN & { rank: number; heading_deg: number; score: number; probability: number };
+/**
+ * The engine writes `null` for any number it could not compute (NaN or infinite). Fields the app can
+ * do without are typed `number | null` and shown as "—"; the ones it can't draw an answer without
+ * (the position and both uncertainty radii) are required, and a result missing them is rejected.
+ */
+type Num = number | null;
+
+export type Candidate = LatLonEN & { rank: number; heading_deg: Num; score: Num; probability: Num };
+
+export type DominantFeature = {
+  name: string | null;
+  lat: Num; lon: Num; east_m: Num; north_m: Num;
+  elevation_m: Num; distance_m: Num; distance_check_m: Num;
+  azimuth_deg: Num; elev_angle_deg: Num; prominence_deg: Num; photo_id: string; az_offset_deg: Num;
+};
+
+export type PhotoFit = {
+  id: string; heading_deg: Num; horizon_shift_deg: Num; horizon_tilt_deg?: Num; rms_residual_deg: Num;
+  median_abs_residual_deg: Num; inlier_fraction: Num;
+  residuals?: { az_offset_deg: Num; observed_elev_deg: Num; model_elev_deg: Num; residual_deg: Num; distance_m: Num; used: boolean }[];
+};
 
 export type LocateResult = {
   contract_version: string;
   status: 'ok' | 'ambiguous' | 'no_match';
   warnings: string[];
   best: LatLonEN & {
-    ground_elevation_m: number; heading_deg: number; score: number; probability: number;
+    ground_elevation_m: Num; heading_deg: Num; score: Num; probability: Num;
+    /** Required: a result without them is rejected (the app never draws a fix with no stated uncertainty). */
     uncertainty_m: number; uncertainty_95_m: number;
   };
   candidates: Candidate[];
@@ -98,16 +119,9 @@ export type LocateResult = {
     scale: number;
     values: number[][];
   };
-  dominant_feature: null | (LatLonEN & {
-    name: string | null; elevation_m: number; distance_m: number; distance_check_m: number;
-    azimuth_deg: number; elev_angle_deg: number; prominence_deg: number; photo_id: string; az_offset_deg: number;
-  });
-  photos: {
-    id: string; heading_deg: number; horizon_shift_deg: number; rms_residual_deg: number;
-    median_abs_residual_deg: number; inlier_fraction: number;
-    residuals?: { az_offset_deg: number; observed_elev_deg: number; model_elev_deg: number; residual_deg: number; distance_m: number; used: boolean }[];
-  }[];
-  engine: { version: string; terrain_sources: string[]; candidate_spacing_m: number; timing_ms: Record<string, number> };
+  dominant_feature: null | DominantFeature;
+  photos: PhotoFit[];
+  engine: { version: string; contract_version?: string; terrain_sources: string[]; candidate_spacing_m: number; timing_ms: Record<string, number> };
 };
 
 // ------------------------------------------------------------------ checks
@@ -155,22 +169,31 @@ export function isSkylineResponse(v: unknown): v is SkylineResponse {
 }
 
 const isLatLonEN = (v: unknown): v is LatLonEN => isObj(v) && [v.lat, v.lon, v.east_m, v.north_m].every(isNum);
+/** A number, or the engine's `null` for one it could not compute. */
+const isNumOrNull = (v: unknown) => v === null || isNum(v);
+const allNumOrNull = (o: Record<string, unknown>, keys: string[]) => keys.every(k => isNumOrNull(o[k]));
 
 export function isLocateResult(v: unknown): v is LocateResult {
   if (!isObj(v) || !isObj(v.best) || !Array.isArray(v.candidates) || !Array.isArray(v.photos)) return false;
   const b = v.best;
-  const bestOk = [b.heading_deg, b.score, b.probability, b.uncertainty_m, b.uncertainty_95_m].every(isNum);
+  // Position and both radii are required; everything else may be null (shown as "—").
+  const bestOk = isNum(b.uncertainty_m) && isNum(b.uncertainty_95_m)
+    && allNumOrNull(b, ['heading_deg', 'score', 'probability'])
+    && (b.ground_elevation_m === undefined || isNumOrNull(b.ground_elevation_m)) && isLatLonEN(b);
   const grid = v.likelihood_grid;
   const gridOk = grid === null || grid === undefined || (isObj(grid) && Array.isArray(grid.bounds) && isNum(grid.rows)
     && isNum(grid.cols) && isNum(grid.scale) && Array.isArray(grid.values) && grid.values.length === grid.rows
     && grid.values.every(r => numArray(r, grid.cols as number)));
   const f = v.dominant_feature;
-  const featureOk = f === null || f === undefined || (isLatLonEN(f) && isNum((f as Record<string, unknown>).distance_m)
-    && isNum((f as Record<string, unknown>).azimuth_deg));
+  const featureOk = f === null || f === undefined || (isObj(f) && (f.name === null || typeof f.name === 'string')
+    && allNumOrNull(f, ['lat', 'lon', 'east_m', 'north_m', 'elevation_m', 'distance_m', 'distance_check_m',
+      'azimuth_deg', 'elev_angle_deg', 'prominence_deg', 'az_offset_deg']));
   return (v.status === 'ok' || v.status === 'ambiguous' || v.status === 'no_match')
     && Array.isArray(v.warnings) && v.warnings.every(w => typeof w === 'string')
-    && bestOk && isLatLonEN(b) && isObj(v.engine)
-    && v.candidates.every(c => isLatLonEN(c) && isNum((c as Record<string, unknown>).heading_deg))
-    && v.photos.every(p => isObj(p) && typeof p.id === 'string' && isNum(p.heading_deg))
+    && bestOk && isObj(v.engine)
+    && v.candidates.every(c => isLatLonEN(c) && allNumOrNull(c, ['heading_deg', 'score', 'probability']))
+    && v.photos.every(p => isObj(p) && typeof p.id === 'string'
+      && allNumOrNull(p, ['heading_deg', 'horizon_shift_deg', 'rms_residual_deg', 'median_abs_residual_deg', 'inlier_fraction'])
+      && (p.horizon_tilt_deg === undefined || isNumOrNull(p.horizon_tilt_deg)))
     && gridOk && featureOk;
 }
