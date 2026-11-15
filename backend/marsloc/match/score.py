@@ -88,6 +88,7 @@ class MatcherConfig:
     # "ok" only if all of these hold (thresholds from scripts/validate_sim.py, see STATUS.md):
     ambiguous_below: float = 0.6       # the best place holds at least this share of the likelihood
     ok_fit_z: float = 1.2              # the usable skyline misses by at most this many tolerances (rms)
+    expected_fit_z: float = 0.85       # what a true match scores when the noise settings are honest
     ok_support: float = 0.9            # at least this share of the usable skyline counts at the best place
     min_coverage: float = 0.5          # at least this share of the photos' field of view is usable
     # "no_match" if any of these holds:

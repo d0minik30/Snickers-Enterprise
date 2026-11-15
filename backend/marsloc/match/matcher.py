@@ -173,27 +173,41 @@ class Matcher:
         best_mode, best_fit = fits[0]
         best = candidates[0]
 
-        # --- uncertainty: how big a circle around best holds 68 % / 95 % of the likelihood
-        others = np.ones(grid.n, dtype=bool)
-        other_dist, other_share = [], []
-        for mode, fit in refined:
-            others[mode.cells] = False
-            if mode is not best_mode:
-                other_dist.append(float(geo.distance_m(best.lat, best.lon, fit.lat, fit.lon)))
-                other_share.append(final_share[id(mode)])
-        if best_fit.refined:
-            peak_share, peak_spread, pad = best.probability, best.spread_m, 0.0
-        else:                       # no refinement: the grid cells are all there is
-            peak_share, peak_spread = 0.0, 1.0
-            pad = 0.5 * math.hypot(*grid.cell_size_m.values())
-        cells = np.flatnonzero(others & (adjusted > 0))
-        c_lat, c_lon = grid.latlon(cells)
-        other_dist = np.concatenate([other_dist, geo.distance_m(best.lat, best.lon, c_lat, c_lon)])
-        other_share = np.concatenate([other_share, adjusted[cells]])
-        radius68 = radius_for_mass(0.68, peak_share, peak_spread, other_dist, other_share) + pad
-        radius95 = radius_for_mass(0.95, peak_share, peak_spread, other_dist, other_share) + pad
-
         status = verdict(best, candidates, cfg)
+
+        # --- uncertainty: how big a circle around best holds 68 % / 95 % of the likelihood
+        def circles(mode_share, cell_share):
+            """(radius68, radius95) with the given share per refined mode and per grid cell."""
+            others = np.ones(grid.n, dtype=bool)
+            other_dist, other_share = [], []
+            for mode, fit in refined:
+                others[mode.cells] = False
+                if mode is not best_mode:
+                    other_dist.append(float(geo.distance_m(best.lat, best.lon, fit.lat, fit.lon)))
+                    other_share.append(mode_share[id(mode)])
+            if best_fit.refined:
+                # A fit worse than the noise settings promise means the noise is bigger than
+                # assumed: widen the peak by the same factor.
+                stretch = max(1.0, best.fit_z / cfg.expected_fit_z) if np.isfinite(best.fit_z) else 1.0
+                peak_share, peak_spread, pad = mode_share[id(best_mode)], best.spread_m * stretch, 0.0
+            else:                   # no refinement: the grid cells are all there is
+                peak_share, peak_spread = 0.0, 1.0
+                pad = 0.5 * math.hypot(*grid.cell_size_m.values())
+            cells = np.flatnonzero(others & (cell_share > 0))
+            c_lat, c_lon = grid.latlon(cells)
+            dist = np.concatenate([other_dist, geo.distance_m(best.lat, best.lon, c_lat, c_lon)])
+            mass = np.concatenate([other_share, cell_share[cells]])
+            return (radius_for_mass(0.68, peak_share, peak_spread, dist, mass) + pad,
+                    radius_for_mass(0.95, peak_share, peak_spread, dist, mass) + pad)
+
+        radius68, radius95 = circles(final_share, adjusted)
+        if status != "ok":
+            # The refined fit decided how the likelihood is shared, but that fit is not good
+            # enough to be trusted with it: don't let it shrink the circles below what the
+            # coarse map says.
+            coarse68, coarse95 = circles({id(mode): mode.mass for mode, _ in fits}, share)
+            radius68, radius95 = max(radius68, coarse68), max(radius95, coarse95)
+
         if status == "no_match":
             warnings.append("the best place fits poorly (%.0f %% of the usable skyline within tolerance, "
                             "missing by %.1f tolerances): do not trust it" % (100 * best.score, best.fit_z))
