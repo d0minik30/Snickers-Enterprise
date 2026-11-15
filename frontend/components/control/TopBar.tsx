@@ -2,7 +2,6 @@
 
 import { ScreenMenu } from '@/components/shared/ScreenMenu';
 import { useEffect, useState } from 'react';
-import { useEmbedded } from '@/components/shared/embedded';
 import { getMissionStore, useMissionSnapshot } from '@/lib/mission/useMission';
 import { RATES } from '@/lib/mission/types';
 import { distanceM } from '@/lib/nav/geo';
@@ -10,11 +9,7 @@ import { DEFAULT_END, DESTINATION } from '@/lib/planner';
 import { routeSentEvent } from '@/components/control/controlModel';
 import styles from './control.module.css';
 
-export type ControlMode = 'plan' | 'live';
-
 const RESET_CONFIRM_MS = 4000; // the confirm step lapses back to RESET after this long
-
-type Props = { mode: ControlMode | null; onMode: (mode: ControlMode) => void };
 
 /** Where the traverse goes: the real destination's name, unless the planner moved the end elsewhere. */
 function useTraverseName(): string {
@@ -24,40 +19,19 @@ function useTraverseName(): string {
   return !end || distanceM(end, DEFAULT_END) < 50 ? DESTINATION.name.toUpperCase() : 'CHOSEN POINT';
 }
 
-export function TopBar({ mode, onMode }: Props) {
-  const embedded = useEmbedded();
+/** Only on Control's own page: inside Mission the shared header carries the brand and the clock. */
+export function TopBar() {
   const destination = useTraverseName();
-  const tab = (m: ControlMode, label: string) => (
-    <button
-      type="button"
-      role="tab"
-      data-testid={`tab-${m}`}
-      aria-selected={mode === m}
-      className={styles.tab}
-      onClick={() => onMode(m)}
-    >
-      {label}
-    </button>
-  );
-
   return (
     <header className={styles.topBar}>
-      {!embedded && (
-        <ScreenMenu className={styles.brand} label="Marsfinder: all screens">
-          MARSFINDER <span className={styles.brandView}>/ CONTROL</span>
-          <span className={styles.brandCaret} aria-hidden="true">▾</span>
-        </ScreenMenu>
-      )}
-      <div role="tablist" aria-label="Mode" className={styles.tabs}>
-        {tab('plan', 'PLAN')}
-        {tab('live', 'WATCH')}
+      <ScreenMenu className={styles.brand} label="Marsfinder: all screens">
+        MARSFINDER <span className={styles.brandView}>/ CONTROL</span>
+        <span className={styles.brandCaret} aria-hidden="true">▾</span>
+      </ScreenMenu>
+      <div className={styles.traverse}>
+        <span className={styles.traversePlace}>LANDING SITE&nbsp;→&nbsp;</span>{destination}
       </div>
-      {!embedded && (
-        <div className={styles.traverse}>
-          <span className={styles.traversePlace}>LANDING SITE&nbsp;→&nbsp;</span>{destination}
-        </div>
-      )}
-      {!embedded && <DemoControls />}
+      <DemoControls />
     </header>
   );
 }

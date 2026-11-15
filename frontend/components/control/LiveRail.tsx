@@ -35,7 +35,10 @@ const STATUS_TONE: Record<FieldStatus, string> = {
   arrived: styles.statusNominal,
 };
 
-/** Left rail in Live mode: the field as Control last heard it, never as if it were current. */
+/**
+ * The one rail in Live mode, read top to bottom: what Earth knows (never as if it were current)
+ * and what Earth can do about the route.
+ */
 export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Props) {
   const { received } = view;
   const embedded = useEmbedded(); // inside Mission, Mars shows the numbers and the step line says the state
@@ -47,53 +50,52 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
 
   return (
     <aside className={`${styles.rail} ${styles.leftRail}`} aria-label="Live">
-      <div data-testid="data-age" className={styles.dataAge}>
-        WHAT YOU SEE HERE IS {formatClock(view.dataAgeMs)} OLD
-      </div>
+      <section className={styles.section} aria-label="What we know">
+        <h2 className={styles.heading}><span>What we know</span></h2>
+        <div data-testid="data-age" className={styles.dataAge}>
+          WHAT YOU SEE HERE IS {formatClock(view.dataAgeMs)} OLD
+        </div>
 
-      {(!embedded || !hasData) && <section className={styles.section}>
-        {!embedded && <div className={styles.travellerHead}>
-          <span className={styles.travellerName}>{view.traveller === 'rover' ? 'RV-1 · ROVER' : 'EV-1 · ASTRONAUT'}</span>
-          {hasData && <span className={`${styles.travellerStatus} ${STATUS_TONE[received.status]}`}>{STATUS_TEXT[received.status]}</span>}
-        </div>}
+        {!embedded && (
+          <div className={`${styles.travellerHead} ${styles.blockGap}`}>
+            <span className={styles.travellerName}>{view.traveller === 'rover' ? 'RV-1 · ROVER' : 'EV-1 · ASTRONAUT'}</span>
+            {hasData && <span className={`${styles.travellerStatus} ${STATUS_TONE[received.status]}`}>{STATUS_TEXT[received.status]}</span>}
+          </div>
+        )}
+
         {!hasData && (
-          <p className={styles.noData}>
+          <p className={`${styles.noData} ${styles.blockGap}`}>
             NOTHING HEARD FROM MARS YET
             {sent && <> · FIRST NEWS IN {formatClock(Math.max(0, sent.tMs + 2 * SIGNAL_DELAY_MS - view.tMs))}</>}
           </p>
         )}
-      </section>}
 
-      {hasData && (
-        <>
-          {!embedded && (
-            <section className={`${styles.section} ${styles.liveCells}`}>
-              {simpleCells(received).map(c => <Readout key={c.label} label={c.label} value={c.value} unit={c.unit} tone={c.tone} />)}
-            </section>
-          )}
+        {hasData && !embedded && (
+          <div className={`${styles.liveCells} ${styles.blockGap}`}>
+            {simpleCells(received).map(c => <Readout key={c.label} label={c.label} value={c.value} unit={c.unit} tone={c.tone} />)}
+          </div>
+        )}
 
-          {progress && (
-            <section className={styles.section}>
-              <div className={styles.heading}>
-                <span>Progress</span>
-                <span>{progress.leg}</span>
-              </div>
-              <div className={styles.progressTrack}><span style={{ width: `${progress.fraction * 100}%` }} /></div>
-              <p className={styles.progressText}>{progress.text}</p>
-            </section>
-          )}
+        {hasData && progress && (
+          <div className={styles.blockGap}>
+            <div className={styles.heading}>
+              <span>Progress</span>
+              <span>{progress.leg}</span>
+            </div>
+            <div className={styles.progressTrack}><span style={{ width: `${progress.fraction * 100}%` }} /></div>
+            <p className={styles.progressText}>{progress.text}</p>
+          </div>
+        )}
 
-          {!embedded && received.status === 'moving' && ahead > 1 && (
-            <section className={styles.section}>
-              <p className={styles.note}>
-                By now they are probably about <span className={styles.noteValue}>{distanceText(ahead)}</span> further along.
-              </p>
-            </section>
-          )}
-        </>
-      )}
+        {hasData && !embedded && received.status === 'moving' && ahead > 1 && (
+          <p className={`${styles.note} ${styles.blockGap}`}>
+            By now they are probably about <span className={styles.noteValue}>{distanceText(ahead)}</span> further along.
+          </p>
+        )}
+      </section>
 
-      <section className={styles.actions}>
+      <section className={styles.actions} aria-label="Act">
+        <h2 className={styles.heading}><span>Act</span></h2>
         {notice === 'too-late' && (
           <p data-testid="too-late" className={styles.tooLate} role="alert">TOO LATE TO CHANGE THE ROUTE · THEY WILL HAVE ARRIVED</p>
         )}

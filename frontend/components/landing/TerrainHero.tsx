@@ -299,7 +299,7 @@ export default function TerrainHero() {
         <span className={css.dot} />
         <span className={css.label}>YOU ARE HERE<small>18.4447° N · 77.4508° E</small></span>
       </div>
-      <span className={css.tag}>SKYLINE TRACED LIVE</span>
+      <span className={css.tag}>REAL JEZERO TERRAIN · HEIGHTS ×{EXAGGERATE}</span>
     </div>
   );
 }

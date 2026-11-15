@@ -284,8 +284,32 @@ button.brand[aria-expanded='true'] .brandCaret {
 .noStrip {
   grid-template-rows: var(--top-height) minmax(0, 1fr);
   grid-template-areas:
-    'top  top   top'
-    'left map   right';
+    'top  top'
+    'left map';
+}
+
+/* Inside the Mission screen the shared header replaces Control's own top bar. */
+.noTop {
+  --top-height: 0px;
+}
+
+/* Live rail blocks: a little air between the parts of "What we know". */
+.blockGap {
+  margin-top: var(--gap);
+}
+
+/* The messages block takes the rail's spare height and scrolls on its own. */
+.messages {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 160px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.messages .log {
+  padding: 0 0 var(--gap);
 }
 
 .section {
@@ -296,7 +320,7 @@ button.brand[aria-expanded='true'] .brandCaret {
 .heading {
   display: flex;
   justify-content: space-between;
-  margin-bottom: var(--gap);
+  margin: 0 0 var(--gap);
   font-size: var(--type-label);
   font-weight: 600;
   line-height: 1;

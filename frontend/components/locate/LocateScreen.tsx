@@ -51,6 +51,13 @@ const isOffline = (e: unknown) => e instanceof EngineError && (e.kind === 'unrea
 let counter = 0;
 const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `p${Date.now()}-${counter++}`);
 
+/** Sol 20 Perseverance Navcam photos (pose 3/770, NASA/JPL-Caltech) with their labels, in public/demo-photos/. */
+const EXAMPLE_PHOTOS = [
+  'NLF_0020_0668728525_175ECM_N0030770NCAM03020_01_295J',
+  'NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J',
+  'NLF_0020_0668728666_168ECM_N0030770NCAM02020_01_295J',
+];
+
 export default function LocateScreen() {
   const [session, dispatch] = useReducer(reduce, emptySession);
   const [capturing, setCapturing] = useState(false);
@@ -119,6 +126,26 @@ export default function LocateScreen() {
     }
   };
 
+  const [exampleError, setExampleError] = useState<string | null>(null);
+  /** Loads the example photos with their labels; they trace at once and LOCATE sends a normal live request. */
+  const addExamples = async () => {
+    setExampleError(null);
+    try {
+      const loaded = await Promise.all(EXAMPLE_PHOTOS.map(async name => {
+        const [img, lbl] = await Promise.all([fetch(`/demo-photos/${name}.png`), fetch(`/demo-photos/${name}.label.json`)]);
+        if (!img.ok || !lbl.ok) throw new Error(name);
+        return { name, blob: await img.blob(), label: (await lbl.json()) as unknown };
+      }));
+      for (const { name, blob, label } of loaded) {
+        const id = newId();
+        dispatch({ type: 'add', photo: { id, name: `${name}.png`, file: blob, url: URL.createObjectURL(blob) } });
+        dispatch({ type: 'label', id, label, labelName: `${name}.label.json` });
+      }
+    } catch {
+      setExampleError('Could not load the example photos.');
+    }
+  };
+
   const addCaptured = (c: Captured) => {
     setCapturing(false);
     const stamp = c.timeUtc.slice(11, 19).replaceAll(':', '');
@@ -178,6 +205,10 @@ export default function LocateScreen() {
               </label>
               <button type="button" className={css.fileButton} onClick={() => setCapturing(true)}>TAKE PHOTO</button>
             </div>
+            <button type="button" className={css.fileButton} data-testid="use-examples" onClick={() => void addExamples()}>
+              USE EXAMPLE PHOTOS
+            </button>
+            {exampleError && <p className={css['status-bad']} role="alert">{exampleError}</p>}
             <p className={css.note}>A few photos of the skyline in different directions work best.</p>
           </section>
           <PhotoList session={session} dispatch={dispatch} />

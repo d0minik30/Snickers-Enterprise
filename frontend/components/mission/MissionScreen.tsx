@@ -33,7 +33,7 @@ export default function MissionScreen() {
   else if (field.status === 'awaiting-route') {
     step = { n: '2', text: <>The route is flying to Mars. Radio takes {DELAY} each way. Arrives in <b className={styles.caution}>{formatClock(sent.tMs + SIGNAL_DELAY_MS - t)}</b>.</> };
   } else if (field.status === 'ready') step = { n: '3', text: <>The route reached Mars. Press <b>START</b> on the right.</> };
-  else if (field.status === 'holding') step = { n: '4', text: <>The crew is <b className={styles.caution}>holding</b>. Send <b>PROCEED</b> from the left to go on.</> };
+  else if (field.status === 'holding') step = { n: '4', text: <>The crew is <b className={styles.caution}>holding</b>.</> };
   else if (field.status === 'moving') step = { n: '4', text: <>The crew is walking. Earth (left) sees it {DELAY} late. Speed up time if it is slow →</> };
   else step = { n: '✓', text: <>Mission complete.</> };
 

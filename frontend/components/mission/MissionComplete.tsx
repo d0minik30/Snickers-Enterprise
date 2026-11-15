@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 import { formatClock, formatDistance } from '@/lib/nav/format';
 import type { MissionSummary } from '@/components/mission/missionSummary';
 import styles from './mission.module.css';
@@ -9,32 +9,32 @@ type Props = {
   summary: MissionSummary;
   /** Where the destination is, in plain words. */
   place: string;
-  /** One extra line under the title, e.g. who knows about it yet. */
+  /** One extra line, e.g. who knows about it yet. */
   note?: string;
-  onNew: () => void;
+  /** Kept for callers; START OVER in the header starts a new mission. */
+  onNew?: () => void;
   onClose: () => void;
 };
 
-/** The "you made it" message shown once a mission is finished. */
-export function MissionComplete({ summary, place, note, onNew, onClose }: Props) {
+const SHOW_MS = 8000; // real time the notice stays before it fades away
+
+/** A quiet "you made it" notice at the bottom of the map that fades in, stays a few seconds and goes away. */
+export function MissionComplete({ summary, place, note, onClose }: Props) {
+  const close = useRef(onClose); // the caller's onClose changes every render; the timer must not restart
+  useEffect(() => {
+    close.current = onClose;
+  });
+  useEffect(() => {
+    const timer = setTimeout(() => close.current(), SHOW_MS);
+    return () => clearTimeout(timer);
+  }, []);
   const d = formatDistance(summary.distanceM);
   return (
-    <div className={styles.doneBackdrop} role="dialog" aria-modal="true" aria-labelledby="mission-done-title" data-testid="mission-complete">
-      <div className={styles.done}>
-        <p className={styles.doneKicker}>MISSION COMPLETE</p>
-        <h2 id="mission-done-title" className={styles.doneTitle}>Arrived at {place}</h2>
-        {note && <p className={styles.doneNote}>{note}</p>}
-        <dl className={styles.doneStats}>
-          <div><dt>Distance</dt><dd>{d.value} {d.unit}</dd></div>
-          <div><dt>Trip time</dt><dd>{formatClock(summary.tripMs)}</dd></div>
-          <div><dt>Photo fixes</dt><dd>{summary.photoFixes}</dd></div>
-        </dl>
-        <div className={styles.doneActions}>
-          <button type="button" className={styles.donePrimary} onClick={onNew} data-testid="mission-new">START A NEW MISSION</button>
-          <button type="button" className={styles.doneSecondary} onClick={onClose}>KEEP LOOKING</button>
-          <Link href="/" className={styles.doneSecondary}>HOME</Link>
-        </div>
-      </div>
+    <div className={styles.doneToast} role="status" data-testid="mission-complete" style={{ animationDuration: `${SHOW_MS}ms` }}>
+      <span className={styles.doneKicker}>MISSION COMPLETE</span>
+      <span className={styles.doneTitle}>Arrived at {place}</span>
+      <span className={styles.doneStat}>{d.value} {d.unit} · {formatClock(summary.tripMs)} · {summary.photoFixes} photo fixes</span>
+      {note && <span className={styles.doneNote}>{note}</span>}
     </div>
   );
 }

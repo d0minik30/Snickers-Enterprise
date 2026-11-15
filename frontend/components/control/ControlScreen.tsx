@@ -2,12 +2,11 @@
 
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { CommsRail } from '@/components/control/CommsRail';
 import { ElevationProfile } from '@/components/control/ElevationProfile';
 import { LiveRail } from '@/components/control/LiveRail';
 import { PlanRail } from '@/components/control/PlanRail';
 import { SignalTimeline } from '@/components/control/SignalTimeline';
-import { TopBar, type ControlMode } from '@/components/control/TopBar';
+import { TopBar } from '@/components/control/TopBar';
 import {
   buildReroute, liveOverlays, newestRoute, planFitPoints, planOverlays, rerouteBlocker, routeSentEvent, type RerouteBlocker,
 } from '@/components/control/controlModel';
@@ -38,15 +37,14 @@ export default function ControlScreen() {
   const hydrated = useHydrated();
   const snapshot = useMissionSnapshot();
   const draft = usePlanDraft();
-  const [chosenMode, setChosenMode] = useState<ControlMode | null>(null);
   const sent = routeSentEvent(snapshot.log);
-  const mode: ControlMode = chosenMode ?? (sent ? 'live' : 'plan');
+  // No tabs: Control plans until a route is sent, then watches until the mission is reset.
+  const mode: 'plan' | 'live' = sent ? 'live' : 'plan';
 
   // A reset, from this window or another, brings Control back to a fresh plan.
   const [epoch, setEpoch] = useState(snapshot.epoch);
   if (epoch !== snapshot.epoch) {
     setEpoch(snapshot.epoch);
-    setChosenMode(null);
     draft.reset();
   }
 
@@ -54,17 +52,19 @@ export default function ControlScreen() {
     const route = draft.routes.find(r => r.profile === draft.selected);
     if (!route || sent) return;
     getMissionStore().append({ type: 'route-sent', origin: 'control', traveller: draft.traveller, route, hazards: PRESET_HAZARDS });
-    setChosenMode('live');
   };
 
   const embedded = useEmbedded();
-  const quietLive = embedded && hydrated && mode === 'live';
   return (
-    <main className={`${styles.screen} ${hydrated && mode === 'plan' ? styles.noRight : ''} ${quietLive ? styles.noStrip : ''}`}>
-      <TopBar mode={hydrated ? mode : null} onMode={setChosenMode} />
+    <main
+      data-testid="control-screen"
+      data-mode={hydrated ? mode : undefined}
+      className={`${styles.screen} ${styles.noRight} ${embedded ? styles.noTop : ''}`}
+    >
+      {!embedded && <TopBar />}
       {hydrated && (mode === 'plan'
-        ? <PlanMode draft={draft} inProgress={sent !== undefined} onSend={send} />
-        : <LiveMode log={snapshot.log} onPlan={() => setChosenMode('plan')} />)}
+        ? <PlanMode draft={draft} inProgress={false} onSend={send} />
+        : <LiveMode log={snapshot.log} />)}
       {hydrated && <EarthHearsDone />}
     </main>
   );
@@ -94,8 +94,8 @@ function PlanMode({ draft, inProgress, onSend }: { draft: PlanDraft; inProgress:
 
 const TOO_LATE_SHOW_MS = 6000; // real time the "too late" notice stays up
 
-/** Live mode: the field as last heard, the estimate of now, the comms log and the signal timeline. */
-function LiveMode({ log, onPlan }: { log: MissionEvent[]; onPlan: () => void }) {
+/** Live mode: one rail (what we know, act), the map and the signal timeline. */
+function LiveMode({ log }: { log: MissionEvent[] }) {
   const t = useMissionTime();
   const view = useMemo(() => controlViewAt(log, t), [log, t]);
   const timeline = useMemo(() => buildTimeline(view), [view]);
@@ -161,13 +161,6 @@ function LiveMode({ log, onPlan }: { log: MissionEvent[]; onPlan: () => void }) 
       />
       <div className={styles.mapArea} onPointerDown={() => setUserMoved(true)} onWheel={() => setUserMoved(true)}>
         <MarsMap overlays={overlays} camera={camera} onMapClick={onMapClick} armed={flagging} interactive />
-        {!newest && (
-          <div className={styles.liveEmpty} data-testid="live-empty">
-            <p className={styles.liveEmptyTitle}>NO ROUTE SENT YET</p>
-            <p className={styles.liveEmptyNote}>Live shows the traverse once a route is on its way to the field.</p>
-            <button type="button" className={styles.liveEmptyButton} onClick={onPlan}>PLAN A ROUTE</button>
-          </div>
-        )}
         {flagging && <div className={styles.mapHint} role="status">CLICK THE MAP TO FLAG A HAZARD · ESC TO CANCEL</div>}
         {userMoved && newest && (
           <button type="button" className={styles.fitButton} onPointerDown={e => e.stopPropagation()} onClick={() => setUserMoved(false)}>
@@ -175,13 +168,7 @@ function LiveMode({ log, onPlan }: { log: MissionEvent[]; onPlan: () => void }) 
           </button>
         )}
       </div>
-      {!embedded && <SignalTimeline timeline={timeline} />}
-      <CommsRail
-        view={view}
-        log={log}
-        onOrder={order => getMissionStore().append({ type: 'message', origin: 'control', text: order === 'hold' ? 'Hold position' : 'Proceed', order })}
-        onMessage={text => getMissionStore().append({ type: 'message', origin: 'control', text })}
-      />
+      <SignalTimeline timeline={timeline} />
     </>
   );
 }

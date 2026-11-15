@@ -1,0 +1,41 @@
+{
+  "extended": {
+    "mastAz": "145.73",
+    "mastEl": "-29.0211",
+    "sclk": "668728578.224",
+    "scaleFactor": "4",
+    "xyz": "(31.8232,55.9169,-0.122529)",
+    "subframeRect": "(1,1,5120,3840)",
+    "dimension": "(1280,960)"
+  },
+  "link_related_sol": "https://mars.nasa.gov/mars2020/multimedia/raw-images/?sol=20",
+  "sol": 20,
+  "attitude": "(0.43967,-0.00139028,0.0100708,0.898102)",
+  "json_link_related_sol": "https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&sol=20",
+  "image_files": {
+    "medium": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00020/ids/edr/browse/ncam/NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J01_800.jpg",
+    "small": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00020/ids/edr/browse/ncam/NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J01_320.jpg",
+    "full_res": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00020/ids/edr/browse/ncam/NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J01.png",
+    "large": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00020/ids/edr/browse/ncam/NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J01_1200.jpg"
+  },
+  "imageid": "NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J",
+  "camera": {
+    "filter_name": "UNK",
+    "camera_vector": "(-0.7227391012947028,0.49165028926063514,0.485724391532543)",
+    "camera_model_component_list": "(0.806634,0.815822,-1.90601);(-0.726296,0.480082,0.491967);(-880.63,-304.527,315.407);(-51.2322,28.9869,882.559);(-0.727034,0.478862,0.492064);(2e-06,0.049535,-0.015973);(-0.003612,0.013016,-0.023961);2.0;0.0",
+    "camera_position": "(0.806634,0.815822,-1.90601)",
+    "instrument": "NAVCAM_LEFT",
+    "camera_model_type": "CAHVORE"
+  },
+  "caption": "NASA's Mars Perseverance rover acquired this image using its onboard Left Navigation Camera (Navcam). The camera is located high on the rover's mast and aids in driving. \n\nThis image was acquired on March 11, 2021 (Sol 20) at the local mean solar time of 15:55:46.",
+  "sample_type": "Full",
+  "date_taken_mars": "Sol-00020M15:55:46.021",
+  "credit": "NASA/JPL-Caltech",
+  "date_taken_utc": "2021-03-11T09:58:03.968",
+  "link": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NLF_0020_0668728577_477ECM_N0030770NCAM02020_01_295J",
+  "link_related_camera": "https://mars.nasa.gov/mars2020/multimedia/raw-images/?camera=NAVCAM_LEFT&sol=20",
+  "drive": "770",
+  "title": "Mars Perseverance Sol 20: Left Navigation Camera (Navcam)",
+  "site": 3,
+  "date_received": "2021-03-11T13:53:31Z"
+}

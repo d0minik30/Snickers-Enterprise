@@ -3,11 +3,9 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useMemo, useState, useSyncExternalStore } from 'react';
-import { fieldCamera, simpleCells, fieldCue, fieldOverlays, latestUnacked, nextMoveView } from '@/components/field/fieldModel';
-import { MessageStrip } from '@/components/field/MessageStrip';
+import { fieldCamera, simpleCells, fieldCue, fieldOverlays, nextMoveView } from '@/components/field/fieldModel';
 import { NextMoveBand } from '@/components/field/NextMoveBand';
 import { ReadoutBand } from '@/components/field/ReadoutBand';
-import { CommsBar, LogSheet, ReportSheet, type FieldPanel } from '@/components/field/ReportComposer';
 import { StatusBanner, StatusPanel } from '@/components/field/StatusPanel';
 import { fieldStateAt } from '@/lib/mission/field';
 import { getMissionStore, useMissionSnapshot, useMissionTime } from '@/lib/mission/useMission';
@@ -36,26 +34,19 @@ export default function FieldScreen() {
   const state = useMemo(() => fieldStateAt(snapshot.log, t), [snapshot.log, t]);
 
   const overlays = useMemo(() => fieldOverlays(state), [state]);
-  const [panel, setPanel] = useState<FieldPanel>('none');
-  const [sheetHeight, setSheetHeight] = useState(0);
   const [readyHeight, setReadyHeight] = useState(0);
-  // While a sheet covers the bottom of the map, keep the traveller in the part still showing.
-  // The docked Start panel also covers the map: keep the traveller visible above it.
-  const cover = panel !== 'none' ? sheetHeight : state.status === 'ready' ? readyHeight : 0;
+  // The docked Start panel covers the bottom of the map: keep the traveller visible above it.
+  const cover = state.status === 'ready' ? readyHeight : 0;
   const camera = useMemo(() => fieldCamera(state, cover), [state, cover]);
   const cue = fieldCue(state);
-  const notice = latestUnacked(state);
   const status = hydrated ? state.status : 'awaiting-route';
 
   const start = () => getMissionStore().append({ type: 'traverse-started', origin: 'field' });
   const photoFix = () => getMissionStore().append({ type: 'photo-fix', origin: 'field' });
-  const ack = (targetId: string) => getMissionStore().append({ type: 'ack', origin: 'field', targetId });
-  const report = (text: string) => getMissionStore().append({ type: 'report', origin: 'field', text });
 
   return (
     <main className={styles.screen} data-testid="field-status" data-status={status}>
       {status !== 'awaiting-route' && <NextMoveBand view={hydrated ? nextMoveView(state) : null} />}
-      {hydrated && <MessageStrip notice={notice} nowMs={t} onAck={ack} />}
       {hydrated && <StatusBanner status={state.status} />}
       <div className={styles.mapArea}>
         {hydrated && <MarsMap overlays={overlays} camera={camera} />}
@@ -65,7 +56,7 @@ export default function FieldScreen() {
               PHOTO FIX
               {!embedded && <span className={styles.fixButtonNote}>find my position · simulated, ±{PHOTO_FIX_ERROR_M} m from real engine runs</span>}
             </button>
-            {!embedded && <Link href="/locate/" prefetch={false} className={styles.realFix} data-testid="field-real-fix">TAKE A REAL FIX →</Link>}
+            <Link href="/locate/" prefetch={false} className={styles.realFix} data-testid="field-real-fix">TAKE A REAL FIX →</Link>
           </div>
         )}
         {hydrated && state.pos && (
@@ -88,10 +79,7 @@ export default function FieldScreen() {
             </svg>
           </ScreenMenu>
         )}
-        {hydrated && panel === 'compose' && <ReportSheet onSend={report} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
-        {hydrated && panel === 'log' && <LogSheet state={state} onAck={ack} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
       </div>
-      {hydrated && status !== 'awaiting-route' && <CommsBar state={state} panel={panel} onPanel={setPanel} />}
       {hydrated && !embedded && done.show && done.summary && (
         <MissionComplete
           summary={done.summary}

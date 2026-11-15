@@ -2,8 +2,7 @@ import type { FieldState } from '@/lib/mission/field';
 import { PACE_MPS, SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import { formatClock, formatDistance } from '@/lib/nav/format';
 import Link from 'next/link';
-import { useRef } from 'react';
-import { useCoverHeight } from '@/components/field/ReportComposer';
+import { useEffect, useRef } from 'react';
 import { useEmbedded } from '@/components/shared/embedded';
 import styles from './field.module.css';
 
@@ -80,3 +79,14 @@ function ReadyPanel({ state, onStart, onHeight }: Props) {
 }
 
 const NO_HEIGHT = () => {};
+
+/** Tells the screen how much of the map the docked panel covers, so the traveller stays above it. */
+function useCoverHeight(ref: React.RefObject<HTMLElement | null>, onHeight: (px: number) => void) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => onHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => { ro.disconnect(); onHeight(0); };
+  }, [ref, onHeight]);
+}
