@@ -3,10 +3,11 @@
 Finds where an astronaut is standing in Jezero Crater from the skyline in their photos, by
 matching it against the skyline the terrain would produce from candidate positions.
 
-**Status:** the terrain layer, the horizon renderer and the precomputed horizons are built and
-tested. The matcher (`marsloc/match/`) is in progress and **not validated**: do not rely on its
-answers yet. The dominant-feature step, the HTTP API and the validation report are not built yet.
-The file formats are in [`CONTRACTS.md`](CONTRACTS.md) (a draft until the team agrees).
+**Status:** the terrain layer, the horizon renderer, the precomputed horizons and the matcher are
+built and tested. The matcher's verdicts are calibrated in simulation; on real photos it finds the
+right place for about 9 of 24 rover poses and reports most of the rest as `ambiguous`. Measured
+numbers and what is next: [`STATUS.md`](STATUS.md). The dominant-feature step and the HTTP API are
+not built yet. The file formats are in [`CONTRACTS.md`](CONTRACTS.md) (a draft until the team agrees).
 
 ## Set up
 
@@ -47,6 +48,7 @@ Run them from `backend/`. On macOS and Linux use `.venv/bin/python` instead of `
 |---|---|
 | `.venv\Scripts\python -m pytest` | All tests. Tests that need the real DEM or the precomputed horizons are skipped when those are missing |
 | `.venv\Scripts\python scripts\check_terrain.py` | Lists the terrain sources, and reports tile problems and height steps where sources join |
+| `.venv\Scripts\python scripts\validate_sim.py --trials 300` | Locates simulated photos at random positions on the real terrain and reports errors, verdicts and whether the uncertainty circles hold. Table, per-trial JSON and an error map go to `reports/` (git-ignored). About 5 minutes with 8 workers |
 | `.venv\Scripts\python scripts\build_horizons.py` | Precomputes the horizon of every candidate position (200 m grid over the CTX extent) into `cache/`: about 3 minutes and 66 MB. Rerun it whenever the terrain or its blend bands change |
 
 ## What is where
@@ -58,7 +60,7 @@ Run them from `backend/`. On macOS and Linux use `.venv/bin/python` instead of `
 | `marsloc/terrain/` | Height lookup from tiled grids at several resolutions: the finest source wins and is blended into the one beneath along its edge; tiles load on first use. The only code that knows about files |
 | `marsloc/horizon/render.py` | The horizon the terrain produces from a position: elevation angle and source point per azimuth |
 | `marsloc/horizon/store.py` | Precomputed horizons for a grid of candidate positions: build, quantize, load |
-| `marsloc/match/` | The matcher (in progress): photo binning, scoring, coarse and fine search, likelihood map, sun heading |
+| `marsloc/match/` | The matcher: photo binning, scoring, coarse and fine search, likelihood map, verdict, sun heading |
 | `marsloc/simulate.py` | Simulated photos on the real terrain, for testing the matcher |
 | `scripts/` | The commands above |
 | `tests/` | pytest |

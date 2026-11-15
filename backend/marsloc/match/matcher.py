@@ -211,6 +211,12 @@ class Matcher:
         if status == "no_match":
             warnings.append("the best place fits poorly (%.0f %% of the usable skyline within tolerance, "
                             "missing by %.1f tolerances): do not trust it" % (100 * best.score, best.fit_z))
+        for fit, photo in zip(best.photos, observations):
+            limit = photo.horizon_uncertainty_deg
+            if limit > 0 and abs(fit.horizon_shift_deg) >= 0.999 * limit:
+                warnings.append("%s: the fitted up/down shift is at its limit (%+.2f deg): the photo's "
+                                "horizontal may be further off than horizon_uncertainty_deg says"
+                                % (photo.id, fit.horizon_shift_deg))
         if best.coverage < cfg.min_coverage:
             warnings.append("only %.0f %% of the photos' field of view has a usable skyline"
                             % (100 * best.coverage))

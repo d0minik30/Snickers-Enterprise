@@ -1,7 +1,7 @@
 # Engine status (Person 1, `backend/marsloc`)
 
 Kept current after each stage. Numbers are measured, not targets.
-Last update: 2026-11-15, about 03:50 local.
+Last update: 2026-11-15, 03:40 local.
 
 ## Where it stands
 
@@ -10,24 +10,25 @@ Last update: 2026-11-15, about 03:50 local.
 | Terrain layer (three sources, blend band, seam check) | done, tested |
 | Horizon renderer | done, tested (0.001° RMS against brute force on the delivered terrain) |
 | Stored horizons | rebuilt for the CTX extent: 22,801 candidates, 66 MB, 229 s with 15 workers |
-| Matcher | scoring bug fixed, verdicts calibrated in simulation; **weak on real photos**, see below |
-| Simulation harness (`scripts/validate_sim.py`) | done; 300-trial base run below |
-| Near-field rule | **off by default**; comparison run in progress |
+| Matcher | scoring bug fixed, verdicts calibrated in simulation, tested; **weak on real photos**, see below |
+| Simulation harness (`scripts/validate_sim.py`) | done; results below |
+| Near-field rule | decided: **stays off** (no benefit measured, see below) |
 | Real photos (`backend/skyline/scripts/validate.py`) | rerun, before/after below |
 | CONTRACTS.md 0.3 (Person 3's four requests) | written; roll fit implemented in the matcher |
+| Tests | 116 pass (`.venv\Scripts\python -m pytest`), about 1 minute |
 | Dominant feature, `/locate` server | not started |
-| Matcher end-to-end tests on the real DEM | not written yet (unit tests of the scoring exist) |
 
 ## Real photos: before and after (24 rover poses, no prior)
 
 Run with `backend/skyline/scripts/validate.py`; "before" is Person 3's saved run of 00:41 UTC
-(`backend/skyline/out/validation.json`), "after" is `backend/reports/validation_real_after.json`.
+(`backend/skyline/out/validation.json`), "after" is `backend/reports/validation_real_after.json`
+(I did not overwrite Person 3's file or the app's copy).
 
 | | Before | After |
 |---|---|---|
 | Answers called `ok` | 20 | 4 |
 | ... of those within 100 m | 4 | 2 |
-| ... of those wrong by more than 1 km | 13 | 0 |
+| ... of those wrong by more than 1 km | 12 | 0 |
 | Truth inside the 68 % circle | 2 of 24 | 19 of 24 |
 | Truth inside the 95 % circle | 8 of 24 | 20 of 24 |
 | Within 100 m (any verdict) | 4 | 2 |
@@ -42,23 +43,55 @@ What this says, plainly:
 - The four `ok` answers are 29 m, 31 m, 324 m and 671 m off. The last two are outside their 95 %
   circles (118 m and 383 m): on real photos the circles are still too small.
 - Two `ambiguous` answers have a tiny circle around a wrong place (3/792: 11.7 km off, ±22 m;
-  3/1374: 218 m off, ±8 m). The coarse map itself is overconfident there.
-- Why real photos are harder than simulation: Person 3's own check ("skyline vs truth", terrain
-  further than 2 km) shows the traced skyline differs from the rendered one at the true position
-  by a median of 0.05–0.5° with a scatter of 0.03–0.3°. The engine assumes 0.1° noise. 0.06° is
-  100 m.
+  3/1374: 218 m off, ±8 m).
 
-## Simulation (300 photos, one 60° photo each, 0.05° noise correlated along the skyline)
+### Why 15 poses are not found (checked case by case)
 
-| Within 100 m | Within 300 m | Within 1 km | Median error | `ok` | `ok` and within 300 m | `ok` inside its 95 % circle | `ambiguous` | `no_match` | In 68 % circle | In 95 % circle |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 52 % | 67 % | 74 % | 96 m | 43 % | 91 % | 96 % | 51 % | 7 % | 77 % | 98 % |
+I scored every pose AT its true position with its true headings:
 
-- Time per request in the harness (8 workers, one thread each): 7.3 s. Alone on the machine about 4 s.
-- The 95 % circle holds the truth 98 % of the time, the 68 % circle 77 %: slightly cautious.
-- `ok` now means something: 91 % of `ok` answers are within 300 m, 95 % within 1 km.
-- About a quarter of single 60° photos can't be located at all (wrong by more than 1 km). Those
-  are mostly reported `ambiguous` or `no_match`.
+- **8 poses fit well there** (the trusted skyline misses by less than 1 tolerance): 3/770, 3/1044,
+  3/1708, 3/1950, 3/2046, 3/2150, 6/1752, 7/1172. For 7 of them the coarse stage ranks the true
+  place in its top three and the answer is 29–382 m off. So where the input is good, the engine
+  works, to a few hundred metres.
+- **16 poses do not fit at the true position** within the assumed 0.1° (they miss by 1.1–2.6
+  tolerances, 0.09–0.28° rms). The engine cannot prefer a place where the photo does not match.
+- In **7 poses the fitted up/down shift sits at its ±0.3° limit** (3/1266, 19/1126, 33/366, 51/644,
+  61/0, 66/0, 82/0), and Person 3's own check shows the far skyline off by 0.36–0.57° there. The
+  photo's "horizontal" is further off than `horizon_uncertainty_deg: 0.3` says. The engine now
+  warns when a shift is at its limit. **For Person 3:** raise the value for these sols or check the
+  levelling (the review mentions a possible attitude-quaternion direction issue).
+- At the true position my best-fit heading differs from the "true heading" by a steady +0.7 to
+  +0.9° in nearly every site-3 pose. **For Person 3:** that looks like a constant offset in the
+  truth headings or in the camera model, not noise.
+- Three poses (33/366, 61/0, 66/0) have a skyline formed entirely by terrain closer than 1.5 km.
+
+## Simulation (300 photos per row, one 60° photo each, noise correlated along the skyline)
+
+Positions are random over the crater floor, the delta and the western rim area.
+
+| Set | Within 100 m | Within 300 m | Within 1 km | Median error | `ok` | `ok`: within 300 m | `ok`: inside its 95 % circle | `ambiguous` | `no_match` | In 68 % circle | In 95 % circle |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| base: 0.05° noise | 52 % | 67 % | 74 % | 96 m | 43 % | 91 % | 96 % | 51 % | 7 % | 77 % | 98 % |
+| near-field rule on | 50 % | 64 % | 72 % | 100 m | 37 % | 95 % | 95 % | 62 % | 1 % | 76 % | 96 % |
+| 2 m DEM roughness | 45 % | 59 % | 70 % | 126 m | 33 % | 93 % | 96 % | 45 % | 22 % | 83 % | 97 % |
+| 2 m roughness, near-field rule on | 44 % | 58 % | 69 % | 149 m | 30 % | 94 % | 97 % | 58 % | 12 % | 82 % | 98 % |
+| 2 m roughness, engine told of a 2 m DEM error | 46 % | 60 % | 72 % | 124 m | 24 % | 96 % | 99 % | 64 % | 12 % | 88 % | 99 % |
+
+- **Near-field rule: stays off.** It was meant to help when real ground differs from the DEM near
+  the camera. With 2 m of such roughness it changes "within 300 m" from 59 % to 58 % and the median
+  error from 126 m to 149 m, and makes fewer answers `ok`. Without roughness it is slightly worse
+  too. Differences of 1–3 points are within the noise of 300 trials; there is no benefit to show.
+  The rule (`near_field_m`, `near_weight`) and the DEM error (`dem_height_error_m`) remain
+  configurable in `MatcherConfig`.
+- **Confidence is honest in simulation:** the 95 % circle holds the truth 96–99 % of the time, the
+  68 % circle 76–88 % (slightly cautious). 91–96 % of `ok` answers are within 300 m.
+- About a quarter of single 60° photos can't be located (wrong by more than 1 km); those are
+  nearly all reported `ambiguous` or `no_match`.
+- Time per request in the harness (8 workers, one thread each): 7.4 s. Alone on the machine about
+  4 s, of which about 0.5 s prefilter, 1 s likelihood, 2.5 s fine search. That misses "a few
+  seconds" only slightly; no numba needed yet.
+- Not run yet: the other harness sets (120° photo, three photos, panorama, 0.1° noise, rocks,
+  pitch). They are one command: `scripts/validate_sim.py --sets fov120 three pano noise0.1 rocks pitch`.
 
 ## Matcher: what was wrong and what changed tonight
 
@@ -68,7 +101,8 @@ What this says, plainly:
    near-field rule added a second penalty. Fix: the per-bin fit has no 1/tolerance factor; a
    perfect fit is worth the same for every bin of every candidate; what can't be judged counts as
    a mediocre fit. Tests: `tests/test_match_score.py` (truth on near terrain beats a far-terrain
-   look-alike that fits 2× and 3× worse; a broad tolerance is not a way to win).
+   look-alike that fits 2× and 3× worse; a broad tolerance is not a way to win) and
+   `tests/test_match_locate.py` (on the real terrain the true position outscores other places).
 2. **Realistic noise changed the picture.** Earlier success rates used noise that was independent
    per sample; it averages away in the matcher's bins. A traced skyline errs smoothly along its
    length. With 0.05° of such noise the coarse stage ranked the true place first only 42 % of the
@@ -81,16 +115,14 @@ What this says, plainly:
    tolerances rms), full support (90 % of the usable skyline counts), a clear lead (60 % of the
    likelihood, no rival with half as much) and half the field of view usable. Bins are taken to
    err together over 3°. A fit worse than the noise settings promise widens the circles.
-5. Near-field rule and DEM height error are off by default.
 
 ## Next, in order
 
-1. Near-field rule: read the comparison run, decide the default.
-2. Real photos: find out why 15 of 24 poses are not found (first check: is the true place among
-   the coarse candidates, as in simulation, or lost there?). Likely levers: the assumed angle
-   noise, the horizon shift limit, more photos per pose.
-3. End-to-end matcher tests on the real DEM.
-4. Dominant feature, then the `/locate` server with Person 3's `/skyline` router.
+1. Run the remaining harness sets (more photos per position should help most).
+2. Real photos: with Person 3, sort out the horizontal (shift at its limit in 7 poses) and the
+   0.8° heading offset, then rerun. Engine side: make the circles hold on real photos (2 of 4 `ok`
+   answers are outside their 95 % circle).
+3. Dominant feature, then the `/locate` server with Person 3's `/skyline` router.
 
 ## Notes for the team
 
