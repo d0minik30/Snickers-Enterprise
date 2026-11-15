@@ -25,8 +25,6 @@ type Props = {
   camera: MapCamera;
   onMapClick?: (p: LatLon) => void;
   armed?: boolean;
-  /** Let the user pan and zoom even while the camera is 'fit' (it is always allowed in 'free'). */
-  interactive?: boolean;
   className?: string;
 };
 
@@ -129,7 +127,14 @@ function cameraKey(camera: MapCamera): string {
   }
 }
 
-export default function MarsMap({ overlays, camera, onMapClick, armed = false, interactive = false, className }: Props) {
+const ZOOM_ANIM_MS = 200;
+
+/**
+ * Pans and zooms like an everyday web map: drag, wheel, pinch, double-click and the +/- buttons.
+ * Once the user moves the map it stops following the camera (route fit or crew follow) until RECENTER is pressed;
+ * a new fit (a different route) takes the camera back by itself.
+ */
+export default function MarsMap({ overlays, camera, onMapClick, armed = false, className }: Props) {
   const targetRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OlMap | null>(null);
   const sourceRef = useRef<VectorSource | null>(null);
@@ -137,6 +142,10 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, i
   const cameraRef = useRef(camera);
   const clickRef = useRef(onMapClick);
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
+  const [detached, setDetached] = useState(false); // the user moved the map: the camera no longer drives it
+  const detachedRef = useRef(false);
+  const detach = () => { detachedRef.current = true; setDetached(true); };
+  const detachRef = useRef(detach);
 
   useEffect(() => {
     cameraRef.current = camera;
@@ -192,7 +201,12 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, i
 
     // Ring labels sit at a fixed screen position on the ring, so re-style when the map turns.
     view.on('change:rotation', () => overlayLayer.changed());
-    map.on('change:size', () => applyCamera(map, cameraRef.current));
+    map.on('change:size', () => { if (!detachedRef.current) applyCamera(map, cameraRef.current); });
+    // Any move made by hand (drag, wheel, pinch, double-click) hands the view to the user.
+    map.on('pointerdrag', () => detachRef.current());
+    map.on('dblclick', () => detachRef.current());
+    const onWheel = () => detachRef.current();
+    target.addEventListener('wheel', onWheel, { passive: true });
     map.on('click', e => clickRef.current?.({ lat: e.coordinate[1], lon: e.coordinate[0] }));
 
     let disposed = false;
@@ -203,6 +217,7 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, i
     labelSourceRef.current = labelSource;
     return () => {
       disposed = true;
+      target.removeEventListener('wheel', onWheel);
       mapRef.current = null;
       sourceRef.current = null;
       labelSourceRef.current = null;
@@ -222,20 +237,43 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, i
   }, [overlays]);
 
   const key = cameraKey(camera);
+  // A new fit (another route, new start or end) takes the view back; follow updates do not.
+  const fitKey = camera.mode === 'fit' ? key : '';
+  const [seenFitKey, setSeenFitKey] = useState(fitKey);
+  if (seenFitKey !== fitKey) {
+    setSeenFitKey(fitKey);
+    if (fitKey) setDetached(false);
+  }
+  useEffect(() => {
+    detachedRef.current = detached;
+  }, [detached]);
   useEffect(() => {
     const map = mapRef.current;
-    if (map) applyCamera(map, cameraRef.current);
-  }, [key]);
+    if (map && !detached) applyCamera(map, cameraRef.current);
+  }, [key, detached]);
 
-  const free = camera.mode === 'free' || interactive;
-  useEffect(() => {
-    mapRef.current?.getInteractions().forEach(i => i.setActive(free));
-  }, [free]);
+  const zoomBy = (delta: number) => {
+    const view = mapRef.current?.getView();
+    const zoom = view?.getZoom();
+    if (!view || zoom === undefined) return;
+    detach();
+    view.animate({ zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom + delta)), duration: ZOOM_ANIM_MS });
+  };
+  const canRecenter = detached && camera.mode !== 'free';
 
   const classes = [css.map, armed ? css.armed : '', className ?? ''].filter(Boolean).join(' ');
   return (
     <div data-testid="mars-map" className={classes}>
       <div ref={targetRef} className={css.canvas} />
+      <div className={css.controls} onPointerDown={e => e.stopPropagation()}>
+        {canRecenter && (
+          <button type="button" className={css.recenter} data-testid="map-recenter" onClick={() => setDetached(false)}>
+            RECENTER
+          </button>
+        )}
+        <button type="button" className={css.zoomButton} aria-label="Zoom in" data-testid="map-zoom-in" onClick={() => zoomBy(1)}>+</button>
+        <button type="button" className={css.zoomButton} aria-label="Zoom out" data-testid="map-zoom-out" onClick={() => zoomBy(-1)}>−</button>
+      </div>
       {tilesUnavailable && (
         <div data-testid="tiles-unavailable" className={css.unavailable}>
           MAP IMAGERY UNAVAILABLE · ROUTE DATA STILL LIVE

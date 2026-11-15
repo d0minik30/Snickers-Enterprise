@@ -103,20 +103,12 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
   const overlays = useMemo(() => liveOverlays(view, { quiet: embedded }), [view, embedded]);
   const [flagging, setFlagging] = useState(false);
   const [notice, setNotice] = useState<RerouteBlocker | null>(null);
-  const [userMoved, setUserMoved] = useState(false);
-
   const newest = newestRoute(view);
-  const fitKey = newest?.id ?? '';
-  const [fittedKey, setFittedKey] = useState(fitKey);
-  if (fittedKey !== fitKey) { // a new route was sent: fit on it again
-    setFittedKey(fitKey);
-    setUserMoved(false);
-  }
+  // The map fits the newest route; panning or zooming by hand detaches it until RECENTER (see MarsMap).
   const camera = useMemo<MapCamera>(() => {
-    if (userMoved) return { mode: 'free' };
     if (!newest) return { mode: 'fit', points: [DEFAULT_START, DEFAULT_END] };
     return { mode: 'fit', points: planFitPoints(newest, newest.points[0], newest.points[newest.points.length - 1]) };
-  }, [userMoved, newest]);
+  }, [newest]);
 
   useEffect(() => {
     if (!notice) return;
@@ -159,14 +151,9 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
         onFlag={() => setFlagging(f => !f)}
         onReplan={() => reroute(null)}
       />
-      <div className={styles.mapArea} onPointerDown={() => setUserMoved(true)} onWheel={() => setUserMoved(true)}>
-        <MarsMap overlays={overlays} camera={camera} onMapClick={onMapClick} armed={flagging} interactive />
+      <div className={styles.mapArea}>
+        <MarsMap overlays={overlays} camera={camera} onMapClick={onMapClick} armed={flagging} />
         {flagging && <div className={styles.mapHint} role="status">CLICK THE MAP TO FLAG A HAZARD · ESC TO CANCEL</div>}
-        {userMoved && newest && (
-          <button type="button" className={styles.fitButton} onPointerDown={e => e.stopPropagation()} onClick={() => setUserMoved(false)}>
-            FIT ROUTE
-          </button>
-        )}
       </div>
       <SignalTimeline timeline={timeline} />
     </>
