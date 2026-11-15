@@ -24,22 +24,28 @@ type Saved = { request: LocateRequest; result: LocateResult; note: string };
  * backend/skyline/scripts/engine_result.py), clearly marked, for working on the result view while the
  * engine server is not running. Loaded only on request, and checked like a live answer.
  */
+async function loadSaved(prefix: string): Promise<Saved | null> {
+  const m = await import('@/lib/locate/fixtures/engine-sol17-18.json');
+  const file = m.default as unknown as { source: { photos: string[]; run_utc: string }; request: LocateRequest; result: unknown };
+  if (!isLocateResult(file.result)) return null;
+  return {
+    request: file.request,
+    result: file.result,
+    note: `${prefix ? `${prefix} · ` : ''}SAVED ENGINE RESPONSE · ${file.source.photos.length} Perseverance Navcam photos, sols 17–18, run ${file.source.run_utc.slice(0, 10)}. Not a live request.`,
+  };
+}
+
 function useSavedResult(): Saved | null {
   const [saved, setSaved] = useState<Saved | null>(null);
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('result') !== 'saved') return;
-    void import('@/lib/locate/fixtures/engine-sol17-18.json').then(m => {
-      const file = m.default as unknown as { source: { photos: string[]; run_utc: string }; request: LocateRequest; result: unknown };
-      if (!isLocateResult(file.result)) return;
-      setSaved({
-        request: file.request,
-        result: file.result,
-        note: `SAVED ENGINE RESPONSE · ${file.source.photos.length} Perseverance Navcam photos, sols 17–18, run ${file.source.run_utc.slice(0, 10)}. Not a live request.`,
-      });
-    });
+    void loadSaved('').then(setSaved);
   }, []);
   return saved;
 }
+
+/** Only an engine that can't be reached or doesn't answer falls back to the saved answer; real errors (422, 503) are shown. */
+const isOffline = (e: unknown) => e instanceof EngineError && (e.kind === 'unreachable' || e.kind === 'timeout');
 
 let counter = 0;
 const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `p${Date.now()}-${counter++}`);
@@ -49,6 +55,12 @@ export default function LocateScreen() {
   const [capturing, setCapturing] = useState(false);
   const [tab, setTab] = useState<'photos' | 'result'>('photos');
   const saved = useSavedResult();
+  const [offline, setOffline] = useState<Saved | null>(null);
+  // The engine (tracing or locating) can't be reached: show the saved answer, clearly marked.
+  const showOffline = useCallback(() => {
+    void loadSaved(`OFFLINE DEMO · the engine at ${ENGINE_URL.replace(/^https?:\/\//, '')} did not answer, so this is NOT your photos' result`)
+      .then(s => { if (s) { setOffline(s); setTab('result'); } });
+  }, []);
   const latest = useRef(session);
   useEffect(() => {
     latest.current = session;
@@ -64,11 +76,14 @@ export default function LocateScreen() {
     const key = `${p.id}:${p.rev}`; // a retry after a camera change has a new rev
     if (started.current.has(key)) return;
     started.current.add(key);
-    dispatch({ type: 'trace-start', id: p.id });
+    dispatch({ type: 'trace-start', id: p.id, rev: p.rev });
     postSkyline(p.file, p.name, specFor(p), p.label)
-      .then(response => dispatch({ type: 'trace-done', id: p.id, response }))
-      .catch(e => dispatch({ type: 'trace-failed', id: p.id, error: message(e) }));
-  }, [busyTracing, nextQueued]);
+      .then(response => dispatch({ type: 'trace-done', id: p.id, rev: p.rev, response }))
+      .catch(e => {
+        dispatch({ type: 'trace-failed', id: p.id, rev: p.rev, error: message(e) });
+        if (isOffline(e)) showOffline();
+      });
+  }, [busyTracing, nextQueued, showOffline]);
 
   // ---------------------------------------------------------------- angles for edits and camera changes
   const staleKey = session.photos.filter(p => p.angles === 'stale').map(p => `${p.id}:${p.rev}`).join(',');
@@ -120,10 +135,14 @@ export default function LocateScreen() {
   const locate = useCallback(() => {
     const request = buildLocateRequest(latest.current);
     dispatch({ type: 'locate-start', request });
+    setOffline(null);
     postLocate(request)
       .then(result => dispatch({ type: 'locate-done', result, at: new Date().toISOString() }))
-      .catch(e => dispatch({ type: 'locate-failed', error: message(e) }));
-  }, []);
+      .catch(e => {
+        dispatch({ type: 'locate-failed', error: message(e) });
+        if (isOffline(e)) showOffline();
+      });
+  }, [showOffline]);
 
   const photo = session.photos.find(p => p.id === session.selected) ?? null;
   const answer = session.locate.status === 'answered' ? session.locate : null;
@@ -132,7 +151,8 @@ export default function LocateScreen() {
   useEffect(() => {
     if (answerAt) setTab('result');
   }, [answerAt]);
-  const shown = answer ?? (saved ? { request: saved.request, result: saved.result } : null);
+  const fallback = answer ? null : offline ?? saved;
+  const shown = answer ?? (fallback ? { request: fallback.request, result: fallback.result } : null);
   const showResult = shown !== null && (tab === 'result' || (saved !== null && !answer && session.photos.length === 0));
 
   return (
@@ -173,7 +193,7 @@ export default function LocateScreen() {
             </div>
           )}
           {showResult && shown ? (
-            <ResultView result={shown.result} request={shown.request} savedNote={answer ? null : saved?.note ?? null} />
+            <ResultView result={shown.result} request={shown.request} savedNote={fallback?.note ?? null} />
           ) : photo ? <PhotoView photo={photo} dispatch={dispatch} /> : (
             <div className={css.empty}>
               <p className={css.emptyTitle}>NO PHOTOS YET</p>

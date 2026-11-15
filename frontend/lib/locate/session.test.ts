@@ -28,6 +28,20 @@ describe('session', () => {
     expect(f.photos[0].rev).toBe(rev + 1); // a retry is a new request
   });
 
+  it('a label or camera change while tracing retraces, and the old answer is ignored', () => {
+    let s = run([add('c'), { type: 'trace-start', id: 'c', rev: 0 }]);
+    s = reduce(s, { type: 'label', id: 'c', label: { camera: {} }, labelName: 'c.json' });
+    expect(s.photos[0].status).toBe('queued');
+    expect(s.photos[0].rev).toBe(1);
+    // the request sent before the label (rev 0) now fails: it must not stop the retrace
+    s = reduce(s, { type: 'trace-failed', id: 'c', rev: 0, error: 'no field of view' });
+    expect(s.photos[0].status).toBe('queued');
+    s = reduce(s, { type: 'trace-done', id: 'c', rev: 0, response: skylineResponse() });
+    expect(s.photos[0].status).toBe('queued');
+    s = run([{ type: 'trace-start', id: 'c', rev: 1 }, { type: 'trace-done', id: 'c', rev: 1, response: skylineResponse() }], s);
+    expect(s.photos[0].status).toBe('traced');
+  });
+
   it('edits are undoable and make the angles stale', () => {
     const moved = { ...trace, y: [2, 2, 1, 1] };
     let s = reduce(traced('a'), { type: 'edit', id: 'a', trace: moved });
