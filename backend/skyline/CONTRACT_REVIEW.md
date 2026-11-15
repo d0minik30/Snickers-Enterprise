@@ -83,8 +83,8 @@ the user gives one. Real example output: `backend/skyline/README.md`, "The outpu
 
 ## Findings from validation (real photos, known positions)
 
-`backend/skyline/scripts/validate.py` ran the 15 rover poses then in `work/m20_candidates.json` (since merged into
-`data/test_photos/manifest.json`) through the
+`backend/skyline/scripts/validate.py` ran the 15 rover poses in `work/m20_candidates.json` (since merged into
+`data/test_photos/manifest.json`; the numbers below are from that earlier run) through the
 whole chain: skyline step, the `POST /locate` body, your matcher, no prior. Truth = the NASA waypoint,
 used only for scoring. The app shows the run at `/validate/`. 13 poses scored (2 had no photo showing sky).
 

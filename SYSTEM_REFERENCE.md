@@ -1,6 +1,8 @@
 # Snickers Enterprise — Mars Map System Reference
 
 > **Purpose:** Self-contained reference for any LLM session working on this codebase. Read this before modifying frontend, backend, data, or engine code.
+>
+> **Status:** corrected on 2026-11-15 (about 03:00 local) to match what is actually built and measured. For the live status of the night's work, what is left and where to start, read **`GOOD_MORNING.md`** in the repo root first. Numbers marked *target* are design goals, not measurements.
 
 ---
 
@@ -77,7 +79,8 @@ Using `atan(y/f)` instead overstates the elevation by ~15% at 30° off-axis.
 │  /field   — Phone HUD, heading-rotated map, turn-by-turn nav             │
 │  /control — Laptop view, A* route planning, 11:20-delayed live view      │
 │  /map     — Jezero Leaflet map with slope/sand/contour/elevation overlays│
-│  /locate  — [PLANNED] Upload photos, edit skyline, call engine, show fix │
+│  /locate  — Upload photos, edit skyline, show engine fix (saved results) │
+│  /validate— Saved validation run on real Perseverance photos vs truth    │
 │                                                                           │
 │  lib/mission/  — Event log + BroadcastChannel sync, pure state functions │
 │  lib/planner/  — Swappable interface: planRoutes, replan, elevationAt    │
@@ -94,12 +97,14 @@ Using `atan(y/f)` instead overstates the elevation by ~15% at 30° off-axis.
 │                                                                           │
 │  backend/marsloc/         — Person 1's engine (see §5 below)             │
 │  backend/skyline/         — Person 3's photo→skyline router              │
-│  backend/scripts/         — build_horizons.py, check_terrain.py          │
+│  backend/scripts/         — build_horizons.py, check_terrain.py, …       │
 │  backend/data_local/      — Multi-res GeoTIFFs (HiRISE, CTX, MOLA)       │
-│  backend/cache/           — Precomputed horizon store (git-ignored)       │
-│  backend/CONTRACTS.md     — The three file-format contracts              │
+│  backend/cache/           — Horizon store, test requests (git-ignored)   │
+│  backend/CONTRACTS.md     — The file-format contracts (§1–§4)            │
 │                                                                           │
-│  FastAPI: POST /locate, POST /skyline, GET /health (CORS enabled)        │
+│  HTTP today: backend/skyline/scripts/dev_server.py serves POST /skyline, │
+│  POST /skyline/convert, GET /health. POST /locate is NOT built yet; the  │
+│  app shows engine results saved by backend/skyline/scripts/*.py.         │
 └──────────────┬───────────────────────────────────────────────────────────┘
                │  Reads terrain tiles (Contract §1)
                │
@@ -133,7 +138,7 @@ Multi-resolution height lookup over tiled GeoTIFFs.
 
 - **`manifest.py`** — Reads `terrain.json` (or auto-generates one for the single CTX file). Validates the contract: sphere radius, units, bounds, nodata.
 - **`source.py`** — One resolution level. Tiles are loaded lazily on first access. Bilinear interpolation with gap handling. **Coarser levels** are computed on demand (2^k × 2^k pixel averaging) for far-away lookups.
-- **`terrain.py`** — Facade over all sources. At each point the **highest-priority** source with data wins; no blending:
+- **`terrain.py`** — Facade over all sources. At each point the **highest-priority** source with data wins, blended into the source beneath over a band along its edge (`edge_blend_m`, contract v0.2; default 7.5 cells of the lower source: 150 m HiRISE→CTX, 1.5 km CTX→MOLA). Measured: the height jump across the CTX edge fell from a median 14.7 m (max 62 m) to 1.2 m (max 4.6 m). Sources:
   1. `hirise_1m`: Priority 30, nominal cell size 1.0 m (fine landing site)
   2. `ctx_20m`: Priority 20, nominal cell size 20.0 m (crater floor & rim)
   3. `mola_200m`: Priority 10, nominal cell size 200.0 m (80×80 km outer horizon)
@@ -151,7 +156,7 @@ For a camera position, compute the highest elevation angle of terrain in each az
 
 ### 5.3 Precomputed Horizon Store (`marsloc/horizon/store.py`)
 
-360° skylines for every candidate on a 200 m grid, quantized and memory-mapped.
+360° skylines for every candidate on a 200 m grid, quantized and memory-mapped. Current build (`backend/cache/horizons_200m_0.5deg/`): the CTX extent, 22,801 candidates, 66 MB, about 3 min with 15 workers (55 ms per candidate per core). The full 80 × 80 km area would be 1.08 M candidates, 3.1 GB, about 2.4 h; not built. All test photo positions lie inside the CTX extent. Between 20 % and 65 % of a horizon is formed by the 200 m data beyond CTX.
 
 | File | Dtype | Shape | Content |
 |---|---|---|---|
@@ -161,6 +166,9 @@ For a camera position, compute the highest elevation angle of terrain in each az
 | `ground.npy` | float32 | [candidates] | Terrain height under each candidate; NaN = off terrain |
 
 ### 5.4 Matcher (`marsloc/match/`)
+
+> [!WARNING]
+> **The matcher is NOT validated yet** (being fixed overnight 15 Nov; see `GOOD_MORNING.md` and `backend/STATUS.md`). Measured on simulated photos: about 60 % land within 100 m and wrong answers are still reported as confident. Known bug: a true position can lose to a look-alike that fits 2–3× worse. Real Perseverance photos (24 poses, committed engine): 2 within 50 m, truth inside the 95 % circle for 8 of 24, median error 5.3 km. The pipeline below is the design.
 
 Coarse-to-fine matching pipeline:
 1. **Pass 1: Prefilter:** Pooled 2.0° bins, evaluates all candidates and headings using vectorized capped squared error ($z \le 9 \cdot \text{trust}$). Drops 90% of candidates in ~1.0 s.
@@ -173,8 +181,10 @@ Coarse-to-fine matching pipeline:
 
 ## 6. Contracts (`backend/CONTRACTS.md`)
 
+Versions: §1 is at **0.2** (adds the optional `edge_blend_m` blend band); §2 and §3 are as in 0.1 and requests saying 0.1 are accepted; §4 (test cases) is now one slim manifest plus generated requests (see §7.3). Proposed by Person 3 (`backend/skyline/CONTRACT_REVIEW.md`) and not yet in the contract unless `CONTRACTS.md` says so: optional `roll_uncertainty_deg`, `cahvore` as a `lens_model` value, HTTP 422 on an unknown `contract_version`, and the `/skyline` router in the same server as `/locate`. `CONTRACTS.md` is the authority; the excerpts below are short.
+
 ### §1 — Terrain Input (Person 2 → Engine)
-Folder `backend/data_local/terrain/` with `terrain.json`:
+Folder `backend/data_local/terrain/` with `terrain.json` (the delivered file says 0.1 and has no `edge_blend_m`, so the engine's defaults apply):
 ```json
 {
   "contract_version": "0.1",
@@ -247,17 +257,26 @@ Elevation products come from different orbital stereo campaigns and can have ver
 | **East Edge (77.70°E)** | 756 points | $+13.06\text{ m}$ | $+14.18\text{ m}$ | $11.6\text{ m}$ | $[-7.3\text{ m}, +30.1\text{ m}]$ | $-24.5\text{ m} / +37.2\text{ m}$ |
 | **Overall Perimeter** | **3,108 points** | **$-0.56\text{ m}$** | **$+1.41\text{ m}$** | **$18.9\text{ m}$** | **$[-33.7\text{ m}, +28.2\text{ m}]$** | **$-80.5\text{ m} / +54.2\text{ m}$** |
 
-#### Proposed 1.5–2.0 km Cosine Blend Band:
+#### Blend band (implemented in contract v0.2 as `edge_blend_m`; the engine's ramp may differ from the formula below, see `marsloc/terrain/terrain.py`):
 To smooth out local relief differences where 20m CTX resolves scarps that 200m MOLA smooths, the engine supports a transition width $W = 1.5\text{ to }2.0\text{ km}$:
 $$w(d) = \frac{1}{2}\left(1 + \cos\left(\pi \frac{W - d}{W}\right)\right) \quad \text{for } 0 \le d \le W$$
 $$h(x, y) = w(d) \cdot h_{\text{CTX}}(x, y) + (1 - w(d)) \cdot \left[h_{\text{MOLA}}(x, y) + \Delta_{\text{offset}}\right]$$
 Where $d$ is distance inside the CTX boundary. At $d = 0$, $w = 0$ with $C^1$ continuity, completely preventing ray-marching step artifacts.
 
 ### 7.3 Ground-Truth Test Photos Dataset (`data/test_photos/`)
-`manifest.json` lists **24 cases, one per rover pose, with 40 real Perseverance Navcam photos** (sols 17–1700, 50 m to 11.4 km from the landing site). Per photo: source links, SHA-256, camera calibration (CAHVORE model, rover attitude, size), UTC time and a review (`skyline_visible`, `usable`, `notes`). No skyline samples are stored. The truth (NASA M20 waypoint for the site/drive, and each photo's true heading) sits apart in the top-level `truth` map, for scoring only.
-- **Pipeline:** `data/scripts/fetch_test_photos.py` downloads, verifies and writes the list → `backend/skyline/scripts/build_test_requests.py` writes the `/locate` requests (git-ignored `backend/skyline/out/test_requests/`) → `backend/skyline/scripts/validate.py` runs the engine and scores; the app shows the saved run at `/validate/`.
-- **Multi-photo cases:** photos of one pose are matched together with known relative headings (e.g. site 3 drives 578, 770, 1374, 1416, 2046).
-- **Not usable:** sols 100 and 1100 point at the ground (kept, with the review saying so).
+One committed list, `data/test_photos/manifest.json` (contract section 4): **24 rover poses, 38 real Perseverance Navcam photos** (sols 17–1700, about 20 m to 11.4 km from the landing site). Per photo: NASA links, SHA-256, CAHVORE calibration, field of view, and a `review` record (`skyline_visible`, `usable`, `notes`). Per pose, kept apart: the truth (`lat`/`lon` from NASA's final waypoint localization, each camera's true heading from its label). No skyline samples are stored; they are regenerated.
+
+| Step | Command (repo root, `backend/.venv` Python) | Writes (git-ignored unless noted) |
+|---|---|---|
+| Fetch and verify | `data/scripts/fetch_test_photos.py` (`--add <id>` to add a photo) | `data/test_photos/images/`; refreshes the manifest (committed) |
+| Build requests | `backend/skyline/scripts/build_test_requests.py --review` | `backend/cache/test_requests/` (one `POST /locate` body per pose), `backend/cache/test_review/index.html` |
+| Validate | `backend/skyline/scripts/validate.py --out backend/skyline/out/validation.json --app-copy frontend/public/validation.json` | full report in `backend/skyline/out/`; the `/validate/` copy in `frontend/public/` (committed) |
+
+What the photos show (from the review sheet):
+- **Clean far skylines:** 3/1708 (sol 48), 3/1950, 3/2046 (delta front and rim), sols 1300 and 1700 toward the western rim.
+- **Hardware in the view, cut at weight 0:** the robotic-arm turret on 3/578 (sol 17) and 3/1416 (sols 45–46); the rover deck below the skyline on many sol 20–33 views.
+- **Near skylines (a slope or ridge within about 1–2 km):** sols 175, 700, 1100, 1400. Weak evidence for 20 m terrain.
+- **Camera tilted up (+23° to +33°), skyline along the bottom:** sols 85, 100, 1000. Most other early views look down about 30°, with the skyline near the top edge.
 
 ### 7.4 Named Martian Landmarks (`data/output/features.geojson`)
 Six prominent geological landmarks cataloged with IAU nomenclature and elevations sampled directly from CTX:
@@ -286,7 +305,7 @@ $$\sigma_{\text{model}}^2 = \sigma_{\text{dem}}^2 + \left(\frac{\partial \theta_
 Where:
 - $\sigma_{\text{dem}} = \frac{\Delta h_{\text{dem}}}{d}$ is the angular uncertainty of the DEM height error viewed at distance $d$.
 - $\frac{\sigma_{\text{pos}}}{d}$ represents the angular parallax shift of terrain features.
-- Terrain closer than $1500\text{ m}$ is downweighted ($w_{\text{near}} \to 0.1$) because 20m pixels cannot resolve meters-scale rocks and boulders.
+- Near-field rule (terrain closer than $1500\text{ m}$ downweighted to $w_{\text{near}} = 0.1$, because 20 m pixels cannot resolve metre-scale rocks): implemented but **default off** until a few-hundred-trial simulation decides it; on 30 trials it looked slightly harmful (50 % vs 60 % within 100 m).
 
 ### 8.3 Robust Mixture Likelihood Model
 To prevent a nearby 30 cm rock or atmospheric dust haze from invalidating a genuine fix, every observation is modeled with an inlier/outlier mixture:
@@ -298,6 +317,9 @@ Where $\gamma = (1 - f_{\text{outlier}}) \cdot w_{\text{sample}} \cdot w_{\text{
 ---
 
 ## 9. Algorithmic Complexity & Execution Timings
+
+> [!NOTE]
+> The durations below are **targets**, not measurements: there is no `POST /locate` server yet and the matcher is still being fixed. Measured so far: horizon render 55 ms per candidate on one core (68 ms in the HiRISE area); store build for 22,801 candidates about 3 min with 15 workers.
 
 | Pipeline Stage | Algorithm | Computational Complexity | Typical Duration |
 |---|---|---|---|
@@ -328,9 +350,11 @@ Where $\gamma = (1 - f_{\text{outlier}}) \cdot w_{\text{sample}} \cdot w_{\text{
 
 | Test Suite | Framework | Count | Coverage |
 |---|---|---|---|
-| **Frontend Unit Tests** | Vitest 5 | **133 passed** | Geodesy, turn directions, store replay, signal timeline, A* route finding, tile failure fallback |
-| **Backend Geometry & Engine** | Pytest 9 | **76 passed** | Mars sphere math, horizon raymarching, store quantization, sun angles, seam analysis |
-| **Multi-Resolution Terrain Seams**| `check_terrain.py` | Verified | HiRISE-CTX seam (-0.36 m), CTX-MOLA seam (+0.88 m) |
+| **Frontend Unit Tests** | Vitest 5 | **194 passed** (15 Nov) | Geodesy, turn directions, store replay, signal timeline, A* route finding, tile failure fallback, locate/validate models |
+| **Backend Engine** (`backend/tests/`) | Pytest | **82 passed, 2 skipped** (commit 7deb150) | Mars sphere math, terrain + blend band, horizon raymarching vs brute force, store quantization, sun angles, seams. The matcher has almost no tests yet |
+| **Backend Skyline** (`backend/skyline/tests/`) | Pytest | **22 passed, 6 skipped** | Photo → skyline. `test_api.py` needs `python-multipart` installed in `backend/.venv` |
+| **Multi-Resolution Terrain Seams**| `check_terrain.py` | Verified | HiRISE-CTX step −0.31 m, CTX-MOLA step +0.87 m (medians; local differences reach ±30 m, hence the blend band) |
+| **Real-photo validation** | `backend/skyline/scripts/validate.py` | Run 15 Nov 00:41 UTC | 24 poses: 2 within 50 m, median 5.3 km; matcher not validated (see §5.4) |
 | **Browser Smoke Test** | Playwright | Passing | End-to-end multi-window sync under 11:20 delay simulation |
 
 ---
@@ -342,9 +366,9 @@ Where $\gamma = (1 - f_{\text{outlier}}) \cdot w_{\text{sample}} \cdot w_{\text{
    - Speed-of-light latency (11 min 20 s) cannot be engineered away; our Control interface treats signal latency as a first-class UI element rather than pretending connectivity is instantaneous.
 2. **Innovative Computer Vision & Terrain Science:**
    - Matches 1D skyline horizon profiles directly against 3D digital elevation models without requiring pre-mapped landmarks.
-   - Robust to nearby rocks, dust storms, and perspective distortion.
+   - Designed to be robust to nearby rocks, dust haze and perspective distortion (weights, robust scoring). Only claim accuracy that the latest validation run shows.
 3. **Extreme Engineering Optimization:**
    - 99.95% bandwidth savings via cloud-native HTTP range requests over NASA/USGS archives.
-   - Sub-3-second localization fix on consumer hardware via precomputed quantized horizon stores and coarse-to-fine filtering.
+   - Target: a localization fix in a few seconds on a laptop, via precomputed quantized horizon stores and coarse-to-fine filtering (not yet measured end to end).
 4. **Complete Dual-Tier Operational Demo:**
    - Field Astronaut HUD + Earth Control Station operating simultaneously in two browser windows with genuine simulated orbital comms delays.

@@ -276,45 +276,39 @@ coordinates and elevations in the same Mars 2000 / areoid convention.
 
 ## Ground-truth photo cases
 
-`test_photos/manifest.json` lists real Perseverance Navcam photos with known rover positions:
-24 cases, one per rover pose (site/drive), 40 photos, sols 17–1700, about 50 m to 11.4 km from
-the landing site. Photos from one pose are matched together, so their relative headings are known.
-The sources are NASA's [Mars 2020 raw-image archive](https://mars.nasa.gov/mars2020/multimedia/raw-images/)
-and [M20 waypoint GeoJSON](https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json).
+`test_photos/manifest.json` is the one committed list of test cases with known positions
+(`backend/CONTRACTS.md` section 4): 24 rover poses (NASA site/drive), sols 17–1700, from about 20 m to
+11.4 km from the landing site, with 38 real Perseverance Navcam photos. Sources: NASA's
+[Mars 2020 raw-image archive](https://mars.nasa.gov/mars2020/multimedia/raw-images/) and the
+[M20 waypoint GeoJSON](https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json).
 
-Per photo the manifest keeps only:
-- source links (raw-image page, metadata-feed URL, full-resolution image URL) and the image SHA-256;
-- the camera calibration from its raw-image record: CAHVORE model, camera vector, image size,
-  subframe and scale, and the rover attitude (the skyline step reads only "down" from it);
-- the UTC time;
-- a review: `skyline_visible`, `trusted_share`, `usable`, `notes`.
+Each case holds:
+- `photos`: per photo the NASA image page, metadata-feed URL, full-resolution image URL and SHA-256,
+  UTC time, and the camera calibration (CAHVORE model as the feed gives it, image size, the sensor
+  rectangle for crops, horizontal and vertical field of view). Plus a `review` record:
+  `skyline_visible`, `usable` (fit for validation), `notes` (e.g. "robotic arm turret blocks the
+  middle") and `reviewed_by`.
+- `truth`, kept apart and used only for scoring: `lat`/`lon` from the final NASA waypoint localization
+  for the photo's site/drive, the rover heading (waypoint yaw), and per photo the true azimuth and
+  elevation of the optical axis, from the label's rover attitude applied to the CAHVORE axis.
 
-Each case has a review too (`skyline_visible`, `usable`, `notes`; add `manual_notes` by hand, a
-rebuild keeps them). No skyline samples are stored.
+The manifest holds no skyline samples. Skyline requests are generated from it by the skyline step
+(`backend/skyline/scripts/build_test_requests.py`, see `backend/skyline/README.md`) into the git-ignored
+`backend/cache/test_requests/`, so they never go stale in git.
 
-**Truth is kept apart**, in the top-level `truth` map by case name: the rover's final localized
-waypoint for the site/drive (`lat`, `lon`, `rover_heading_deg` from its yaw), and each photo's true
-heading (`photo_headings_deg`: the yaw plus the camera's direction from the rover's forward direction,
-from its label). The drive counter goes up whenever the rover moves, so every photo with the same
-site/drive was taken from that waypoint. Truth is for scoring only and must never be copied into a
-`/locate` request.
-
-Two curated photos (sols 100 and 1100) point at the ground and are listed as not usable. Extra photos
-at the early poses (formerly `work/m20_candidates.json`) are included only when they have a waypoint
-and a visible, traceable skyline; the second eye of a stereo pair is left out.
-
-Three steps, from the repository root with the backend's Python (numpy, Pillow):
+To download the images (into `test_photos/images/`, git-ignored, about 60 MB), verify them against the
+recorded checksums and refresh calibration and truth from NASA, run from the repository root:
 
 ```powershell
-py -3.10 data/scripts/fetch_test_photos.py                 # download into test_photos/images/, check, write the manifest
-py -3.10 backend/skyline/scripts/build_test_requests.py    # skyline requests -> backend/skyline/out/test_requests/
-py -3.10 backend/skyline/scripts/validate.py --out backend/skyline/out/validation.json `
-    --app-copy frontend/lib/locate/fixtures/validation.json  # run the engine and score
+.\backend\.venv\Scripts\python.exe data/scripts/fetch_test_photos.py
+.\backend\.venv\Scripts\python.exe data/scripts/fetch_test_photos.py --add <NASA image id>   # add a photo
 ```
 
-`fetch_test_photos.py` only downloads, verifies (SHA-256 against the manifest, image size against the
-record, camera model and attitude present, a final waypoint for the pose) and writes the list.
-`test_photos/images/` and `backend/skyline/out/` are git-ignored.
+A checksum mismatch stops the script (use `--update-checksums` only if NASA really replaced a product).
+`--add` accepts Navcam frames with a camera model and attitude, at a pose NASA localized, and refuses
+the second eye of a stereo pair already listed. New photos get an empty `review`; fill it from the review
+sheet (`build_test_requests.py --review`). The script keeps every `review` as it is. It never runs the
+skyline extractor; it uses only the CAHVORE geometry in `backend/skyline/camera.py` for the field of view.
 
 ## Data status and provenance
 
@@ -324,4 +318,5 @@ processing scripts and outputs listed above remain the map-layer pipeline. The n
 `fetch_terrain.py`, `terrain_sources.json`, `fetch_test_photos.py`,
 `test_photos/manifest.json`, and `output/features.geojson` are committed data-side
 assets. Terrain GeoTIFFs and full-resolution rover images remain in ignored/local or
-shared storage; checksums and manifest metadata are committed.
+shared storage; checksums and manifest metadata are committed. Skyline requests built from the
+photos are generated, never committed.
