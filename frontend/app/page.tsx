@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { formatClock } from '@/lib/nav/format';
 import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
+import { HeroBackground } from '@/components/landing/HeroBackground';
 import styles from './page.module.css';
 
 const DELAY = formatClock(SIGNAL_DELAY_MS);
@@ -8,11 +9,6 @@ const DELAY = formatClock(SIGNAL_DELAY_MS);
 // Live NASA Mars Trek tiles of Jezero Crater (MRO CTX, 6 m), zoom 11: a 6 × 6 block around the landing site.
 // Loaded straight from NASA like the rest of the site's imagery.
 const CTX = 'https://trek.nasa.gov/tiles/Mars/EQ/JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0/1.0.0//default/default028mm/11';
-const TILE_X = [2926, 2927, 2928, 2929, 2930, 2931];
-const TILE_Y = [811, 812, 813, 814, 815, 816];
-const TILES = TILE_Y.flatMap(y => TILE_X.map(x => `${CTX}/${y}/${x}.png`));
-// The Perseverance landing site inside that block, in percent (18.4447° N, 77.4508° E).
-const PIN = { left: '53.8%', top: '52.2%' };
 
 const EXAMPLE_PHOTO = '/demo-photos/NLF_0017_0668453452_115ECM_N0030578NCAM00186_01_290J.png';
 
@@ -21,22 +17,11 @@ export default function Home() {
     <main className={styles.page}>
       {/* ----------------------------------------------------------- hero */}
       <section className={styles.hero}>
-        <div className={styles.mosaic} aria-hidden="true">
-          {TILES.map(src => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={src} src={src} alt="" loading="eager" />
-          ))}
-          <span className={styles.pin} style={PIN}>
-            <span className={styles.ring} />
-            <span className={styles.ring} />
-            <span className={styles.dot} />
-            <span className={styles.pinLabel}>YOU ARE HERE</span>
-          </span>
-        </div>
+        <HeroBackground />
         <div className={styles.shade} aria-hidden="true" />
 
         <nav className={styles.nav} aria-label="Main">
-          <Link href="/" className={styles.logo}>MARS MAP</Link>
+          <Link href="/" className={styles.logo}>MARS<span>FINDER</span></Link>
           <span className={styles.navLinks}>
             <Link href="/map/">Map</Link>
             <Link href="/mission/">Mission</Link>
@@ -47,7 +32,7 @@ export default function Home() {
           <p className={styles.kicker}>NASA SPACE APPS 2026 · JEZERO CRATER</p>
           <h1 className={styles.title}>Lost on Mars?<br /><span>Take a photo.</span></h1>
           <p className={styles.lede}>
-            There is no GPS on Mars. Mars Map finds where you are by matching the skyline in your photos
+            There is no GPS on Mars. Marsfinder finds where you are by matching the skyline in your photos
             to the shape of the land around you.
           </p>
           <div className={styles.ctas}>
@@ -118,7 +103,7 @@ export default function Home() {
 
       {/* ----------------------------------------------------------- footer */}
       <footer className={styles.footer}>
-        <span className={styles.logo}>MARS MAP</span>
+        <span className={styles.logo}>MARS<span>FINDER</span></span>
         <span className={styles.footerLinks}>
           <Link href="/locate/">Locate (advanced)</Link>
           <Link href="/validate/">Test results</Link>

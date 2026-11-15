@@ -98,3 +98,17 @@ photos from NASA directly. Added a `.gitignore` exception for `frontend/public/d
 - "How it works" in 3 steps with pictures: a real Navcam photo, a skyline illustration, a map tile with a pin.
 - "Also: run a mission" with 3 numbers (11:20 delay, 3 routes, up to 1000×). Small footer with the other pages.
 - No images added to the repo: the hero and step 3 load from NASA; step 1 reuses an example photo.
+
+## New name: Marsfinder, and a 3D landing page
+
+- Site renamed **Marsfinder** (page titles, logos, top bars). The landing logo is MARS + pink FINDER.
+- Landing hero is now a **live 3D flyover of Jezero Crater** (`components/landing/TerrainHero.tsx`, three.js):
+  - Heights: the data team's 40 m elevation grid (`public/data/elevation_grid.bin`, from the MRO CTX DEM),
+    2.6× vertical exaggeration so the relief reads.
+  - Surface: NASA Mars Trek CTX tiles (zoom 11, 36 tiles; NASA allows this with CORS), warmed to Mars colours.
+  - The **pink skyline line is traced from the render itself**: a small black/white render of land vs sky is read
+    back every few frames and the top edge drawn as a glowing line. It draws itself left to right at the start.
+  - A "YOU ARE HERE" pin follows the Perseverance landing site on screen.
+  - Pauses when scrolled out of view; still image for people who turn off motion; falls back to a sky gradient
+    if WebGL fails.
+- `three` added to dependencies. `npm run build` passes.

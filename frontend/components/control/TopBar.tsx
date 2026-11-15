@@ -43,8 +43,8 @@ export function TopBar({ mode, onMode }: Props) {
   return (
     <header className={styles.topBar}>
       {!embedded && (
-        <ScreenMenu className={styles.brand} label="Mars Map: all screens">
-          MARS MAP <span className={styles.brandView}>/ CONTROL</span>
+        <ScreenMenu className={styles.brand} label="Marsfinder: all screens">
+          MARSFINDER <span className={styles.brandView}>/ CONTROL</span>
           <span className={styles.brandCaret} aria-hidden="true">▾</span>
         </ScreenMenu>
       )}

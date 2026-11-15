@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import JezeroScreen from '@/components/jezero/JezeroScreen';
 
 export const metadata: Metadata = {
-  title: 'Jezero · Mars Map',
+  title: 'Jezero · Marsfinder',
 };
 
 export default function MapPage() {

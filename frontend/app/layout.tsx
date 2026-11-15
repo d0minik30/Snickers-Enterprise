@@ -11,7 +11,7 @@ const barlow = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: 'Mars Map',
+  title: 'Marsfinder',
 };
 
 export const viewport: Viewport = {
