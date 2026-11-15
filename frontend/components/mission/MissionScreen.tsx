@@ -41,7 +41,7 @@ export default function MissionScreen() {
     <EmbeddedContext.Provider value={true}>
       <div className={styles.screen}>
         <header className={styles.guide}>
-          <Link href="/" className={styles.home} aria-label="Home">MARS MAP</Link>
+          <Link href="/" className={styles.home} aria-label="Home">MARSFINDER</Link>
           {hydrated && (
             <p className={styles.step} data-testid="mission-step">
               <span className={styles.stepNumber}>{step.n}</span>

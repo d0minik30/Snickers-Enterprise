@@ -30,7 +30,7 @@ export default function JezeroScreen() {
   return (
     <div className={css.screen}>
       <header className={css.topBar}>
-        <Link href="/" className={css.home}>MARS MAP</Link>
+        <Link href="/" className={css.home}>MARSFINDER</Link>
         <span className={css.place}>JEZERO CRATER, MARS</span>
         <SiteNav />
         <span className={css.spacer} />

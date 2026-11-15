@@ -1,0 +1,127 @@
+.root {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  /* Martian sky: dusty butterscotch at the horizon, dark above. Shows while the terrain loads. */
+  background: linear-gradient(180deg, #0d0809 0%, #3a1d17 38%, #9c5a3d 62%, #c27b55 75%, #6b3722 100%);
+}
+
+.gl,
+.skyline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gl {
+  opacity: 0;
+  transition: opacity 1.6s ease-out;
+}
+
+.gl :global(canvas) {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.root[data-ready='true'] .gl {
+  opacity: 1;
+}
+
+.skyline {
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+  will-change: transform;
+}
+
+.dot {
+  position: absolute;
+  left: -9px;
+  top: -9px;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #0a0a0b;
+  border-radius: 50%;
+  background: var(--route);
+  box-shadow: 0 0 0 2px var(--route), 0 0 24px 6px rgb(255 92 225 / 55%);
+}
+
+.ring {
+  position: absolute;
+  left: -50px;
+  top: -50px;
+  width: 100px;
+  height: 100px;
+  border: 2px solid var(--route);
+  border-radius: 50%;
+  animation: ping 2.4s ease-out infinite;
+}
+
+.ring + .ring {
+  animation-delay: 1.2s;
+}
+
+@keyframes ping {
+  0% { transform: scale(0.15); opacity: 0.9; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px 7px;
+  transform: translateX(-50%);
+  background: var(--route);
+  color: #0a0a0b;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+
+.label small {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+.tag {
+  position: absolute;
+  right: clamp(20px, 5vw, 64px);
+  top: 30%;
+  padding: 5px 9px;
+  border: 1px solid rgb(255 92 225 / 60%);
+  color: var(--route);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  opacity: 0;
+  transition: opacity 1s ease-out 3s;
+}
+
+.root[data-ready='true'] .tag {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring {
+    animation: none;
+  }
+}

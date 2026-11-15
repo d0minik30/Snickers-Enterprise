@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import LocateScreen from '@/components/locate/LocateScreen';
 
 export const metadata: Metadata = {
-  title: 'Locate · Mars Map',
+  title: 'Locate · Marsfinder',
 };
 
 export default function LocatePage() {

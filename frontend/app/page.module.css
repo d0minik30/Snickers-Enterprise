@@ -15,98 +15,19 @@
   isolation: isolate;
 }
 
-/* 6 × 6 NASA tiles, square, larger than the screen, nudged right so the pin sits beside the text. */
-.mosaic {
-  position: absolute;
-  z-index: -2;
-  top: 50%;
-  left: 50%;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  width: max(160vw, 130svh);
-  aspect-ratio: 1;
-  transform: translate(-40%, -50%);
-  animation: drift 40s ease-in-out infinite alternate;
-}
-
-.mosaic img {
-  display: block;
-  width: calc(100% + 1px); /* no hairline seams between tiles */
-  height: calc(100% + 1px);
-  filter: var(--mars-tint);
-}
-
-/* The CTX tiles are greyscale: warm them to Mars colours. */
 .page {
   --mars-tint: sepia(1) saturate(2.2) hue-rotate(-18deg) brightness(0.92) contrast(1.08);
-}
-
-@keyframes drift {
-  from { transform: translate(-40%, -50%) scale(1); }
-  to { transform: translate(-41%, -49%) scale(1.04); }
 }
 
 .shade {
   position: absolute;
   inset: 0;
   z-index: -1;
+  pointer-events: none;
   background:
-    linear-gradient(90deg, rgb(10 10 11 / 96%) 0%, rgb(10 10 11 / 82%) 38%, rgb(10 10 11 / 15%) 70%, rgb(10 10 11 / 35%) 100%),
+    linear-gradient(90deg, rgb(10 10 11 / 88%) 0%, rgb(10 10 11 / 55%) 32%, transparent 60%),
     linear-gradient(0deg, var(--surface) 0%, transparent 25%),
     linear-gradient(180deg, rgb(10 10 11 / 70%) 0%, transparent 14%);
-}
-
-/* The pulsing "you are here" pin on the landing site. */
-.pin {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-
-.dot {
-  position: absolute;
-  left: -9px;
-  top: -9px;
-  width: 18px;
-  height: 18px;
-  border: 3px solid var(--surface);
-  border-radius: 50%;
-  background: var(--route);
-  box-shadow: 0 0 0 2px var(--route);
-}
-
-.ring {
-  position: absolute;
-  left: -60px;
-  top: -60px;
-  width: 120px;
-  height: 120px;
-  border: 2px solid var(--route);
-  border-radius: 50%;
-  opacity: 0;
-  animation: ping 2.6s ease-out infinite;
-}
-
-.ring + .ring {
-  animation-delay: 1.3s;
-}
-
-@keyframes ping {
-  0% { transform: scale(0.15); opacity: 0.9; }
-  100% { transform: scale(1.6); opacity: 0; }
-}
-
-.pinLabel {
-  position: absolute;
-  left: 18px;
-  top: -34px;
-  padding: 5px 10px;
-  background: var(--route);
-  color: var(--surface);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  white-space: nowrap;
 }
 
 /* ----- top bar ----- */
@@ -119,9 +40,13 @@
 }
 
 .logo {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.22em;
+}
+
+.logo span {
+  color: var(--route);
 }
 
 .navLinks {
@@ -445,23 +370,12 @@
 /* ===================================================================== small screens */
 
 @media (max-width: 860px) {
-  .mosaic {
-    width: max(160vw, 120svh);
-    transform: translate(-50%, -70%);
-    animation: none;
-  }
-
   .shade {
-    background: linear-gradient(0deg, var(--surface) 0%, var(--surface) 22%, rgb(10 10 11 / 85%) 50%, rgb(10 10 11 / 25%) 100%);
+    background: linear-gradient(0deg, var(--surface) 0%, rgb(10 10 11 / 92%) 30%, rgb(10 10 11 / 55%) 52%, transparent 70%);
   }
 
   .heroText {
     justify-content: flex-end;
-  }
-
-  .pinLabel {
-    left: -60px;
-    top: -52px;
   }
 
   .steps,
@@ -474,9 +388,3 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mosaic,
-  .ring {
-    animation: none;
-  }
-}

@@ -159,7 +159,7 @@ export default function LocateScreen() {
   return (
     <div className={css.screen}>
       <header className={css.topBar}>
-        <Link href="/" className={css.home}>MARS MAP</Link>
+        <Link href="/" className={css.home}>MARSFINDER</Link>
         <span className={css.place}>LOCATE · WHERE WAS THIS PHOTO TAKEN?</span>
         <SiteNav />
         <span className={css.spacer} />
