@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { CommsRail } from '@/components/control/CommsRail';
 import { ElevationProfile } from '@/components/control/ElevationProfile';
 import { LiveRail } from '@/components/control/LiveRail';
-import { PlanDetailRail } from '@/components/control/PlanDetailRail';
 import { PlanRail } from '@/components/control/PlanRail';
 import { SignalTimeline } from '@/components/control/SignalTimeline';
 import { TopBar, type ControlMode } from '@/components/control/TopBar';
@@ -59,7 +58,7 @@ export default function ControlScreen() {
   };
 
   return (
-    <main className={styles.screen}>
+    <main className={`${styles.screen} ${hydrated && mode === 'plan' ? styles.noRight : ''}`}>
       <TopBar mode={hydrated ? mode : null} onMode={setChosenMode} />
       {hydrated && (mode === 'plan'
         ? <PlanMode draft={draft} inProgress={sent !== undefined} onSend={send} />
@@ -87,7 +86,6 @@ function PlanMode({ draft, inProgress, onSend }: { draft: PlanDraft; inProgress:
         )}
       </div>
       <ElevationProfile route={route} />
-      <PlanDetailRail routes={routes} selected={route} traveller={draft.traveller} />
     </>
   );
 }

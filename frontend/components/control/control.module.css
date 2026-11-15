@@ -271,6 +271,15 @@ button.brand[aria-expanded='true'] .brandCaret {
   border-left: 1px solid var(--rule);
 }
 
+/* Plan mode has no right column: everything is in the left one, and the map gets the room. */
+.noRight {
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  grid-template-areas:
+    'top  top'
+    'left map'
+    'left strip';
+}
+
 .section {
   padding: var(--pad-y) var(--pad-x);
   border-bottom: 1px solid var(--rule);
@@ -338,6 +347,30 @@ button.brand[aria-expanded='true'] .brandCaret {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.endButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.endButtons .armButton {
+  width: 100%;
+  padding: 8px;
+}
+
+.whyNote {
+  padding: 10px var(--pad-x) 14px;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--type-small);
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.whyNote b {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .endHead {

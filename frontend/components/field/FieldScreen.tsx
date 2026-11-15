@@ -54,7 +54,7 @@ export default function FieldScreen() {
 
   return (
     <main className={styles.screen} data-testid="field-status" data-status={status}>
-      <NextMoveBand view={hydrated ? nextMoveView(state) : null} />
+      {status !== 'awaiting-route' && <NextMoveBand view={hydrated ? nextMoveView(state) : null} />}
       {hydrated && <MessageStrip notice={notice} nowMs={t} onAck={ack} />}
       {hydrated && <StatusBanner status={state.status} />}
       <div className={styles.mapArea}>
@@ -91,7 +91,7 @@ export default function FieldScreen() {
         {hydrated && panel === 'compose' && <ReportSheet onSend={report} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
         {hydrated && panel === 'log' && <LogSheet state={state} onAck={ack} onClose={() => setPanel('none')} onHeight={setSheetHeight} />}
       </div>
-      {hydrated && <CommsBar state={state} panel={panel} onPanel={setPanel} />}
+      {hydrated && status !== 'awaiting-route' && <CommsBar state={state} panel={panel} onPanel={setPanel} />}
       {hydrated && !embedded && done.show && done.summary && (
         <MissionComplete
           summary={done.summary}
@@ -101,7 +101,7 @@ export default function FieldScreen() {
           onClose={done.close}
         />
       )}
-      <ReadoutBand cells={simpleCells(state)} fixCue={hydrated && cue.fix} />
+      {status !== 'awaiting-route' && <ReadoutBand cells={simpleCells(state)} fixCue={hydrated && cue.fix} />}
     </main>
   );
 }

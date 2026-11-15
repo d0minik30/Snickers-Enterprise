@@ -79,3 +79,12 @@ The root `.gitignore` skips every `.png`, so `public/demo-photos/` was never com
 failed with "Could not load /demo-photos/…". NASA's server sends no CORS header, so the page cannot fetch the
 photos from NASA directly. Added a `.gitignore` exception for `frontend/public/demo-photos/*.png` only (6 files,
 6.8 MB) and committed them.
+
+## Plan screen: everything in one column
+
+- Plan mode has **no right column** any more; the map gets that room. Everything is in the left column, top to
+  bottom: Who goes → Pick a route (cards) → "Why A?" in one line → Change the trip (Move start / Move end) → Send.
+- Removed: the waypoint table (seven rows of "884 m"), the start/end coordinates, the "Radio delay" box in the top
+  bar (the Send button already says "Reaches Mars in 11:20"), and the "MARS MAP / CONTROL" title inside the Mission
+  screen (the Mission screen has its own). `PlanDetailRail.tsx` deleted.
+- Crew view: before a route arrives it shows only "Waiting for a route from Earth", not empty boxes full of "--".
