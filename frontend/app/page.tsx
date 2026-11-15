@@ -8,7 +8,7 @@ import styles from './page.module.css';
 const OPEN_HINT: Record<string, string> = {
   '/control/': 'Open in a wide window',
   '/field/': 'Open in a narrow window or on a phone',
-  '/locate/': 'Needs the localization engine running',
+  '/locate/': 'Live needs the engine server; a saved answer works without it',
   '/map/': 'Any window',
   '/validate/': 'A saved run on real photos',
 };
@@ -53,7 +53,7 @@ export default function Home() {
             <li><b>Send.</b> The route takes {DELAY} to reach Mars (about 23 s at 30× speed). Press <b>Start traverse</b> in Field when it lands.</li>
             <li><b>Watch the delay.</b> In Control Live, the field data is always {DELAY} old: point at <i>last received</i> and <i>estimated now</i>, and at the signal timeline.</li>
             <li><b>Act.</b> Flag a hazard on the map, send Hold and Proceed, or a message. Field keeps the old plan until the signal arrives.</li>
-            <li><b>Fix the position.</b> Press <b>Photo fix</b> in Field: there is no GPS on Mars, so the crew photographs the skyline and the engine matches it to the terrain. The Locate screen shows that step for real photos.</li>
+            <li><b>Fix the position.</b> Press <b>Photo fix</b> in Field: there is no GPS on Mars, so the crew photographs the skyline and the engine matches it to the terrain. The Locate screen shows that step for real photos; with no engine server running, open <Link href="/locate/?result=saved">a saved real answer</Link>, and <Link href="/validate/">Validate</Link> for how well it does on real rover photos with known positions.</li>
           </ol>
           <p className={styles.small}>Speed, pause and reset are at the top right of Control. Reset clears both windows.</p>
         </section>

@@ -54,6 +54,13 @@ Each person treats the other folders as read-only. Shared files (`SYSTEM_REFEREN
 - **03:00 · 6441e9d** · Engine: **scoring bug fixed.** A candidate no longer scores higher for having far terrain (no 1/tolerance factor per bin); the coarse pass solves for the offset between a 200 m grid point and the true position (first-order parallax) before scoring. Near-field rule and DEM height error default off. Simulated photos now get noise correlated along the skyline. Tests in `backend/tests/test_match_score.py`.
 - **03:12 · 4744510** · Engine: **honest verdicts from a 300-trial simulation** (`backend/scripts/validate_sim.py`, reports in `backend/reports/`). "ok" now needs a good fit, full support and a clear lead. Result on 300 simulated photos: 43 % answered "ok", and of those 91 % were within 300 m and 96 % had the truth inside their 95 % circle; over all answers the truth is inside the 95 % circle 98 % of the time. **CONTRACTS.md v0.3** adds Person 3's four requests (optional `roll_uncertainty_deg`, `lens_model: cahvore`, 422 on unknown version, one server); requests marked 0.1–0.3 accepted. The matcher fits roll tilt when allowed. `backend/STATUS.md` now describes where the engine stands.
 - The cleanup agent session has ended; its work is merged.
+- **~03:40 · 33adfe6 + next commit** · Website navigation (frontend only, no engine or data files touched):
+  a **screens menu** (`components/shared/ScreenMenu.tsx`) as Control's brand button and a ☰ button on the Field
+  map, listing every screen with what it is for; Field's waiting screen now says the three steps to start and
+  links to Control; Control's Plan rail links to Field; the landing page points Locate users to
+  `/locate/?result=saved` when no engine server runs. Rebased onto 909df8a; kept Person 3's newer
+  `public/validation.json` in the one conflict. 194 frontend tests and the browser smoke test pass.
+  Notes for the frontend in `frontend/docs/CHANGES.md`.
 
 ---
 

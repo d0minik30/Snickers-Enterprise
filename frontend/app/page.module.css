@@ -246,3 +246,13 @@
     font-size: 19px;
   }
 }
+
+.steps a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.steps a:hover {
+  color: var(--route);
+}

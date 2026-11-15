@@ -76,6 +76,9 @@ export function PlanRail({ draft, inProgress, onSend }: Props) {
             </p>
           </>
         )}
+        <a href="/field/" target="_blank" rel="noreferrer" className={styles.openField} data-testid="open-field">
+          OPEN FIELD IN A NEW WINDOW ↗
+        </a>
       </section>
     </aside>
   );
