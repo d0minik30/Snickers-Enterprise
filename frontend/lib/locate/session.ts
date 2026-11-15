@@ -45,9 +45,9 @@ export type Action =
   | { type: 'tilt'; id: string; tilt: Tilt }
   | { type: 'time'; id: string; timeUtc: string }
   | { type: 'label'; id: string; label: unknown | null; labelName: string | null }
-  | { type: 'trace-start'; id: string }
-  | { type: 'trace-done'; id: string; response: SkylineResponse }
-  | { type: 'trace-failed'; id: string; error: string }
+  | { type: 'trace-start'; id: string; rev?: number }
+  | { type: 'trace-done'; id: string; rev?: number; response: SkylineResponse }
+  | { type: 'trace-failed'; id: string; rev?: number; error: string }
   | { type: 'edit'; id: string; trace: Trace }
   | { type: 'undo'; id: string }
   | { type: 'reset-edits'; id: string }
@@ -91,7 +91,9 @@ export function specFor(p: PhotoEntry): CameraSpec {
 
 /** Camera info changed: angles must be recomputed, or the trace retried if it failed. */
 function cameraChanged(p: PhotoEntry): PhotoEntry {
-  if (p.status === 'error') return { ...p, status: 'queued', error: null, rev: p.rev + 1 };
+  // A change while tracing (e.g. the label arrives after the photo) sends it again; the answer to the
+  // old request is then ignored by its rev.
+  if (p.status === 'error' || p.status === 'tracing') return { ...p, status: 'queued', error: null, rev: p.rev + 1 };
   if (p.status === 'traced') return { ...p, angles: 'stale', anglesError: null, rev: p.rev + 1 };
   return p;
 }
@@ -125,12 +127,12 @@ export function reduce(s: Session, a: Action): Session {
     case 'trace-start':
       return update(s, a.id, p => ({ ...p, status: 'tracing', error: null }));
     case 'trace-done':
-      return update(s, a.id, p => ({
+      return update(s, a.id, p => (a.rev !== undefined && a.rev !== p.rev ? p : {
         ...p, status: 'traced', response: a.response, trace: a.response.trace, history: [],
         photo: a.response.photo, diagnostics: a.response.diagnostics, angles: 'fresh', anglesError: null,
       }));
     case 'trace-failed':
-      return update(s, a.id, p => ({ ...p, status: 'error', error: a.error }));
+      return update(s, a.id, p => (a.rev !== undefined && a.rev !== p.rev ? p : { ...p, status: 'error', error: a.error }));
     case 'edit':
       return update(s, a.id, p => (p.trace === null ? p : {
         ...p, trace: a.trace, history: [...p.history, p.trace].slice(-MAX_UNDO), angles: 'stale', anglesError: null, rev: p.rev + 1,

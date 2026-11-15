@@ -361,7 +361,10 @@ def install(config, built, dest, report):
     for s in sorted(config["sources"], key=lambda s: -s["priority"]):
         b = built[s["id"]]
         log("  writing %s ..." % s["id"])
-        tiles = write_tiles(b["array"], b["crs"], b["transform"], staging, s["id"], s["id"])
+        # One file per source: the contract allows it, and the engine's height lookup has a fast path
+        # for single-file sources only (with 28 HiRISE + 4 CTX tiles a horizon took 5-10 s, not 0.1 s).
+        tiles = write_tiles(b["array"], b["crs"], b["transform"], staging, s["id"], s["id"],
+                            tile_px=max(b["array"].shape))
         products = [config["products"][key] for key in s["products"]]
         entry = {"id": s["id"], "description": "; ".join(p["name"] for p in products),
                  "priority": s["priority"], "cell_size_m": s["cell_size_m"],
