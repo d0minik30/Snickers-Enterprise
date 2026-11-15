@@ -28,15 +28,20 @@ type Load = { status: 'loading' } | { status: 'failed'; error: string } | { stat
  * Validation: real Perseverance photos with known positions, run through the whole chain
  * (backend/skyline/scripts/validate.py). Shows the saved run: true vs found position and the error.
  */
+const VALIDATION_URL = '/validation.json';
+
 export default function ValidateScreen() {
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [map, setMap] = useState<L.Map | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    import('@/lib/locate/fixtures/validation.json')
-      .then(m => {
-        const report: unknown = m.default;
+    // Loaded at run time, not imported: the saved run only exists after someone has run validate.py, and a
+    // missing import would break the whole build. validate.py writes it to frontend/public/validation.json.
+    fetch(VALIDATION_URL)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(json => {
+        const report: unknown = json;
         setLoad(isValidationReport(report)
           ? { status: 'ready', report }
           : { status: 'failed', error: 'The saved validation run is not in the expected format.' });

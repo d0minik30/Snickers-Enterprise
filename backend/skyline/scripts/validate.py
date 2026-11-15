@@ -15,7 +15,7 @@ backend/skyline/samples/ (git-ignored).
 Needs the CTX DEM and the precomputed horizons (see backend/skyline/README.md).
 Run from the repo root:
     py -3.10 backend/skyline/scripts/validate.py --out backend/skyline/out/validation.json \\
-        --app-copy frontend/lib/locate/fixtures/validation.json
+        --app-copy frontend/public/validation.json
 """
 
 from __future__ import annotations

@@ -77,6 +77,20 @@ function overlayGeometry(o: MapOverlay): Geometry {
   }
 }
 
+/**
+ * Which label wins when two would overlap: lower first. What the traveller and the routes are doing matters most,
+ * then where the route starts and ends, then hazards, then sand.
+ */
+function labelPriority(o: MapOverlay): number {
+  const id = o.id;
+  if (id.startsWith('label:received') || id.startsWith('label:estimated') || id.startsWith('label:pending')) return 0;
+  if (id.startsWith('label:route')) return 1;
+  if (id === 'label:start' || id === 'label:end') return 2;
+  if (id.startsWith('label:hazard')) return o.kind === 'label' && o.tone === 'inverse' ? 1 : 3; // a fresh flag outranks old survey hazards
+  if (id.startsWith('label:sand')) return 5;
+  return 4;
+}
+
 function toFeature(o: MapOverlay): Feature {
   const feature = new Feature(overlayGeometry(o));
   feature.set('overlay', o);
@@ -119,6 +133,7 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, i
   const targetRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<OlMap | null>(null);
   const sourceRef = useRef<VectorSource | null>(null);
+  const labelSourceRef = useRef<VectorSource | null>(null);
   const cameraRef = useRef(camera);
   const clickRef = useRef(onMapClick);
   const [tilesUnavailable, setTilesUnavailable] = useState(false);
@@ -134,6 +149,7 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, i
     const health = createTileHealth();
     const tileLayers = TREK_LAYERS.map(l => trekTileLayer(l, health, () => setTilesUnavailable(health.unavailable)));
     const source = new VectorSource();
+    const labelSource = new VectorSource();
     const view = new View({
       projection: 'EPSG:4326',
       resolutions: VIEW_RESOLUTIONS,
@@ -161,20 +177,35 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, i
     });
     map.addLayer(overlayLayer);
 
+    // Text chips on their own layer with decluttering, so no two labels ever draw on top of each other. When two
+    // would collide, the one earlier in labelPriority order is kept; the other reappears once you zoom in.
+    const labelLayer = new VectorLayer({
+      source: labelSource,
+      declutter: 'labels',
+      updateWhileAnimating: true,
+      updateWhileInteracting: true,
+      renderOrder: (a, b) => labelPriority(a.get('overlay') as MapOverlay) - labelPriority(b.get('overlay') as MapOverlay),
+      style: (feature, resolution) =>
+        overlayStyle(feature.get('overlay') as MapOverlay, { theme, resolution, rotation: view.getRotation() }),
+    });
+    map.addLayer(labelLayer);
+
     // Ring labels sit at a fixed screen position on the ring, so re-style when the map turns.
     view.on('change:rotation', () => overlayLayer.changed());
     map.on('change:size', () => applyCamera(map, cameraRef.current));
     map.on('click', e => clickRef.current?.({ lat: e.coordinate[1], lon: e.coordinate[0] }));
 
     let disposed = false;
-    document.fonts.ready.then(() => { if (!disposed) overlayLayer.changed(); });
+    document.fonts.ready.then(() => { if (!disposed) { overlayLayer.changed(); labelLayer.changed(); } });
 
     mapRef.current = map;
     sourceRef.current = source;
+    labelSourceRef.current = labelSource;
     return () => {
       disposed = true;
       mapRef.current = null;
       sourceRef.current = null;
+      labelSourceRef.current = null;
       map.setTarget(undefined);
       map.dispose();
     };
@@ -182,9 +213,12 @@ export default function MarsMap({ overlays, camera, onMapClick, armed = false, i
 
   useEffect(() => {
     const source = sourceRef.current;
-    if (!source) return;
+    const labelSource = labelSourceRef.current;
+    if (!source || !labelSource) return;
     source.clear(true);
-    source.addFeatures(overlays.map(toFeature));
+    labelSource.clear(true);
+    source.addFeatures(overlays.filter(o => o.kind !== 'label').map(toFeature));
+    labelSource.addFeatures(overlays.filter(o => o.kind === 'label').map(toFeature));
   }, [overlays]);
 
   const key = cameraKey(camera);

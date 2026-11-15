@@ -136,7 +136,12 @@ replace what is behind it and keep the function names and types (`planRoutes`, `
   (`lib/mission/control.ts`).
 - A window opened or reloaded mid-mission rebuilds the same state from the stored log.
 
-The design and build plan are in `docs/superpowers/`.
+- Map labels sit on their own decluttered layer (`components/map/MarsMap.tsx`): two labels never overlap. When
+  they would, the traveller and route labels win, then start and end, then hazards, then sand; hidden labels come
+  back as you zoom in.
+
+The design and build plan are in `docs/superpowers/`. What changed from the first demo, and why, is in
+[`docs/CHANGES.md`](docs/CHANGES.md).
 
 ## Credits
 
@@ -152,8 +157,19 @@ app can fetch them from `/data/...`. Never edit `../data/` from here; it belongs
 
 | File | Used by |
 |---|---|
-| `map_layers.json`, `slope.png`, `slope_bounds.json`, `sand.geojson` | Jezero map |
-| `places.geojson`, `cost_grid.json` | not yet (planned: real places and route finding) |
+| `map_layers.json`, `slope.png`, `slope_bounds.json`, `sand.geojson` | Jezero map (fetched at run time) |
+| `cost_grid.json`, `elevation_grid.json` + `.bin`, `places.geojson`, `terrain_features.geojson` | route planner, Control and Field maps, via `scripts/extract-terrain.mjs` |
+
+**`scripts/extract-terrain.mjs`** runs after the copy (also on `dev` and `build`). It cuts the demo area (the base
+to the Western Delta Deposit, `DEMO_BOUNDS` in `lib/planner/terrain.ts`) out of the 40 m grids and writes
+`lib/planner/jezeroTerrain.json`: elevation, slope and sand per cell, the start and destination from
+`places.geojson`, and the survey hazards it finds (steep cores over 25°, pits from `terrain_features.geojson`).
+That file is committed, so `npm test` works without the data step. If the data team updates its outputs, run
+`npm run dev` or `npm run build` once and commit the regenerated file.
+
+**Validation run** (`/validate`): `backend/skyline/scripts/validate.py --app-copy frontend/public/validation.json`
+saves a run where the screen fetches it. The screen loads it at run time, so the app still builds when no run
+has been saved yet.
 
 **Mars radius:** all coordinates are degrees on the Mars 2000 sphere, R = 3 396 190 m (the sphere the
 data scripts and the cost grid's 40 m cells use). The frontend has one constant for it, `MARS_RADIUS_M`
