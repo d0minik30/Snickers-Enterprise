@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldStateAt } from '@/lib/mission/field';
-import { BATTERY_WH, BREATH, O2_TANK_L, RESERVE_PERCENT, ROVER_W, arrivalPercent, costPercent, lifeSupportAt, lifeTone, routeEndPercent } from '@/lib/mission/lifeSupport';
+import { BATTERY_WH, BREATH, O2_TANK_L, RESERVE_PERCENT, ROVER_W, arrivalPercent, costPercent, formatEndPercent, lifeSupportAt, lifeTone, routeEndPercent } from '@/lib/mission/lifeSupport';
 import type { Route } from '@/lib/planner/types';
 import { PACE_MPS, type MissionEvent } from '@/lib/mission/types';
 import { straightRoute } from '@/lib/testing/fixtures';
@@ -25,13 +25,20 @@ describe('lifeSupportAt', () => {
     if (life.kind === 'oxygen') expect(Math.abs(life.breathsPerMin - BREATH.walking.perMin)).toBeLessThanOrEqual(3);
   });
 
-  it('keeps breathing (slower) after arrival', () => {
+  it('refills the tank to 100 % on arrival, and stays full', () => {
     const walkMin = R.lengthM / PACE_MPS.astronaut / 60;
     const at = (min: number) => lifeSupportAt(fieldStateAt([sent('astronaut'), start], 700_000 + min * 60_000))!;
-    const restUsedPer10Min = 10 * BREATH.resting.perMin * BREATH.resting.o2L;
-    expect(at(walkMin + 10).percent - at(walkMin + 20).percent).toBeCloseTo(100 * restUsedPer10Min / O2_TANK_L, 6);
+    expect(at(walkMin - 1).percent).toBeLessThan(100);
+    expect(at(walkMin + 1)).toMatchObject({ kind: 'oxygen', percent: 100, refilled: true });
+    expect(at(walkMin + 60).percent).toBe(100);
     const late = at(walkMin + 20);
     if (late.kind === 'oxygen') expect(Math.abs(late.breathsPerMin - BREATH.resting.perMin)).toBeLessThanOrEqual(3);
+  });
+
+  it('charges the rover battery to 100 % on arrival', () => {
+    const driveMin = R.lengthM / PACE_MPS.rover / 60;
+    const life = lifeSupportAt(fieldStateAt([sent('rover'), start], 700_000 + (driveMin + 1) * 60_000))!;
+    expect(life).toMatchObject({ kind: 'battery', percent: 100, refilled: true });
   });
 
   it('drains the rover battery by its net driving draw', () => {
@@ -61,6 +68,13 @@ describe('route costs', () => {
     expect(s.distM).toBeCloseTo(1000, 0);
     expect(arrivalPercent(s)!).toBeCloseTo(lifeSupportAt(s)!.percent - costPercent('astronaut', r3.lengthM - s.distM, 0), 6);
     expect(arrivalPercent(fieldStateAt([], 0))).toBeNull();
+  });
+
+  it('words an end value without a negative number or a stray ≈', () => {
+    expect(formatEndPercent(-3)).toBe("WON'T REACH");
+    expect(formatEndPercent(34.4)).toBe('≈ 34 %');
+    expect(formatEndPercent(34.4, { approx: false })).toBe('34 %');
+    expect(formatEndPercent(-3, { approx: false })).toBe("WON'T REACH");
   });
 
   it('tones a value by the reserve', () => {

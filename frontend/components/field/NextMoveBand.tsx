@@ -17,11 +17,13 @@ function LifeCell({ life, arrival }: { life: LifeSupport; arrival: number | null
       <span className={`${styles.sideValue} ${tone}`}>{life.percent.toFixed(1)}<span className={styles.lifeUnit}>%</span></span>
       <div className={styles.lifeTrack}><span className={tone} style={{ width: `${life.percent}%` }} /></div>
       <span className={styles.lifeNote}>
-        {life.kind === 'oxygen' ? `${life.breathsPerMin} BREATHS/MIN` : `${life.netW > 0 ? '−' : '+'}${Math.abs(life.netW)} W`}
+        {life.refilled
+          ? (life.kind === 'oxygen' ? 'TANK REFILLED' : 'BATTERY CHARGED')
+          : life.kind === 'oxygen' ? `${life.breathsPerMin} BREATHS/MIN` : `${life.netW > 0 ? '−' : '+'}${Math.abs(life.netW)} W`}
       </span>
       {arrival !== null && (
         <span className={`${styles.lifeNote} ${ARRIVAL_TONE[lifeTone(arrival)]}`} data-testid="field-life-arrival">
-          ≈ {formatEndPercent(arrival)} AT END
+          {formatEndPercent(arrival)} AT END
         </span>
       )}
     </div>

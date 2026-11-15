@@ -21,9 +21,10 @@ export const ROVER_W = { driving: 400, idle: 150, generator: 110 } as const;
 /** What should be left on arrival: a route or reroute that ends below this is flagged to Control. */
 export const RESERVE_PERCENT = 20;
 
+/** `refilled`: arrived, and the tank was refilled (battery charged) there: back to 100 %. */
 export type LifeSupport =
-  | { kind: 'oxygen'; percent: number; breathsPerMin: number }
-  | { kind: 'battery'; percent: number; netW: number };
+  | { kind: 'oxygen'; percent: number; breathsPerMin: number; refilled?: true }
+  | { kind: 'battery'; percent: number; netW: number; refilled?: true };
 
 const MS_PER_MIN = 60_000;
 const MS_PER_H = 3_600_000;
@@ -72,10 +73,13 @@ export function lifeSupportAt(state: FieldState): LifeSupport | null {
   if (!state.traveller) return null;
   const { movingMs, restingMs } = split(state);
   const movedM = (movingMs / 1000) * PACE_MPS[state.traveller];
-  const percent = clampPercent(100 - costPercent(state.traveller, movedM, restingMs));
-  if (state.traveller === 'astronaut') return { kind: 'oxygen', percent, breathsPerMin: breathing(state) };
+  // The end of the route has a refill (the destination, or the base after a turn back): full again.
+  const refilled = state.status === 'arrived';
+  const percent = refilled ? 100 : clampPercent(100 - costPercent(state.traveller, movedM, restingMs));
+  const extra = refilled ? { refilled: true as const } : {};
+  if (state.traveller === 'astronaut') return { kind: 'oxygen', percent, breathsPerMin: breathing(state), ...extra };
   const netW = (state.status === 'moving' ? ROVER_W.driving : ROVER_W.idle) - ROVER_W.generator;
-  return { kind: 'battery', percent, netW };
+  return { kind: 'battery', percent, netW, ...extra };
 }
 
 /** Expected at the end of the current route, if the rest is walked (driven) without stopping. Unclamped. */
@@ -85,9 +89,13 @@ export function arrivalPercent(state: FieldState): number | null {
   return life.percent - costPercent(state.traveller, state.route.lengthM - state.distM, 0);
 }
 
-/** '34 %', or "WON'T REACH" when a route would run out: never a negative percentage. */
-export function formatEndPercent(percent: number): string {
-  return percent < 0 ? "WON'T REACH" : `${Math.round(percent)} %`;
+/**
+ * '≈ 34 %' (or '34 %' with `approx: false`), or "WON'T REACH" when a route would run out: never a
+ * negative percentage, and no ≈ in front of words.
+ */
+export function formatEndPercent(percent: number, { approx = true }: { approx?: boolean } = {}): string {
+  if (percent < 0) return "WON'T REACH";
+  return `${approx ? '≈ ' : ''}${Math.round(percent)} %`;
 }
 
 /** Red below empty, amber below the reserve. */
