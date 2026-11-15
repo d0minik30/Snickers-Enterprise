@@ -5,7 +5,7 @@
 > (corrected tonight to match reality), then `backend/STATUS.md` (the engine's own status, if present)
 > and `backend/CONTRACTS.md` (the formats between the three parts).
 
-Last updated: **15 Nov, 03:00 local**.
+Last updated: **15 Nov, 03:15 local**.
 
 ---
 
@@ -35,7 +35,7 @@ Each person treats the other folders as read-only. Shared files (`SYSTEM_REFEREN
 | Stored horizons | **Rebuilt tonight** on the new terrain: CTX extent, 22,801 candidates, 66 MB, `backend/cache/horizons_200m_0.5deg/` |
 | Photo → skyline (`backend/skyline/`) | **Works on most photos** (0.1–0.3° from the terrain at the truth). Weak where rover hardware or nearby rocks aren't caught (poses 3/1374, 3/2150, 3/2430) |
 | Test photos | **Consolidated tonight** into one slim list, `data/test_photos/manifest.json` (24 poses, 38 photos); requests are generated, not committed |
-| **Matcher (the engine's core)** | **NOT working yet. Being fixed overnight.** See section 4 |
+| **Matcher (the engine's core)** | **Scoring bug fixed, confidence calibrated on simulation (03:12).** Not yet re-validated on real photos. See section 4 and `backend/STATUS.md` |
 | `POST /locate` HTTP server | **Not built.** Only `backend/skyline/scripts/dev_server.py` (`/skyline`, `/health`). The app shows saved engine results |
 | Website | Works: `/field`, `/control`, `/map`, `/locate` (saved result), `/validate` (saved run) |
 
@@ -51,6 +51,9 @@ Each person treats the other folders as read-only. Shared files (`SYSTEM_REFEREN
 - **~02:50** · `SYSTEM_REFERENCE.md` corrected: matcher marked not validated, timings marked as targets, no `/locate` server yet, blend band, test counts.
 - **02:50–02:52 · e1b0b20, 775c2c8** · Person 3 (Dávid) did the same test-photo consolidation in parallel and merged it with 2148be3. Checked at 03:00: the merged manifest has 24 poses / 38 photos (1,430 lines), `work/` is gone, skyline tests 22 passed / 6 skipped, scripts compile, `GOOD_MORNING.md` and `SYSTEM_REFERENCE.md` kept intact. Person 3 is evidently still working from their own machine.
 - The engine session ("Fable Image Engine") keeps working on the matcher, in this order: (1) scoring bug, (2) a few hundred simulated trials, (3) honest confidence, (4) rerun on real photos. Updates are added below as they land.
+- **03:00 · 6441e9d** · Engine: **scoring bug fixed.** A candidate no longer scores higher for having far terrain (no 1/tolerance factor per bin); the coarse pass solves for the offset between a 200 m grid point and the true position (first-order parallax) before scoring. Near-field rule and DEM height error default off. Simulated photos now get noise correlated along the skyline. Tests in `backend/tests/test_match_score.py`.
+- **03:12 · 4744510** · Engine: **honest verdicts from a 300-trial simulation** (`backend/scripts/validate_sim.py`, reports in `backend/reports/`). "ok" now needs a good fit, full support and a clear lead. Result on 300 simulated photos: 43 % answered "ok", and of those 91 % were within 300 m and 96 % had the truth inside their 95 % circle; over all answers the truth is inside the 95 % circle 98 % of the time. **CONTRACTS.md v0.3** adds Person 3's four requests (optional `roll_uncertainty_deg`, `lens_model: cahvore`, 422 on unknown version, one server); requests marked 0.1–0.3 accepted. The matcher fits roll tilt when allowed. `backend/STATUS.md` now describes where the engine stands.
+- The cleanup agent session has ended; its work is merged.
 
 ---
 
@@ -60,13 +63,14 @@ Numbers so far:
 
 | Test | Result |
 |---|---|
-| Simulated photos (30, 60° view, 0.05° noise) | ~60 % within 100 m; 93 % reported "ok" though only ~60 % right |
+| Simulated photos, before the fixes (30, 60° view, 0.05° noise) | ~60 % within 100 m; 93 % reported "ok" though only ~60 % right |
+| **Simulated photos, after 03:12 (300 trials)** | 43 % "ok"; of those 91 % within 300 m, 96 % truth inside their 95 % circle; all answers 98 % inside the 95 % circle. Confidence is now honest; the share of confident answers is the next thing to raise |
 | Real photos, committed engine (24 poses) | 2 within 50 m, 4 within 100 m, truth inside the 95 % circle 8/24, median 5.3 km, median heading error 3.2° |
 | Real photos, in-progress matcher | median 2.96 km, truth inside the 95 % circle 11/24 |
 
 Known causes:
-1. **Bug:** a true position can lose to a look-alike that fits 2–3× *worse*. Something in the scoring rewards far terrain. Fix first, with a test proving the better fit wins.
-2. **Overconfidence:** the noise model assumes clean synthetic angles (~0.05°); real skylines are 0.1–0.3° off. Circles are ~5× too small. Calibrate on simulation and real cases; report `ambiguous` for close separate peaks or under half the horizon covered.
+1. ~~**Bug:** a true position could lose to a look-alike that fits 2–3× worse.~~ **Fixed 03:00** (6441e9d).
+2. **Overconfidence:** fixed on simulation at 03:12 (4744510). Still to check on the 24 real poses, where skylines are 0.1–0.3° off rather than the simulated noise.
 3. **Look-alikes are real:** skylines with under 1° of relief, one photo facing one way, and 20–65 % of each horizon coming from the coarse 200 m data. More photos in different directions, and finer data for the rim, help most.
 4. **Near-field rule** (down-weight terrain closer than 1.5 km): implemented, default off until a few-hundred-trial run decides.
 
@@ -74,7 +78,7 @@ Known causes:
 
 ## 5. What is left, in priority order
 
-1. **Matcher correctness and honest confidence** (engine). Nothing else matters as much.
+1. **Matcher on real photos** (engine): rerun `validate.py` with the 03:12 engine and compare with the 5.3 km / 8-of-24 baseline; then raise the share of confident ("ok") answers without losing honesty. Nothing else matters as much.
 2. **`POST /locate` server** (engine): FastAPI in `backend/`, includes Person 3's `/skyline` router from `backend/skyline/api.py`; CORS for `http://localhost:3000`. Contract §2 in, §3 out.
 3. **Rerun validation** after each engine fix and refresh `/validate` (commands in section 7).
 4. **Skyline step** (Person 3): catch rover hardware and nearby rocks on poses 3/1374, 3/2150, 3/2430.
