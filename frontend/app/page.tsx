@@ -29,6 +29,7 @@ export default function Home() {
           <Link href="/" className={styles.logo}>MARS<span>FINDER</span></Link>
           <span className={styles.navLinks}>
             <Link href="/map/">Map</Link>
+            <Link href="/pointcloud/">Point cloud</Link>
             <Link href="/mission/">Mission</Link>
           </span>
         </nav>

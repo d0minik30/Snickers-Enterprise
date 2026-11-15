@@ -1,0 +1,228 @@
+/* Point-cloud page: the cloud fills the screen, a panel of controls sits on the left. */
+
+.page {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.gl,
+.labels {
+  position: absolute;
+  inset: 0;
+}
+
+.gl :global(canvas) {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  cursor: grab;
+}
+
+.gl :global(canvas):active {
+  cursor: grabbing;
+}
+
+.labels {
+  pointer-events: none;
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: -22px 0 0 -4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  color: var(--text);
+  text-shadow: 0 1px 6px rgb(0 0 0 / 90%);
+}
+
+.base {
+  border-color: var(--route);
+  color: var(--route);
+}
+
+/* ----- top bar ----- */
+
+.bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px clamp(16px, 4vw, 40px);
+  pointer-events: none;
+}
+
+.bar a {
+  pointer-events: auto;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.logo span {
+  color: var(--route);
+}
+
+.links {
+  display: flex;
+  gap: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.links a:hover {
+  color: var(--route);
+}
+
+/* ----- control panel ----- */
+
+.panel {
+  position: absolute;
+  left: clamp(16px, 4vw, 40px);
+  top: 84px;
+  width: min(340px, calc(100% - 32px));
+  padding: 22px;
+  border: 1px solid var(--rule);
+  background: rgb(10 10 11 / 82%);
+  backdrop-filter: blur(6px);
+}
+
+.kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--route);
+}
+
+.title {
+  margin-top: 8px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.text {
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.group {
+  display: flex;
+  margin-top: 16px;
+  border: 1px solid var(--rule);
+}
+
+.group button {
+  flex: 1;
+  padding: 9px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.group button + button {
+  border-left: 1px solid var(--rule);
+}
+
+.group button[aria-pressed='true'] {
+  background: var(--route);
+  color: var(--surface);
+}
+
+.group button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5be3ff;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.stats dt {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stats dd {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.source {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--caution);
+}
+
+@media (max-width: 640px) {
+  .panel {
+    top: auto;
+    bottom: 16px;
+    padding: 16px;
+  }
+
+  .text,
+  .source {
+    display: none;
+  }
+}

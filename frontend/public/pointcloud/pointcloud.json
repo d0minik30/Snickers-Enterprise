@@ -1,0 +1,38 @@
+{
+  "landing_height_m": -2569.83,
+  "landing": {
+    "lat": 18.4447,
+    "lon": 77.4508
+  },
+  "sphere_radius_m": 3396190.0,
+  "views": {
+    "crater": {
+      "title": "Jezero Crater, MRO CTX 20 m (blended with HiRISE and MOLA-HRSC)",
+      "file": "crater.bin",
+      "rows": 1007,
+      "cols": 1009,
+      "x0_m": -16310.43,
+      "y0_m": 16374.13,
+      "step_m": 30.0,
+      "scale_m": 0.1,
+      "nodata": -32768,
+      "min_m": -156.16,
+      "max_m": 1054.04,
+      "points": 1016063
+    },
+    "landing": {
+      "title": "Perseverance landing site, HiRISE 1 m",
+      "file": "landing.bin",
+      "rows": 1249,
+      "cols": 1185,
+      "x0_m": -2369.57,
+      "y0_m": 2498.0,
+      "step_m": 4.0,
+      "scale_m": 0.1,
+      "nodata": -32768,
+      "min_m": -70.7,
+      "max_m": 127.35,
+      "points": 1480065
+    }
+  }
+}
