@@ -1,34 +1,132 @@
 {
+  "description": "Official sources of the engine terrain (backend/CONTRACTS.md, section 1) and how data/scripts/fetch_terrain.py builds it. pixel_sha256 pins the pixel data (dtype, shape, then the values little-endian, row by row), not the file bytes. Run fetch_terrain.py --update-pins only after a deliberate change of source.",
+  "products": {
+    "trn_ctx_dtm": {
+      "name": "Context Camera Digital Terrain Model Mosaic for Mars 2020 Terrain Relative Navigation",
+      "short": "soc_008",
+      "citation": "Fergason, R., Galuszka, D., Hare, T., Mayer, D., Redding, B., Smith, E., 2020-07-24, USGS Astrogeology Science Center",
+      "doi": "10.5066/P906QQT8",
+      "link": "https://doi.org/10.5066/P906QQT8",
+      "url": "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif",
+      "metadata_url": "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.xml",
+      "resolution_m": 20,
+      "coverage": "18.2110-18.7212 N, 77.1605-77.6990 E (about 30 x 30 km around the landing site)",
+      "vertical_datum": "metres above the Mars areoid (MOLA topography, delta geoid)",
+      "vertical_accuracy": "3.8 m vertical registration between the CTX DTMs, after shifting the mosaic 183.3 m to align with HRSC (USGS metadata)",
+      "projection": "equirectangular, standard parallel 0, central meridian 0, sphere 3396190 m",
+      "note": "Pixel for pixel the same as NASA Mars Trek's 'MRO CTX, Jezero DEM, Controlled' (data/raw/jezero_ctx_dem_20m.tif), which the map overlays use.",
+      "access": "download",
+      "bytes": 9662387,
+      "rows": 1512,
+      "cols": 1596,
+      "dtype": "float32",
+      "pixel_sha256": "833ff67a732126e4c557385139852494473be55d87784f019ff5a4ec08b071d4"
+    },
+    "trn_hirise_dtm": {
+      "name": "High-Resolution Imaging Science Experiment Digital Terrain Model Mosaic for Mars 2020 Terrain Relative Navigation",
+      "short": "soc_006",
+      "citation": "Fergason, R., Galuszka, D., Hare, T., Mayer, D., Redding, B., Smith, E., 2020-07-24, USGS Astrogeology Science Center",
+      "doi": "10.5066/P9REJ9JN",
+      "link": "https://doi.org/10.5066/P9REJ9JN",
+      "url": "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.tif",
+      "metadata_url": "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.xml",
+      "resolution_m": 1,
+      "coverage": "18.3068-18.6693 N, 77.2229-77.5840 E (20 x 21 km); data on 66 % of that rectangle",
+      "vertical_datum": "metres above the Mars areoid (MOLA topography, delta geoid); median 0.4 m below the CTX DTM mosaic (USGS metadata)",
+      "projection": "equirectangular, standard parallel 0, central meridian 0, sphere 3396190 m",
+      "access": "download",
+      "bytes": 1839545409,
+      "rows": 21488,
+      "cols": 21400,
+      "dtype": "float32",
+      "pixel_sha256": "0b186a81064bf17e6dfa4d8c979eee2912170358280091177fe91a03ad155c14"
+    },
+    "jpl_ctx_dem": {
+      "name": "Mars 2020 Science Investigation CTX DEM Mosaic",
+      "short": "jpl_m20",
+      "citation": "PDS4 product urn:nasa:pds:mars2020_ctx_basemap_2021:data:m20_ctxdem_mosaic, version 1.0; its label cites Mangold et al., 2021, Perseverance rover reveals an ancient delta-lake system and flood deposits at Jezero crater, Mars, Science",
+      "doi": null,
+      "doi_note": "The dataset has no DOI; the paper its label cites is doi:10.1126/science.abl4051.",
+      "link": "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/ScienceInvestigationMaps_JPL/M20_JezeroCrater_CTXDEM_20m.xml",
+      "url": "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/ScienceInvestigationMaps_JPL/M20_JezeroCrater_CTXDEM_20m.tif",
+      "resolution_m": 20,
+      "coverage": "17.5805-19.2902 N, 76.9974-78.5826 E (89 x 101 km: the whole crater and its rim)",
+      "vertical_datum": "not stated in its label; within 0.1 m of the TRN CTX DTM where they overlap, so the same areoid heights",
+      "projection": "equirectangular, standard parallel 18.4663, central meridian 0, sphere 3396190 m (resampled onto the soc_008 grid)",
+      "access": "download",
+      "bytes": 90345300,
+      "rows": 5067,
+      "cols": 4456,
+      "dtype": "float32",
+      "pixel_sha256": "0e4921a6123a7fc480497e7a22eaaea89ea7f7096cbbf3f6357f4e40cea31450"
+    },
+    "mola_hrsc_blend": {
+      "name": "Mars MGS MOLA - MEX HRSC Blended DEM Global 200m v2",
+      "short": "blend_v2",
+      "citation": "Fergason, R.L., Hare, T.M., Laura, J., 2018, HRSC and MOLA Blended Digital Elevation Model at 200m v2, Astrogeology PDS Annex, U.S. Geological Survey",
+      "doi": null,
+      "doi_note": "No DOI; USGS asks users to cite Fergason, Hare and Laura (2018).",
+      "link": "https://astrogeology.usgs.gov/search/map/mars_mgs_mola_mex_hrsc_blended_dem_global_200m",
+      "url": "https://planetarymaps.usgs.gov/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif",
+      "resolution_m": 200,
+      "coverage": "global, 106694 x 53347 px (11.4 GB); only the window below is read, over the network",
+      "vertical_datum": "metres above the Mars areoid (MOLA)",
+      "projection": "degrees (0.003374121 deg pixels) on the sphere 3396190 m",
+      "access": "window",
+      "bytes": 11384463908,
+      "window": {
+        "lat_min": 16.7,
+        "lon_min": 75.6,
+        "lat_max": 20.2,
+        "lon_max": 79.3,
+        "note": "about 100 km around the landing site in every direction, the box of the earlier backend/scripts/download_mola_crop.py (removed)"
+      },
+      "rows": 1039,
+      "cols": 1097,
+      "dtype": "int16",
+      "pixel_sha256": "2384b9b089bbc496b3df742d66e7f16b1bb819400baba0c5e8daa633d0d7e6ab"
+    }
+  },
   "sources": [
     {
       "id": "hirise_1m",
-      "description": "USGS MSR TRN HiRISE DTM (~1 m, Perseverance landing site)",
       "priority": 30,
       "cell_size_m": 1.0,
-      "local_file": "backend/data_local/terrain/hirise_1m/jezero_hirise_landing_1m.tif",
-      "file": "hirise_1m/jezero_hirise_landing_1m.tif",
-      "sha256": "595f1f22e4e524e6179442f2ad3c5c629ab44c4dbdc5a71c7e4601bd671c2b46",
-      "vertical_offset_m": 0.0
+      "edge_blend_m": 150,
+      "build": "hirise_crop",
+      "products": [
+        "trn_hirise_dtm"
+      ],
+      "around_test_poses": "data/test_photos/manifest.json",
+      "margin_m": 2000,
+      "note": "The crop covers every test pose with 2 km around it, cut back to where the mosaic has data (no holes: the engine would switch through them without blending). vertical_offset_m is measured against ctx_20m."
     },
     {
       "id": "ctx_20m",
-      "description": "MRO CTX Jezero controlled DEM, 20 m/pixel, Mars areoid/MOLA datum",
       "priority": 20,
       "cell_size_m": 20.0,
-      "local_file": "backend/data_local/terrain/ctx_20m/jezero_ctx_dem_20m.tif",
-      "file": "ctx_20m/jezero_ctx_dem_20m.tif",
-      "sha256": "46fb2e1e9f9c1fdd02939c2a96f3e173a8731bd146fbeb969b2060e0a3c8e97e",
-      "vertical_offset_m": 0.0
+      "edge_blend_m": 1500,
+      "build": "ctx",
+      "products": [
+        "trn_ctx_dtm",
+        "jpl_ctx_dem"
+      ],
+      "box": {
+        "centre_lat": 18.4447,
+        "centre_lon": 77.4508,
+        "half_size_m": 40000
+      },
+      "note": "The reference level: the other sources are shifted to it. soc_008 where it exists; around it the JPL mosaic, aligned to soc_008 and cleaned of blunders, out to the 80 x 80 km box (data/scripts/ctx_merge.py). With trn_ctx_dtm alone it is soc_008 alone."
     },
     {
       "id": "mola_200m",
-      "description": "USGS MOLA-HRSC Global DEM Blend (~200 m, +/-100 km regional coverage)",
       "priority": 10,
       "cell_size_m": 200.0,
-      "local_file": "backend/data_local/terrain/mola_200m/jezero_mola_hrsc_200m.tif",
-      "file": "mola_200m/jezero_mola_hrsc_200m.tif",
-      "sha256": "48ec8d1ca5f96ee1d556b50b294e01739b4408631876e5eb777261aaa20d8868",
-      "vertical_offset_m": -1.2
+      "build": "blend_window",
+      "products": [
+        "mola_hrsc_blend"
+      ],
+      "note": "vertical_offset_m is measured where it meets ctx_20m (within 600 m of the CTX edge, where the engine's check_terrain.py looks)."
     }
   ]
 }

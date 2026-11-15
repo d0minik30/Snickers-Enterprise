@@ -12,6 +12,13 @@ import pytest
 from marsloc.constants import LANDING_SITE_LAT, LANDING_SITE_LON, MARS_RADIUS_M
 from marsloc.terrain import Manifest, Terrain, TerrainError, default_terrain_dir
 
+# The USGS TRN CTX DTM (soc_008) inside the ctx_20m source: its numbers are known (data/README.md,
+# data/output/elevation_grid.json) and the stored horizons' candidates lie in it. Since 15 Nov 2026
+# ctx_20m also holds the JPL CTX mosaic around it, out to the 80 x 80 km box
+# (data/scripts/ctx_merge.py).
+SOC_008_BOUNDS = ((18.2110274, 77.1604655), (18.7211945, 77.6989752))
+SOC_008_SHAPE = (1512, 1596)
+
 
 def cell_deg(cell_m):
     """Degrees of latitude (and of the grid's longitude step) for a cell of cell_m metres."""

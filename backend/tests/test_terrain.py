@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from conftest import cell_deg, grid_around, one_source
+from conftest import SOC_008_BOUNDS, SOC_008_SHAPE, cell_deg, grid_around, one_source
 from marsloc.constants import LANDING_SITE_LAT, LANDING_SITE_LON, MARS_RADIUS_M
 from marsloc.terrain import Manifest, SourceSpec, Terrain, TerrainError, TileSpec, find_manifest
 from marsloc.terrain.manifest import parse_manifest
@@ -455,8 +455,12 @@ def test_real_dem_heights_match_the_data_teams_numbers(ctx_terrain):
 def test_real_dem_has_no_gaps_and_the_known_height_range(ctx_terrain):
     real_terrain = ctx_terrain
     source = real_terrain.sources[0]
-    lats = source.lat_top - (np.arange(1512) + 0.5) * source.dlat
-    lons = source.lon_left + (np.arange(1596) + 0.5) * source.dlon
+    assert all(np.isfinite(tile.level(0)[0]).all() for tile in source.tiles)     # no gaps anywhere
+    # The soc_008 part, at its pixel centres (the source shares its grid)
+    (lat_min, lon_min), (lat_max, lon_max) = SOC_008_BOUNDS
+    rows, cols = SOC_008_SHAPE
+    lats = lat_max - (np.arange(rows) + 0.5) * (lat_max - lat_min) / rows
+    lons = lon_min + (np.arange(cols) + 0.5) * (lon_max - lon_min) / cols
     heights = real_terrain.height(lats[:, None], lons[None, :])
     assert np.isfinite(heights).all()
     # data/output/elevation_grid.json: min_m -2710.7, max_m -1515.5

@@ -4,7 +4,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from conftest import cell_deg, grid_around, one_source
+from conftest import SOC_008_BOUNDS, cell_deg, grid_around, one_source
 from marsloc import geo
 from marsloc.constants import LANDING_SITE_LAT, LANDING_SITE_LON, MARS_RADIUS_M
 from marsloc.horizon import RenderConfig, render_horizon
@@ -213,7 +213,11 @@ def brute_force(terrain, lat, lon, azimuths, eye=EYE, step_m=4.0, max_range_m=40
 def test_fast_renderer_agrees_with_brute_force_on_the_real_dem(ctx_terrain):
     real_terrain = ctx_terrain
     rng = np.random.default_rng(11)
-    (lat_min, lon_min), (lat_max, lon_max) = real_terrain.bounds
+    # Positions where the stored candidates are: the soc_008 part of the CTX source. Since 15 Nov
+    # the source reaches 80 km, and positions spread over all of it can sit on steep outer flanks
+    # where ground a few tens of metres away makes the horizon (18.576 N 77.059 E, a 13 deg slope:
+    # 0.09 deg between the two renderers there).
+    (lat_min, lon_min), (lat_max, lon_max) = SOC_008_BOUNDS
     positions = [(LAT0, LON0)] + [(rng.uniform(lat_min + 0.03, lat_max - 0.03),
                                    rng.uniform(lon_min + 0.03, lon_max - 0.03)) for _ in range(7)]
     azimuths = np.arange(0.0, 360.0, 6.0) + 0.37
@@ -225,7 +229,8 @@ def test_fast_renderer_agrees_with_brute_force_on_the_real_dem(ctx_terrain):
     rms = float(np.sqrt(np.mean(errors ** 2)))
     print("\nfast vs brute force on the real DEM: rms %.4f deg, mean %+.4f, max %.4f (%d rays)"
           % (rms, errors.mean(), np.abs(errors).max(), errors.size))
-    # Measured: rms 0.003 deg, max 0.04 deg. Walking 100 m shifts the far horizon by about 0.06 deg.
+    # Measured (15 Nov terrain): rms 0.002 deg, max 0.009 deg. Walking 100 m shifts the far
+    # horizon by about 0.06 deg.
     assert rms < 0.006
     assert np.abs(errors).max() < 0.06
 
@@ -254,8 +259,9 @@ def test_landing_site_horizon_on_the_real_dem(ctx_terrain):
     west = horizon.elev_deg[225:286]
     assert 3.0 < west.max() < 5.5 and west.min() > 1.5
     assert horizon.dist_m[225:286].min() > 8000.0
-    # The 30 x 30 km DEM ends before the east and south rim: no ray gets 40 km of terrain
-    assert 13000.0 < horizon.reach_m.min() and horizon.reach_m.max() < 23500.0
-    # Toward the east the horizon is low and made by nearby ground
-    assert horizon.elev_deg[90:150].max() < 1.0
-    assert 0.05 < horizon.near_fraction(1000.0) < 0.6
+    # Since 15 Nov the 20 m CTX reaches past the rim on every side (data/scripts/ctx_merge.py):
+    # every ray gets at least 25 km of it (the source ends at 77.0 E), most the full 40 km
+    assert horizon.reach_m.min() > 25000.0 and (horizon.reach_m >= 40000.0).mean() > 0.5
+    # so distant terrain makes the horizon all round, the east included (1.5 deg, 30-40 km away)
+    assert 0.5 < horizon.elev_deg[90:150].max() < 2.5 and horizon.dist_m[90:150].min() > 20000.0
+    assert horizon.near_fraction(1000.0) < 0.05

@@ -234,34 +234,98 @@ Investigations Map 3464, https://doi.org/10.3133/sim3464
 (`raw/sim3464_database.zip`; the script reads layer `GeoUnits_v1` straight from the ZIP).
 Places from the NASA Mars Trek "Jezero Crater Features and Landforms" bookmark.
 
-## Localization terrain inputs
+## Localization terrain – `backend/data_local/terrain/`
 
-`scripts/fetch_terrain.py` installs only rasters whose source and SHA-256 are pinned
-in `scripts/terrain_sources.json`; it writes `terrain.json` and the listed GeoTIFFs
-to `backend/data_local/terrain/`, which is ignored by git. Run it from the repository
-root after adding each authoritative source raster and its verified checksum:
+The engine's terrain (`backend/CONTRACTS.md`, section 1) is built from the official
+sources with one command. Run from the repository root:
 
-```powershell
-python data/scripts/fetch_terrain.py
-python backend/scripts/check_terrain.py
+```bash
+python data/scripts/fetch_terrain.py      # download -> crop -> offset -> check -> install (about 4 min, plus the 1.94 GB download the first time)
+python backend/scripts/check_terrain.py   # the engine's own check of what was installed
+python backend/scripts/build_horizons.py --bounds 18.2110274 77.1604655 18.7211945 77.6989752
 ```
 
-Records may use a repository-relative `local_file`, or an official `url`, and must
-include `id`, `priority`, nominal `cell_size_m`, contract-relative `file`, and the
-64-character SHA-256. The script checks the digest before installing and derives
-rows, columns, nodata, and Mars 2000 bounds from the GeoTIFF header. It does not
-infer vertical offsets: set `vertical_offset_m` only from measured overlap residuals.
-The `terrain_sources.json` currently pins the available CTX mosaic only:
+The last line rebuilds the engine's stored horizons (`backend/cache/`) after a terrain
+change, on the same candidate area as before (the soc_008 tile, 22,801 candidates).
+Without `--bounds` the candidates follow the whole 20 m extent, about 6 times as many.
 
-| File | SHA-256 | Extent | Notes |
-|---|---|---|---|
-| `backend/data_local/terrain/ctx_20m/jezero_ctx_dem_20m.tif` | `46fb2e1e9f9c1fdd02939c2a96f3e173a8731bd146fbeb969b2060e0a3c8e97e` | 18.2110274–18.7211945 N, 77.1604655–77.6989752 E | 20 m, controlled MRO CTX, areoid/MOLA datum, 1,512 × 1,596 |
+What `fetch_terrain.py` does, as set out in `scripts/terrain_sources.json`:
 
-At this checkout, `backend/scripts/check_terrain.py` reports the CTX source loads
-with no nodata and no manifest problems. It reports **no overlap comparison**, because
-the HiRISE and outer-ring rasters are not present. Therefore the 80 × 80 km coverage,
-HiRISE/CTX/MOLA seam measurements, and validated nonzero offsets remain outstanding;
-the current CTX-only manifest cannot cover all 40 km rays.
+1. **Download** the official files into `raw/terrain/` (git-ignored, 1.94 GB), resuming
+   a download that was cut off. The 11.4 GB global MOLA-HRSC blend is not downloaded: a
+   1097 × 1039 px window (about ±100 km) is read over the network. Every input must
+   match the SHA-256 of its **pixel data** pinned in `terrain_sources.json`, not of the
+   file bytes. The Mars Trek and USGS files of soc_008 differ as files but give the
+   same pin. `--update-pins` records new pins; use it only after a deliberate change of
+   source.
+2. **Crop** (`scripts/terrain_crops.py`, moved here from `backend/scripts/`).
+   - HiRISE: the box around every test pose in `test_photos/manifest.json` plus 2 km,
+     cut back to where the mosaic has data. The engine switches through holes
+     without blending, so a source must have none.
+   - MOLA-HRSC: the window as float32 metres.
+   - Each file's projection is read (standard parallel, central meridian, sphere).
+     Tiles are installed only on the contract grid: equirectangular with standard
+     parallel 0 and central meridian 0, or degrees, on the 3,396,190 m sphere.
+3. **CTX** (`scripts/ctx_merge.py`):
+   - soc_008 is used where it exists. Around it, the JPL mosaic is resampled onto the
+     soc_008 grid (its standard parallel is 18.4663°) and shifted to soc_008's level.
+   - Its stereo blunders are cleaned: cells more than 15 m off their 7 × 7 median,
+     steps over 60°, and areas thick with them. They are replaced by the blend,
+     shifted to the surrounding level and faded in over 400 m.
+   - soc_008 is feathered into the JPL mosaic over its outer 1 km. The result is cut to
+     the 80 × 80 km box, without holes.
+4. **Offset** (`scripts/terrain_offsets.py`): `vertical_offset_m` for HiRISE is measured
+   over its whole crop against CTX. For MOLA-HRSC it is measured where it meets CTX,
+   within 600 m of the CTX edge, which is where `check_terrain.py` looks.
+5. **Check**: no holes; no step over 60° (80° for 1 m HiRISE); the landing site at
+   −2567.2 ± 0.5 m; the places within 4 m of `places.geojson`; joins within 2 m; the
+   crater rim at least 300 m above the floor in 8 directions; the delta front steeper
+   than 20°. Any failure stops the build before anything is installed.
+6. **Install** tiles of at most 2048 × 2048 (float32, NaN = no data, deflate) and
+   `terrain.json` (contract 0.2). Each source also lists its products (name, DOI, URL,
+   pixel pin) and each tile its `pixel_sha256`. A full report of the build goes to
+   `terrain_build.json`. The old terrain is replaced only once everything is written.
+
+| Source | Product (exact name) | DOI / link | Resolution | Coverage | Heights |
+|---|---|---|---|---|---|
+| `hirise_1m` | High-Resolution Imaging Science Experiment Digital Terrain Model Mosaic for Mars 2020 Terrain Relative Navigation (USGS, 2020) | [10.5066/P9REJ9JN](https://doi.org/10.5066/P9REJ9JN) | 1 m | product 18.3068–18.6693 N, 77.2229–77.5840 E (data on 66 % of it); installed 18.3949–18.5291 N, 77.2578–77.4882 E | areoid; median 0.4 m below the CTX mosaic (USGS) |
+| `ctx_20m` | Context Camera Digital Terrain Model Mosaic for Mars 2020 Terrain Relative Navigation (USGS, 2020), "soc_008" | [10.5066/P906QQT8](https://doi.org/10.5066/P906QQT8) | 20 m | 18.2110–18.7212 N, 77.1605–77.6990 E | areoid (MOLA, delta geoid) |
+| `ctx_20m` | Mars 2020 Science Investigation CTX DEM Mosaic (JPL, PDS4 `urn:nasa:pds:mars2020_ctx_basemap_2021:data:m20_ctxdem_mosaic`) | no DOI; [label](https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/ScienceInvestigationMaps_JPL/M20_JezeroCrater_CTXDEM_20m.xml) cites Mangold et al. 2021, doi:10.1126/science.abl4051 | 20 m | 17.5805–19.2902 N, 76.9974–78.5826 E | not stated; measured +0.01 m from soc_008 |
+| `mola_200m` | Mars MGS MOLA - MEX HRSC Blended DEM Global 200m v2 (Fergason, Hare & Laura, 2018) | no DOI; [USGS page](https://astrogeology.usgs.gov/search/map/mars_mgs_mola_mex_hrsc_blended_dem_global_200m) | 200 m | global; window 16.70–20.20 N, 75.60–79.30 E | areoid (MOLA) |
+
+Download addresses: `https://planetarymaps.usgs.gov/mosaic/...` (redirects to the USGS
+S3 bucket); every URL, size and pin is in `terrain_sources.json`.
+
+**Installed on 15 Nov 2026**:
+
+| Source | Grid | Tiles | On disk | `vertical_offset_m` | `edge_blend_m` |
+|---|---|---|---|---|---|
+| `hirise_1m` | 13,654 × 7,958 px of 1 m | 28 | 150.6 MB | +0.83 | 150 |
+| `ctx_20m` | 3,452 × 4,001 px of 20 m | 4 | 27.7 MB | 0 (reference) | 1,500 |
+| `mola_200m` | 1,097 × 1,039 px of 200 m | 1 | 1.1 MB | −14.91 | – |
+
+- **Coverage of the 80 × 80 km box around the landing site:** 20 m data covers 81.9 %
+  of it: soc_008 14.3 %, the JPL mosaic 63.2 %, JPL replaced from the blend 4.4 %.
+  MOLA-HRSC covers the remaining 18.1 %, the strip west of 77.0° E where the JPL mosaic
+  ends.
+- **Joins after the offsets** (median, then per edge N / S / E / W):
+  - HiRISE / CTX: +0.43 m; −0.2 / −0.4 / +0.7 / +6.4 m.
+  - CTX / blend: 0.0 m; −9.2 / −11.1 / +2.5 / +13.2 m.
+
+  The engine ramps over `edge_blend_m`. `check_terrain.py` measures +0.69 m and −0.15 m
+  at the joins and finds no problems.
+
+**Known limits:**
+- **sol 1700:** of the 24 test poses, 23 lie inside HiRISE (21 with 2 km or more around
+  them). The sol 1700 pose (site 82) is 442 m outside: the official mosaic has no data
+  there.
+- **HiRISE vs CTX:** the two USGS DTMs differ by a spread of 3.6 m, and in 1 km patches
+  by −5 to +11 m, with no simple tilt. A single offset can't remove this, hence the
+  +6.4 m on the HiRISE west edge.
+- **JPL strip seams:** the JPL mosaic's seams near 77.05° E and 77.73–77.87° E (steps
+  of about 3 m, up to 9 m) are not corrected.
+- **Unfixed HiRISE steps:** HiRISE has 1,248 neighbour steps over 60° (the largest is
+  77°), which are left as they are.
 
 ## Named engine landmarks
 
