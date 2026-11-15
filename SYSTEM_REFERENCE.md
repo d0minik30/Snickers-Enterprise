@@ -254,14 +254,10 @@ $$h(x, y) = w(d) \cdot h_{\text{CTX}}(x, y) + (1 - w(d)) \cdot \left[h_{\text{MO
 Where $d$ is distance inside the CTX boundary. At $d = 0$, $w = 0$ with $C^1$ continuity, completely preventing ray-marching step artifacts.
 
 ### 7.3 Ground-Truth Test Photos Dataset (`data/test_photos/`)
-Contains **19 real Perseverance Navcam images** (Sol 17 to Sol 1700) with complete PDS calibration labels and official NASA Mars 2020 telemetry (`lat`, `lon`, `heading_deg`, drive IDs):
-- **Clear Skyline / Rim Horizon Cases (Elevation $0^\circ$ to $+10^\circ$):**
-  - Sols 17, 23, 33, 45, 48 (crater floor near landing base)
-  - Sol 700 (2.5 km delta front)
-  - Sol 1100 (7.5 km crater floor)
-  - Sols 1300 & 1700 (9.0 km & 11.3 km; facing west $255^\circ$ & $270^\circ$ directly toward the 500 m high western crater rim)
-- **Obstacle & Hardware Masking:** Sols 17, 48, 400 have rover chassis / mast components in bottom 7–8% of the frame (tested for weight masking).
-- **Downward Non-Skyline Cases:** Sols 85, 100, 1000 are pointed down at $-25^\circ$ for workspace/wheel inspections (should be flagged as no valid sky boundary).
+`manifest.json` lists **24 cases, one per rover pose, with 40 real Perseverance Navcam photos** (sols 17–1700, 50 m to 11.4 km from the landing site). Per photo: source links, SHA-256, camera calibration (CAHVORE model, rover attitude, size), UTC time and a review (`skyline_visible`, `usable`, `notes`). No skyline samples are stored. The truth (NASA M20 waypoint for the site/drive, and each photo's true heading) sits apart in the top-level `truth` map, for scoring only.
+- **Pipeline:** `data/scripts/fetch_test_photos.py` downloads, verifies and writes the list → `backend/skyline/scripts/build_test_requests.py` writes the `/locate` requests (git-ignored `backend/skyline/out/test_requests/`) → `backend/skyline/scripts/validate.py` runs the engine and scores; the app shows the saved run at `/validate/`.
+- **Multi-photo cases:** photos of one pose are matched together with known relative headings (e.g. site 3 drives 578, 770, 1374, 1416, 2046).
+- **Not usable:** sols 100 and 1100 point at the ground (kept, with the review saying so).
 
 ### 7.4 Named Martian Landmarks (`data/output/features.geojson`)
 Six prominent geological landmarks cataloged with IAU nomenclature and elevations sampled directly from CTX:

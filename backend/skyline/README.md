@@ -35,6 +35,11 @@ the precomputed horizons (`py -3.10 backend/scripts/build_horizons.py`, about 14
 py -3.10 backend/skyline/scripts/engine_result.py --pose 3/578     --out backend/skyline/out/engine-sol17-18.json --app-copy frontend/lib/locate/fixtures/engine-sol17-18.json
 ```
 
+**Validation on the test photos** (`data/test_photos/manifest.json`, see `data/README.md`):
+`scripts/build_test_requests.py` turns each usable case into the `POST /locate` request the app would
+send (git-ignored `out/test_requests/`), and `scripts/validate.py` runs the engine on them and scores
+against the manifest's separate truth map. The app shows the saved run at `/validate/`.
+
 On the six sol 17–18 Navcam photos (one rover pose, no prior): best position 23 m west and 6 m south
 of the landing site, ±13 m (68 %), 93 % of the trusted skyline fits, every heading within 0.8° of the
 label's. The app shows that saved answer at `/locate/?result=saved`, marked as saved.

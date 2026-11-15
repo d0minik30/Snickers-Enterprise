@@ -53,12 +53,18 @@ def relative_headings(diagnostics: list[dict]) -> list[float | None]:
     return [round(((d['rover_axis_azimuth_deg'] - base + 540) % 360) - 180, 4) for d in diagnostics]
 
 
-def locate_body(image_ids: list[str], skipped: list[str] | None = None) -> dict:
+def label_path(image_dir: Path, image_id: str) -> Path:
+    """The raw-image record next to a photo: <id>.label.json (test photos) or <id>.json (samples)."""
+    named = image_dir / f'{image_id}.label.json'
+    return named if named.exists() else image_dir / f'{image_id}.json'
+
+
+def locate_body(image_ids: list[str], skipped: list[str] | None = None, image_dir: Path = SAMPLES) -> dict:
     """The POST /locate body for these photos. Photos with no sky in them are left out (and listed in
     `skipped`): their skyline is all weight 0, so they could only add noise."""
     photos, diags = [], []
     for image_id in image_ids:
-        png, meta = SAMPLES / f'{image_id}.png', SAMPLES / f'{image_id}.json'
+        png, meta = image_dir / f'{image_id}.png', label_path(image_dir, image_id)
         img, exif = load_image(png.read_bytes())
         try:
             out = process(img, camera_setup(img.shape[1], img.shape[0], {}, exif, json.loads(meta.read_text())))
