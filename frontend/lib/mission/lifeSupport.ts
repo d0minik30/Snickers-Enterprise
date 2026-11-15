@@ -3,7 +3,8 @@
 // The numbers are rough, public-ballpark figures for a demo, not a flight model.
 
 import type { FieldState } from '@/lib/mission/field';
-import { PACE_MPS } from '@/lib/mission/types';
+import { PACE_MPS, type TravellerKind } from '@/lib/mission/types';
+import type { Route } from '@/lib/planner/types';
 
 /** Suit oxygen, litres at surface pressure: about what an EVA backpack carries for an 8-hour day. */
 export const O2_TANK_L = 380;
@@ -16,6 +17,9 @@ export const BREATH = {
 /** Rover battery (two lithium-ion packs) and power, watts. The radioisotope generator recharges it all the time. */
 export const BATTERY_WH = 2400;
 export const ROVER_W = { driving: 400, idle: 150, generator: 110 } as const;
+
+/** What should be left on arrival: a route or reroute that ends below this is flagged to Control. */
+export const RESERVE_PERCENT = 20;
 
 export type LifeSupport =
   | { kind: 'oxygen'; percent: number; breathsPerMin: number }
@@ -41,17 +45,47 @@ function breathing(state: FieldState): number {
 
 const clampPercent = (x: number) => Math.max(0, Math.min(100, x));
 
+/**
+ * Share of the tank (astronaut) or battery (rover), in percent, used by moving `movedM` at the
+ * traveller's pace and standing still for `restMs`.
+ */
+export function costPercent(traveller: TravellerKind, movedM: number, restMs: number): number {
+  const movingMs = (Math.max(0, movedM) / PACE_MPS[traveller]) * 1000;
+  const rest = Math.max(0, restMs);
+  if (traveller === 'astronaut') {
+    const usedL = (movingMs / MS_PER_MIN) * BREATH.walking.perMin * BREATH.walking.o2L
+      + (rest / MS_PER_MIN) * BREATH.resting.perMin * BREATH.resting.o2L;
+    return (100 * usedL) / O2_TANK_L;
+  }
+  const usedWh = (movingMs / MS_PER_H) * (ROVER_W.driving - ROVER_W.generator)
+    + (rest / MS_PER_H) * (ROVER_W.idle - ROVER_W.generator);
+  return (100 * usedWh) / BATTERY_WH;
+}
+
+/** What a route leaves from a full tank or battery, in percent. Negative: it can't be finished. */
+export function routeEndPercent(route: Pick<Route, 'lengthM'>, traveller: TravellerKind): number {
+  return 100 - costPercent(traveller, route.lengthM, 0);
+}
+
 /** Oxygen or battery left, or null before anyone is chosen to go. */
 export function lifeSupportAt(state: FieldState): LifeSupport | null {
   if (!state.traveller) return null;
   const { movingMs, restingMs } = split(state);
-  if (state.traveller === 'astronaut') {
-    const usedL = (movingMs / MS_PER_MIN) * BREATH.walking.perMin * BREATH.walking.o2L
-      + (restingMs / MS_PER_MIN) * BREATH.resting.perMin * BREATH.resting.o2L;
-    return { kind: 'oxygen', percent: clampPercent(100 * (1 - usedL / O2_TANK_L)), breathsPerMin: breathing(state) };
-  }
-  const usedWh = (movingMs / MS_PER_H) * (ROVER_W.driving - ROVER_W.generator)
-    + (restingMs / MS_PER_H) * (ROVER_W.idle - ROVER_W.generator);
+  const movedM = (movingMs / 1000) * PACE_MPS[state.traveller];
+  const percent = clampPercent(100 - costPercent(state.traveller, movedM, restingMs));
+  if (state.traveller === 'astronaut') return { kind: 'oxygen', percent, breathsPerMin: breathing(state) };
   const netW = (state.status === 'moving' ? ROVER_W.driving : ROVER_W.idle) - ROVER_W.generator;
-  return { kind: 'battery', percent: clampPercent(100 * (1 - usedWh / BATTERY_WH)), netW };
+  return { kind: 'battery', percent, netW };
+}
+
+/** Expected at the end of the current route, if the rest is walked (driven) without stopping. Unclamped. */
+export function arrivalPercent(state: FieldState): number | null {
+  const life = lifeSupportAt(state);
+  if (!life || !state.route || !state.traveller) return null;
+  return life.percent - costPercent(state.traveller, state.route.lengthM - state.distM, 0);
+}
+
+/** Red below empty, amber below the reserve. */
+export function lifeTone(percent: number): 'plain' | 'caution' | 'danger' {
+  return percent < 0 ? 'danger' : percent < RESERVE_PERCENT ? 'caution' : 'plain';
 }
