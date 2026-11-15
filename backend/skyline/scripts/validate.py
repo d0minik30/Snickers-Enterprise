@@ -40,6 +40,7 @@ sys.path.insert(0, str(HERE))
 from engine_result import locate_body, observations, result_json  # noqa: E402
 from fetch_samples import FEED, SAMPLES, get  # noqa: E402
 from marsloc import geo  # noqa: E402
+from marsloc.horizon.render import render_horizon  # noqa: E402
 from marsloc.horizon.store import HorizonStore  # noqa: E402
 from marsloc.match.matcher import Matcher  # noqa: E402
 from marsloc.terrain import Terrain  # noqa: E402
@@ -71,6 +72,37 @@ def true_heading(image_id: str) -> float:
     A = Cahvore.from_components(rec['camera']['camera_model_component_list'], 1280, 960).A
     a = R @ A
     return float(np.degrees(np.arctan2(a[1], a[0])) % 360)
+
+
+def fit_at_truth(terrain, body: dict, ids: list[str], truth: dict) -> dict:
+    """How well the traced skylines match the terrain AT THE TRUE position and headings.
+
+    Small residuals here mean the skyline step did its job, so any position error is the search's.
+    Split by the distance of the terrain forming the horizon: 20 m elevation data can't show what is
+    within about 2 km (rocks, ledges), so 'far' is the fair measure.
+    """
+    far_res, near_res = [], []
+    for photo, image_id in zip(body['photos'], ids):
+        s = [x for x in photo['samples'] if x['weight'] >= 0.5]
+        if not s:
+            continue
+        az = np.array([x['az_offset_deg'] for x in s])
+        el = np.array([x['elev_deg'] for x in s])
+        hz = render_horizon(terrain, truth['lat'], truth['lon'], eye_height_m=photo['eye_height_m'],
+                            azimuths_deg=(true_heading(image_id) + az) % 360)
+        res = el - hz.elev_deg
+        ok = np.isfinite(res)
+        far = ok & (hz.dist_m > 2000)
+        far_res += res[far].tolist()
+        near_res += res[ok & ~far].tolist()
+
+    def stats(r):
+        if not r:
+            return None
+        r = np.array(r)
+        med = float(np.median(r))
+        return {'n': int(r.size), 'median_deg': round(med, 3), 'mad_deg': round(float(np.median(np.abs(r - med))), 3)}
+    return {'far': stats(far_res), 'near': stats(near_res)}
 
 
 def load_cases() -> list[dict]:
@@ -137,11 +169,14 @@ def main() -> int:
             'inside_68': err <= best['uncertainty_m'],
             'inside_95': err <= best['uncertainty_95_m'],
             'headings': headings,
+            'skyline_at_truth': fit_at_truth(terrain, body, ids, truth),
             'seconds': round(time.perf_counter() - t0, 1),
             'request': body,
             'result': res,
         })
         h = ', '.join(f"{x['error_deg']:+.1f}" for x in headings)
+        far = results[-1]['skyline_at_truth']['far']
+        h += f"  skyline vs truth (far) {far['median_deg']:+.2f}±{far['mad_deg']:.2f}" if far else '  skyline vs truth: no far samples'
         print(f"{pose:>8}  {res['status']:9}  error {err:6.1f} m  (±{best['uncertainty_m']:.0f} / ±{best['uncertainty_95_m']:.0f} m)"
               f"  photos {len(ids)}  trusted {results[-1]['trusted_share']:.0%}  heading errors {h}", flush=True)
 

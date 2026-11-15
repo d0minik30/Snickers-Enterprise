@@ -80,3 +80,31 @@ Per photo:
 
 `options` is `{top_k: 5, include_likelihood_grid: true, include_residuals: true}`, with no prior unless
 the user gives one. Real example output: `backend/skyline/README.md`, "The output".
+
+## Findings from validation (real photos, known positions)
+
+`backend/skyline/scripts/validate.py` ran the 15 rover poses in `work/m20_candidates.json` through the
+whole chain: skyline step, the `POST /locate` body, your matcher, no prior. Truth = the NASA waypoint,
+used only for scoring. The app shows the run at `/validate/`. 13 poses scored (2 had no photo showing sky).
+
+| | |
+|---|---|
+| Within 50 m | 2 of 13 (3/1950, 3/2046: ~36 m) |
+| Median error | 5.2 km |
+| Truth inside the 95 % circle | 3 of 13 |
+| Median heading error | 15.6° |
+
+**The skylines are mostly fine.** For each case I compared the traced skyline with your horizon renderer
+at the *true* position and heading (terrain over 2 km away):
+- 3/770, 3/1708, 3/828, 3/1266, 4/0: the skyline matches the truth within 0.1–0.3°.
+- 3/1374, 3/2150, 3/2430: off by 0.7–1.1° with a large spread; I'm looking into near objects on my side.
+
+**So the main problem is confidence.** With 1–2 photos facing one direction the matcher answers `ok`
+with ±10–80 m while 4–16 km off (for example 3/1266: ±82 m, 15.5 km off; 3/2430: ±9 m, 4.3 km off).
+One 96° view of a fairly flat far horizon fits many places. Suggestions:
+1. Treat a narrow total azimuth coverage (say under 180°) as weak evidence: `ambiguous` unless one peak
+   clearly wins, and a warning saying so.
+2. Check that `probability` and the uncertainty radii include the far look-alike peaks the coarse pass
+   finds, not only the refined neighbourhood of the best one.
+3. The six-photo sol 17–18 case (one pose, known relative headings) came out 74 m from the truth while
+   claiming ±13 m. So even with good coverage the radius looks about 5× too small.

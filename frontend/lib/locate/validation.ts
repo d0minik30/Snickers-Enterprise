@@ -16,10 +16,15 @@ export type ValidationCase = {
   inside_68: boolean;
   inside_95: boolean;
   headings: { id: string; image_id: string; true_deg: number; found_deg: number; error_deg: number }[];
+  /** The traced skyline against the terrain at the TRUE position and headings: small = the skyline step
+   *  did its job, so a position error is the search's. 'far' (terrain over 2 km away) is the fair measure. */
+  skyline_at_truth?: { far: FitStats | null; near: FitStats | null };
   seconds: number;
   request: LocateRequest;
   result: LocateResult;
 };
+
+export type FitStats = { n: number; median_deg: number; mad_deg: number };
 
 export type ValidationReport = {
   source: { what: string; cases_from: string; run_utc: string; note: string; engine: LocateResult['engine'] | null };

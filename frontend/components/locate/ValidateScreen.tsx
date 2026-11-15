@@ -63,15 +63,17 @@ export default function ValidateScreen() {
       </header>
 
       <main className={css.main}>
+        {report && (
+          <p className={css.saved} data-testid="validation-banner">
+            SAVED VALIDATION RUN · {report.source.run_utc.slice(0, 16).replace('T', ' ')} UTC · engine{' '}
+            {report.source.engine?.version ?? '?'} · truth: NASA rover waypoints · no prior given to the engine
+          </p>
+        )}
         <section className={css.side} aria-label="Validation run">
           {load.status === 'loading' && <p className={css.note}>LOADING THE RUN…</p>}
           {load.status === 'failed' && <p className={css.alert} role="alert">{load.error}</p>}
           {report && (
             <>
-              <p className={css.saved} data-testid="validation-banner">
-                SAVED VALIDATION RUN · {report.source.run_utc.slice(0, 16).replace('T', ' ')} UTC · engine{' '}
-                {report.source.engine?.version ?? '?'} · truth: NASA rover waypoints · no prior given to the engine
-              </p>
               <Summary report={report} />
               <h2 className={css.sub}>CASES</h2>
               <ol className={css.cases} data-testid="validation-cases">
@@ -128,6 +130,12 @@ function CaseRow({ c, active, onPick }: { c: ValidationCase; active: boolean; on
           · heading {Number.isFinite(h) ? `${h.toFixed(1)}°` : '—'} · {c.photos.length} photo{c.photos.length === 1 ? '' : 's'}
           {c.skipped_photos?.length ? ` (+${c.skipped_photos.length} without sky)` : ''}
         </span>
+        {c.skyline_at_truth?.far && (
+          <span className={css.caseNums} title="Traced skyline minus the terrain's horizon at the true position and headings (terrain over 2 km away)">
+            skyline vs terrain at the truth: {c.skyline_at_truth.far.median_deg >= 0 ? '+' : ''}{c.skyline_at_truth.far.median_deg.toFixed(2)}°
+            {' '}± {c.skyline_at_truth.far.mad_deg.toFixed(2)}°
+          </span>
+        )}
       </button>
     </li>
   );

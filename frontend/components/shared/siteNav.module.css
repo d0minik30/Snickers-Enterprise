@@ -2,6 +2,22 @@
   display: flex;
   align-items: stretch;
   align-self: stretch;
+  /* On a narrow screen the links scroll sideways inside the bar instead of widening the page. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .link {
+    padding: 0 8px;
+    letter-spacing: 0.08em;
+  }
 }
 
 .link {
