@@ -1,0 +1,321 @@
+/* Combined Mission screen: Earth (planner) on the left, Mars (crew view) on the right. */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 640px;
+  overflow: hidden;
+}
+
+.guide button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* ----- top line: home, what to do now, speed ----- */
+
+.guide {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 52px;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.home {
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  border-right: 1px solid var(--rule);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.home:hover {
+  color: var(--route);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 18px;
+  font-size: 19px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.step b {
+  font-weight: 700;
+}
+
+.stepNumber {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 30px;
+  height: 30px;
+  background: var(--route);
+  color: var(--surface);
+  font-weight: 700;
+}
+
+.caution {
+  color: var(--caution);
+}
+
+.speed {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 12px;
+  border-left: 1px solid var(--rule);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+.speedLabel {
+  margin-right: 6px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.rate {
+  padding: 6px 9px;
+  border: 1px solid transparent !important;
+  color: var(--muted) !important;
+  font-weight: 600;
+}
+
+.rate:hover {
+  color: var(--text) !important;
+}
+
+.rate[aria-pressed='true'] {
+  background: var(--text) !important;
+  color: var(--surface) !important;
+}
+
+.reset {
+  margin-left: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--rule) !important;
+  font-weight: 600;
+}
+
+.reset:hover {
+  border-color: var(--text) !important;
+}
+
+/* ----- the two panes ----- */
+
+.panes {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.earthPane,
+.marsPane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.earthPane {
+  flex: 1 1 auto;
+}
+
+.marsPane {
+  flex: 0 0 420px;
+  border-left: 3px solid var(--route);
+}
+
+.paneLabel {
+  flex: 0 0 auto;
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--text) 6%, var(--surface));
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.paneLabel span {
+  margin-left: 8px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.paneBody {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* The two screens normally fill the window: make them fill their pane instead. */
+.paneBody > main {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  max-width: none;
+  border: 0;
+}
+
+/* Narrow windows: stack Earth over Mars. */
+@media (max-width: 1100px) {
+  .screen {
+    height: auto;
+    overflow: visible;
+  }
+
+  .guide {
+    flex-wrap: wrap;
+    flex-basis: auto;
+  }
+
+  .step {
+    order: 3;
+    flex-basis: 100%;
+    padding: 10px 18px;
+    white-space: normal;
+    border-top: 1px solid var(--rule);
+  }
+
+  .speed {
+    flex-wrap: wrap;
+    margin-left: auto;
+  }
+
+  .panes {
+    flex-direction: column;
+  }
+
+  .earthPane .paneBody {
+    height: 100dvh;
+  }
+
+  .marsPane {
+    flex-basis: auto;
+    border-left: 0;
+    border-top: 3px solid var(--route);
+  }
+
+  .marsPane .paneBody {
+    height: 100dvh;
+  }
+}
+
+/* ----- mission complete message ----- */
+
+.doneBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.done {
+  width: min(520px, 100%);
+  padding: 32px;
+  background: var(--surface);
+  border: 2px solid var(--nominal);
+  text-align: center;
+}
+
+.doneKicker {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--nominal);
+}
+
+.doneTitle {
+  margin-top: 10px;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.doneNote {
+  margin-top: 10px;
+  font-size: 17px;
+  color: var(--muted);
+}
+
+.doneStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 22px;
+  border: 1px solid var(--rule);
+}
+
+.doneStats > div {
+  padding: 12px;
+}
+
+.doneStats > div + div {
+  border-left: 1px solid var(--rule);
+}
+
+.doneStats dt {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.doneStats dd {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.doneActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.donePrimary,
+.doneSecondary {
+  padding: 12px 18px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.donePrimary {
+  flex: 1 1 100%;
+  background: var(--text);
+  color: var(--surface);
+  border: 0;
+}
+
+.doneSecondary {
+  flex: 1 1 0;
+  background: none;
+  color: var(--text);
+  border: 1px solid var(--rule);
+}
+
+.doneSecondary:hover {
+  border-color: var(--text);
+}

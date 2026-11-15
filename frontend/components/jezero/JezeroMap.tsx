@@ -133,7 +133,7 @@ export default function JezeroMap({ overlays, onStatus, onMap }: Props) {
           })
             // Only the traverse end keeps its label up; the other sites show theirs on hover or tap, so labels
             // do not pile up when zoomed out.
-            .bindTooltip(`${f.properties.name.toUpperCase()}${isEnd ? ' · TRAVERSE END' : ''}${height}`, {
+            .bindTooltip(isEnd ? f.properties.name.toUpperCase() : `${f.properties.name.toUpperCase()}${height}`, {
               permanent: isEnd,
               direction: isEnd ? 'top' : 'right',
               offset: isEnd ? [0, -8] : [9, 0],

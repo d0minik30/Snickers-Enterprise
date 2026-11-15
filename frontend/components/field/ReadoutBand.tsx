@@ -3,12 +3,12 @@ import { Bar } from '@/components/shared/Bar';
 import { Readout } from '@/components/shared/Readout';
 import styles from './field.module.css';
 
-type Props = { cells: Cell[]; bars: BarCell[]; fixCue: boolean };
+type Props = { cells: Cell[]; bars?: BarCell[]; fixCue: boolean };
 
-const POS_ERROR_CELL = 3;
+const POS_ERROR_CELL = 3; // the accuracy cell shows the "fix acquired" cue
 const STEEP_DEG = 12; // slope or tilt above this shows amber, as on Control's route cards
 
-/** Bottom band: six cells in two rows of three, then the two level bars. */
+/** Bottom band: the readout cells, then the level bars if any. */
 export function ReadoutBand({ cells, bars, fixCue }: Props) {
   return (
     <section className={styles.readouts} aria-label="Readouts">
@@ -22,7 +22,7 @@ export function ReadoutBand({ cells, bars, fixCue }: Props) {
           </div>
         ))}
       </div>
-      <div className={styles.bars}>
+      {bars && bars.length > 0 && <div className={styles.bars}>
         {bars.map(b => (
           <div key={b.label} className={styles.cell}>
             <Bar
@@ -34,7 +34,7 @@ export function ReadoutBand({ cells, bars, fixCue }: Props) {
             />
           </div>
         ))}
-      </div>
+      </div>}
     </section>
   );
 }

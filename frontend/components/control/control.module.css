@@ -780,12 +780,8 @@ button.brand[aria-expanded='true'] .brandCaret {
   --readout-value-size: var(--type-value-compact);
   --readout-label-size: var(--type-micro);
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px 10px;
-}
-
-.liveCells > :nth-child(7) {
-  grid-column: span 2;
 }
 
 .progressTrack {

@@ -173,7 +173,7 @@ async function sendRoute(page) {
 
   await byTestId(page, 'tab-plan').click();
   check(await byTestId(page, 'send-route').count() === 0, 'Plan offers no second send while a mission runs');
-  check((await page.getByText('MISSION IN PROGRESS').count()) === 1, 'Plan says the mission is in progress');
+  check((await page.getByText('MISSION UNDER WAY').count()) === 1, 'Plan says the mission is in progress');
 }
 
 async function demoControls(page, other) {
@@ -317,6 +317,24 @@ async function offline(browser) {
   await context.close();
 }
 
+/** The map's main feature: example photos give a pin close to the rover's real position. */
+async function whereAmI(browser) {
+  const page = await browser.newPage({ viewport: { width: 1366, height: 800 } });
+  watch(page, 'map');
+  await page.goto(`${BASE_URL}/map/`);
+  await byTestId(page, 'findme-open').click();
+  await byTestId(page, 'findme-examples').click();
+  await byTestId(page, 'findme-go').click();
+  const result = byTestId(page, 'findme-result');
+  const shown = await result.waitFor({ timeout: 15_000 }).then(() => true, () => false);
+  check(shown, 'example photos give an answer');
+  check(shown && (await result.textContent()).includes('FOUND YOU'), 'the answer says FOUND YOU');
+  check(shown && /\d+ m away/.test(await result.textContent()), 'it says how far the real position is');
+  await page.waitForTimeout(3000);
+  await page.screenshot({ path: `${OUT_DIR}/where-am-i.png` });
+  await page.close();
+}
+
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
   const browser = await launch();
@@ -356,6 +374,9 @@ async function main() {
 
     console.log('Offline');
     await offline(browser);
+
+    console.log('Where am I?');
+    await whereAmI(browser);
   } finally {
     await browser.close();
   }

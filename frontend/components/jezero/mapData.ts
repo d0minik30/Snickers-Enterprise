@@ -38,9 +38,9 @@ export const MAX_ZOOM = 19;
  * most of the crater floor, so it is not drawn (see steepOnly) and its swatch is shown as clear.
  */
 export const SLOPE_CLASSES = [
-  { label: '< 10° (not shaded)', color: 'transparent' },
-  { label: '10–25°', color: 'rgb(255 210 0)' },
-  { label: '> 25°', color: 'rgb(230 0 0)' },
+  { label: 'Easy: under 10° (no colour)', color: 'transparent' },
+  { label: 'Steep: 10–25°', color: 'rgb(255 210 0)' },
+  { label: 'Too steep: over 25°', color: 'rgb(230 0 0)' },
 ] as const;
 
 /**

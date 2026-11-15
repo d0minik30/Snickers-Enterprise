@@ -3,6 +3,7 @@
 import { riskTone, routeLetter, slopeTone, summarizeRoute } from '@/components/control/controlModel';
 import type { PlanDraft } from '@/components/control/usePlanDraft';
 import { Readout } from '@/components/shared/Readout';
+import { useEmbedded } from '@/components/shared/embedded';
 import { SIGNAL_DELAY_MS, type TravellerKind } from '@/lib/mission/types';
 import { formatClock, formatLat, formatLon } from '@/lib/nav/format';
 import { MIN_ROUTE_M } from '@/lib/planner';
@@ -19,10 +20,11 @@ const TRAVELLERS: { kind: TravellerKind; label: string }[] = [
 
 /** Left rail in Plan mode: who travels, between which points, by which route, and the send button. */
 export function PlanRail({ draft, inProgress, onSend }: Props) {
+  const embedded = useEmbedded();
   return (
     <aside className={`${styles.rail} ${styles.leftRail}`} aria-label="Plan">
       <section className={styles.section}>
-        <h2 className={styles.heading}>Traveller</h2>
+        <h2 className={styles.heading}>Who goes</h2>
         <div className={styles.segmented} role="group" aria-label="Traveller">
           {TRAVELLERS.map(({ kind, label }) => (
             <button
@@ -43,7 +45,7 @@ export function PlanRail({ draft, inProgress, onSend }: Props) {
         <EndCell which="end" pos={draft.end} draft={draft} />
       </section>
 
-      <h2 className={`${styles.heading} ${styles.listHeading}`}>Candidate routes</h2>
+      <h2 className={`${styles.heading} ${styles.listHeading}`}>Pick a route</h2>
       {draft.tooClose ? (
         <div className={styles.tooClose}>
           <p className={styles.tooCloseTitle}>START AND END ARE TOO CLOSE</p>
@@ -65,20 +67,22 @@ export function PlanRail({ draft, inProgress, onSend }: Props) {
 
       <section className={styles.sendSection}>
         {inProgress ? (
-          <p className={styles.inProgress}>MISSION IN PROGRESS · RESET TO PLAN A NEW ONE</p>
+          <p className={styles.inProgress}>MISSION UNDER WAY · START OVER TO PLAN A NEW ONE</p>
         ) : (
           <>
             <button type="button" data-testid="send-route" className={styles.sendButton} disabled={draft.tooClose} onClick={onSend}>
-              SEND ROUTE {routeLetter(draft.selected)} TO FIELD ▲
+              SEND ROUTE {routeLetter(draft.selected)} TO MARS ▲
             </button>
             <p className={styles.sendNote}>
-              Arrives in <span className={styles.sendDelay}>{formatClock(SIGNAL_DELAY_MS)}</span>
+              Reaches Mars in <span className={styles.sendDelay}>{formatClock(SIGNAL_DELAY_MS)}</span>
             </p>
           </>
         )}
-        <a href="/field/" target="_blank" rel="noreferrer" className={styles.openField} data-testid="open-field">
-          OPEN FIELD IN A NEW WINDOW ↗
-        </a>
+        {!embedded && (
+          <a href="/field/" target="_blank" rel="noreferrer" className={styles.openField} data-testid="open-field">
+            OPEN THE CREW VIEW IN A NEW WINDOW ↗
+          </a>
+        )}
       </section>
     </aside>
   );

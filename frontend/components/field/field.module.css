@@ -691,7 +691,7 @@
 .cells,
 .bars {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .bars {
@@ -705,11 +705,11 @@
   padding: 9px var(--pad-x) 10px;
 }
 
-.cells .cell:nth-child(n + 4) {
+.cells .cell:nth-child(n + 3) {
   border-top: 1px solid var(--rule);
 }
 
-.cells .cell:not(:nth-child(3n + 1)),
+.cells .cell:nth-child(2n),
 .bars .cell + .cell {
   border-left: 1px solid var(--rule);
 }

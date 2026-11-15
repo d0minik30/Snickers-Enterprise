@@ -79,6 +79,17 @@ export function fieldCells(state: FieldState): Cell[] {
   ];
 }
 
+/** The four numbers people need: how far, how long, how fast, how sure of the position. Plain labels. */
+export function simpleCells(state: FieldState): Cell[] {
+  const [distance, eta, pace, error] = fieldCells(state);
+  return [
+    { ...distance, label: 'Distance left' },
+    { ...eta, label: 'Time left' },
+    { ...pace, label: 'Speed' },
+    { ...error, label: 'Position accuracy' },
+  ];
+}
+
 /** Metres still to climb on the route ahead (sum of the rises), and the total climb of the route. */
 function climb(route: Route, distM: number): { leftM: number; totalM: number } {
   const cum = cumulativeM(route.points);

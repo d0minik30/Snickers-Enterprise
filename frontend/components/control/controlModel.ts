@@ -299,7 +299,7 @@ export function liveOverlays(view: ControlView): MapOverlay[] {
     const notYet = !h.atField && h.source === 'control';
     o.push({ kind: 'hazard', id: `hazard:${h.id}`, hazard: h, pending: notYet });
     labels.push(notYet
-      ? { kind: 'label', id: `label:hazard:${h.id}`, pos: h.center, text: 'FLAGGED · NOT YET AT FIELD', tone: 'inverse', offsetY: 20 }
+      ? { kind: 'label', id: `label:hazard:${h.id}`, pos: h.center, text: 'MARKED · CREW NOT TOLD YET', tone: 'inverse', offsetY: 20 }
       : { kind: 'label', id: `label:hazard:${h.id}`, pos: h.center, text: h.label, tone: 'caution' });
   }
 

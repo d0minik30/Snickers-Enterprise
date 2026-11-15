@@ -40,7 +40,7 @@ describe('mission store', () => {
   });
   it('stamps events with mission time', () => {
     let real = 1_000; const s = createMissionStore(fakeStorage(), fakeBus().connect(), () => real);
-    real = 3_000; expect(s.append(ev).tMs).toBe(60_000);            // 2 s real at 30x
+    real = 3_000; expect(s.append(ev).tMs).toBe(200_000);           // 2 s real at 100x
   });
   it('a window opened later rebuilds the same state from storage', () => {
     const storage = fakeStorage(), bus = fakeBus();
@@ -66,8 +66,8 @@ describe('mission store', () => {
   it('a speed change reaches the other window and keeps time continuous', () => {
     const storage = fakeStorage(), bus = fakeBus(); let real = 1_000;
     const a = createMissionStore(storage, bus.connect(), () => real), b = createMissionStore(storage, bus.connect(), () => real);
-    real = 2_000; a.setRate(60); real = 3_000;
-    expect(b.now()).toBe(90_000);
+    real = 2_000; a.setRate(300); real = 3_000;
+    expect(b.now()).toBe(400_000); // 1 s at 100x, then 1 s at 300x
   });
   it('windows opened one after the other on empty storage share the first epoch', () => {
     const storage = fakeStorage(), bus = fakeBus(); let real = 1_000;
