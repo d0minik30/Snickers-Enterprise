@@ -4,11 +4,10 @@ import { ScreenMenu } from '@/components/shared/ScreenMenu';
 import { useEffect, useState } from 'react';
 import { useEmbedded } from '@/components/shared/embedded';
 import { getMissionStore, useMissionSnapshot } from '@/lib/mission/useMission';
-import { RATES, SIGNAL_DELAY_MS } from '@/lib/mission/types';
+import { RATES } from '@/lib/mission/types';
 import { distanceM } from '@/lib/nav/geo';
 import { DEFAULT_END, DESTINATION } from '@/lib/planner';
 import { routeSentEvent } from '@/components/control/controlModel';
-import { formatClock } from '@/lib/nav/format';
 import styles from './control.module.css';
 
 export type ControlMode = 'plan' | 'live';
@@ -43,20 +42,18 @@ export function TopBar({ mode, onMode }: Props) {
 
   return (
     <header className={styles.topBar}>
-      <ScreenMenu className={styles.brand} label="Mars Map: all screens">
-        MARS MAP <span className={styles.brandView}>/ CONTROL</span>
-        <span className={styles.brandCaret} aria-hidden="true">▾</span>
-      </ScreenMenu>
+      {!embedded && (
+        <ScreenMenu className={styles.brand} label="Mars Map: all screens">
+          MARS MAP <span className={styles.brandView}>/ CONTROL</span>
+          <span className={styles.brandCaret} aria-hidden="true">▾</span>
+        </ScreenMenu>
+      )}
       <div role="tablist" aria-label="Mode" className={styles.tabs}>
         {tab('plan', 'PLAN')}
         {tab('live', 'WATCH')}
       </div>
       <div className={styles.traverse}>
         <span className={styles.traversePlace}>LANDING SITE&nbsp;→&nbsp;</span>{destination}
-      </div>
-      <div data-testid="signal-delay" className={`${styles.clock} ${styles.delay}`}>
-        <span className={styles.clockLabel}>RADIO DELAY</span>
-        <span className={styles.clockValue}>{formatClock(SIGNAL_DELAY_MS)}</span>
       </div>
       {!embedded && <DemoControls />}
     </header>

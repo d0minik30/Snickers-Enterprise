@@ -1,13 +1,13 @@
 'use client';
 
-import { riskTone, routeLetter, slopeTone, summarizeRoute } from '@/components/control/controlModel';
+import { recommendationText, riskTone, routeLetter, slopeTone, summarizeRoute } from '@/components/control/controlModel';
 import type { PlanDraft } from '@/components/control/usePlanDraft';
 import { Readout } from '@/components/shared/Readout';
 import { useEmbedded } from '@/components/shared/embedded';
 import { SIGNAL_DELAY_MS, type TravellerKind } from '@/lib/mission/types';
-import { formatClock, formatLat, formatLon } from '@/lib/nav/format';
+import { formatClock } from '@/lib/nav/format';
 import { MIN_ROUTE_M } from '@/lib/planner';
-import type { LatLon, Route } from '@/lib/planner/types';
+import type { Route } from '@/lib/planner/types';
 import shared from '@/components/shared/shared.module.css';
 import styles from './control.module.css';
 
@@ -18,7 +18,7 @@ const TRAVELLERS: { kind: TravellerKind; label: string }[] = [
   { kind: 'rover', label: 'ROVER' },
 ];
 
-/** Left rail in Plan mode: who travels, between which points, by which route, and the send button. */
+/** Left rail in Plan mode, everything in one column: who goes, the routes and why A, moving start or end, send. */
 export function PlanRail({ draft, inProgress, onSend }: Props) {
   const embedded = useEmbedded();
   return (
@@ -40,11 +40,6 @@ export function PlanRail({ draft, inProgress, onSend }: Props) {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.ends}`}>
-        <EndCell which="start" pos={draft.start} draft={draft} />
-        <EndCell which="end" pos={draft.end} draft={draft} />
-      </section>
-
       <h2 className={`${styles.heading} ${styles.listHeading}`}>Pick a route</h2>
       {draft.tooClose ? (
         <div className={styles.tooClose}>
@@ -52,18 +47,31 @@ export function PlanRail({ draft, inProgress, onSend }: Props) {
           <p className={styles.note}>Set them at least {MIN_ROUTE_M} m apart to plan a route.</p>
         </div>
       ) : (
-        <div className={styles.cards}>
-          {draft.routes.map(route => (
-            <RouteCard
-              key={route.profile}
-              route={route}
-              traveller={draft.traveller}
-              selected={route.profile === draft.selected}
-              onSelect={() => draft.select(route.profile)}
-            />
-          ))}
-        </div>
+        <>
+          <div className={styles.cards}>
+            {draft.routes.map(route => (
+              <RouteCard
+                key={route.profile}
+                route={route}
+                traveller={draft.traveller}
+                selected={route.profile === draft.selected}
+                onSelect={() => draft.select(route.profile)}
+              />
+            ))}
+          </div>
+          {draft.routes.length > 0 && (
+            <p className={styles.whyNote}><b>Why A?</b> {recommendationText(draft.routes, draft.traveller)}</p>
+          )}
+        </>
       )}
+
+      <section className={`${styles.section} ${styles.ends}`}>
+        <h2 className={styles.heading}>Change the trip</h2>
+        <div className={styles.endButtons}>
+          <EndButton which="start" draft={draft} />
+          <EndButton which="end" draft={draft} />
+        </div>
+      </section>
 
       <section className={styles.sendSection}>
         {inProgress ? (
@@ -88,25 +96,21 @@ export function PlanRail({ draft, inProgress, onSend }: Props) {
   );
 }
 
-/** A Readout-style cell with its arm button in the label row, so the coordinates get the full width. */
-function EndCell({ which, pos, draft }: { which: 'start' | 'end'; pos: LatLon; draft: PlanDraft }) {
+/** Arms a map click that moves the start or the end. */
+function EndButton({ which, draft }: { which: 'start' | 'end'; draft: PlanDraft }) {
   const armed = draft.arming === which;
   return (
     <div className={styles.endCell} data-armed={armed}>
-      <div className={styles.endHead}>
-        <span className={shared.label}>{which === 'start' ? 'Start' : 'End'}</span>
-        <button
-          type="button"
-          data-testid={`plan-arm-${which}`}
-          aria-pressed={armed}
-          aria-label={armed ? `Cancel setting the ${which}` : `Set the ${which} on the map`}
-          className={styles.armButton}
-          onClick={() => draft.arm(which)}
-        >
-          {armed ? 'CANCEL' : 'SET ON MAP'}
-        </button>
-      </div>
-      <span className={`${shared.value} ${styles.endValue}`}>{formatLat(pos.lat)}{' '}{formatLon(pos.lon)}</span>
+      <button
+        type="button"
+        data-testid={`plan-arm-${which}`}
+        aria-pressed={armed}
+        aria-label={armed ? `Cancel moving the ${which}` : `Move the ${which} on the map`}
+        className={styles.armButton}
+        onClick={() => draft.arm(which)}
+      >
+        {armed ? 'CANCEL' : which === 'start' ? 'MOVE START' : 'MOVE END'}
+      </button>
     </div>
   );
 }
