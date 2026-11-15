@@ -42,6 +42,25 @@ describe('engine client', () => {
     await expect(postLocate(request, broken)).rejects.toMatchObject({ kind: 'server', status: 502 });
   });
 
+  it('asks an ngrok tunnel to skip its browser warning page on every call', async () => {
+    const header = (f: ReturnType<typeof vi.fn>) => new Headers((f.mock.calls[0] as unknown as [string, RequestInit])[1].headers).get('ngrok-skip-browser-warning');
+    const sky = vi.fn(async () => json(skylineResponse()));
+    await postSkyline(new Blob(['x']), 'p.jpg', {}, null, sky);
+    const loc = vi.fn(async () => json(contractResult));
+    await postLocate(request, loc);
+    const conv = vi.fn(async () => json({ contract_version: '0.1', photo: contractPhoto(), diagnostics: diagnostics() }));
+    await postConvert({ hfov_deg: 60 }, null, trace, conv);
+    expect([header(sky), header(loc), header(conv)]).toEqual(['1', '1', '1']);
+    expect(new Headers((loc.mock.calls[0] as unknown as [string, RequestInit])[1].headers).get('Content-Type')).toBe('application/json');
+  });
+
+  it('treats an HTML page (a tunnel or proxy answering, not the engine) as an unreachable engine', async () => {
+    const html = (status: number) => vi.fn(async () => new Response('<!DOCTYPE html><title>ngrok</title>', { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+    await expect(postLocate(request, html(404))).rejects.toMatchObject({ kind: 'unreachable' }); // tunnel offline
+    await expect(postLocate(request, html(502))).rejects.toMatchObject({ kind: 'unreachable' }); // laptop's engine down
+    await expect(postSkyline(new Blob(['x']), 'p.jpg', {}, null, html(200))).rejects.toMatchObject({ kind: 'unreachable' }); // warning page
+  });
+
   it('sends the contract body to /locate and accepts a result in the agreed format', async () => {
     const fetchImpl = vi.fn(async () => json(contractResult));
     const out = await postLocate(request, fetchImpl);

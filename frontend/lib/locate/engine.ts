@@ -25,14 +25,23 @@ type Fetch = typeof fetch;
 async function call(path: string, init: RequestInit, timeoutMs: number, fetchImpl: Fetch = fetch): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // The demo reaches the engine through an ngrok tunnel; on ngrok's free plan a browser request would get
+  // its warning page instead of the engine unless it sends this header (any value). The engine allows it (CORS *).
+  const headers = new Headers(init.headers);
+  headers.set('ngrok-skip-browser-warning', '1');
   let res: Response;
   try {
-    res = await fetchImpl(`${ENGINE_URL}${path}`, { ...init, signal: controller.signal });
+    res = await fetchImpl(`${ENGINE_URL}${path}`, { ...init, headers, signal: controller.signal });
   } catch (e) {
     if (controller.signal.aborted) throw new EngineError('timeout', `No answer from the engine after ${Math.round(timeoutMs / 1000)} s.`);
     throw new EngineError('unreachable', `Cannot reach the engine at ${ENGINE_URL}. Is it running?`);
   } finally {
     clearTimeout(timer);
+  }
+  // The engine answers JSON (plain text if it crashes). An HTML page comes from something in front of it,
+  // e.g. ngrok saying the tunnel is offline or the laptop's engine is down: the engine was not reached.
+  if ((res.headers.get('Content-Type') ?? '').includes('text/html')) {
+    throw new EngineError('unreachable', `Cannot reach the engine at ${ENGINE_URL}: something else answered (HTTP ${res.status}).`);
   }
   let body: unknown = null;
   try {
