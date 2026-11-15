@@ -6,8 +6,9 @@ matching it against the skyline the terrain would produce from candidate positio
 **Status:** the terrain layer, the horizon renderer, the precomputed horizons and the matcher are
 built and tested. The matcher's verdicts are calibrated in simulation; on real photos it finds the
 right place for about 9 of 24 rover poses and reports most of the rest as `ambiguous`. Measured
-numbers and what is next: [`STATUS.md`](STATUS.md). The dominant-feature step and the HTTP API are
-not built yet. The file formats are in [`CONTRACTS.md`](CONTRACTS.md) (a draft until the team agrees).
+numbers and what is next: [`STATUS.md`](STATUS.md). The dominant-feature step and the HTTP server
+(`POST /locate`, `GET /health`, plus the skyline step's `/skyline` routes) are built and tested.
+The file formats are in [`CONTRACTS.md`](CONTRACTS.md) (a draft until the team agrees).
 
 ## Set up
 
@@ -46,6 +47,7 @@ Run them from `backend/`. On macOS and Linux use `.venv/bin/python` instead of `
 
 | Command | What it does |
 |---|---|
+| `.venv\Scripts\python -m uvicorn marsloc.api:app --port 8000` | **The server.** The app reaches it at `NEXT_PUBLIC_ENGINE_URL` (default `http://localhost:8000`). It loads the terrain and the precomputed horizons at start (about 2 s). CORS allows `http://localhost:3000`; add the hosted site with the environment variable `MARS_CORS_ORIGINS` (comma-separated). Open `/health` to see whether it is ready |
 | `.venv\Scripts\python -m pytest` | All tests. Tests that need the real DEM or the precomputed horizons are skipped when those are missing |
 | `.venv\Scripts\python scripts\check_terrain.py` | Lists the terrain sources, and reports tile problems and height steps where sources join |
 | `.venv\Scripts\python scripts\validate_sim.py --trials 300` | Locates simulated photos at random positions on the real terrain and reports errors, verdicts and whether the uncertainty circles hold. Table, per-trial JSON and an error map go to `reports/` (git-ignored). About 5 minutes with 8 workers |
@@ -61,6 +63,9 @@ Run them from `backend/`. On macOS and Linux use `.venv/bin/python` instead of `
 | `marsloc/horizon/render.py` | The horizon the terrain produces from a position: elevation angle and source point per azimuth |
 | `marsloc/horizon/store.py` | Precomputed horizons for a grid of candidate positions: build, quantize, load |
 | `marsloc/match/` | The matcher: photo binning, scoring, coarse and fine search, likelihood map, verdict, sun heading |
+| `marsloc/feature.py` | The dominant distant feature of a matched skyline: location, distance, and the distance cross-check with curvature |
+| `marsloc/contracts.py`, `marsloc/engine.py` | The `POST /locate` body as checked models; request in, result in the contract's format out |
+| `marsloc/api.py` | The HTTP server |
 | `marsloc/simulate.py` | Simulated photos on the real terrain, for testing the matcher |
 | `scripts/` | The commands above |
 | `tests/` | pytest |
