@@ -9,3 +9,6 @@ uvicorn
 pytest
 httpx
 matplotlib
+# For the skyline step's routes (backend/skyline), served by the same server:
+Pillow
+python-multipart

@@ -95,7 +95,8 @@ class FineSearch:
         self.config = config
         self.observations = observations
         self.groups = groups
-        self.step = config.fine_az_step_deg
+        covered = sum(float(np.ptp(o.az_offset_deg)) for o in observations)
+        self.step = config.fine_az_step_deg * (2.0 if covered > config.fine_wide_deg else 1.0)
         self.binned = [bin_group(observations, group, self.step) for group in groups]
         self.priors = [group.priors(observations) for group in groups]
         self.temper = self.step / config.correlation_deg

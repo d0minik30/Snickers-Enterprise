@@ -65,6 +65,8 @@ class MatcherConfig:
     prefilter_pool: int = 4            # first pass: bins of this many stored bins (4 x 0.5 = 2 deg)
     prefilter_keep: float = 0.20       # share of the candidates that go on to the second pass ...
     prefilter_min_keep: int = 1500     # ... but at least this many
+    prefilter_full_deg: float = 75.0   # with more skyline than this the share shrinks in proportion:
+                                       # more skyline screens better, and pass 2 costs more per candidate
     prefilter_headings: int = 3        # headings per candidate that go on
     coarse_offset_m: float = 115.0     # how far the true position is expected from a candidate (rms)
     coarse_fit_error_m: float = 30.0   # position error left after the offset fit of pass 2
@@ -76,6 +78,7 @@ class MatcherConfig:
     fine_start_m: float = 200.0        # first step of the search around a candidate
     fine_levels: int = 7               # the step halves each level: 200, 100, 50, ... 6.3, 3.1 m
     fine_az_step_deg: float = 0.25
+    fine_wide_deg: float = 120.0       # photos that cover more than this are refined with rays twice as far apart
     fine_heading_window_deg: float = 1.5
     fine_heading_step_deg: float = 0.05
     fine_render: RenderConfig = field(default_factory=lambda: STORE_CONFIG)

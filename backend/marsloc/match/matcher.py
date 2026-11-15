@@ -114,7 +114,9 @@ class Matcher:
         binned1 = [bin_group(observations, group, coarse.step1_deg) for group in groups]
         cost, cost_by_group = coarse.prefilter(None if rows.size == grid.n else rows, binned1, meta,
                                                priors, coarse.step1_deg / cfg.correlation_deg)
-        n_keep = min(rows.size, max(cfg.prefilter_min_keep, math.ceil(cfg.prefilter_keep * rows.size)))
+        skyline_deg = sum(b.weight.sum() for group in binned1 for b in group) * coarse.step1_deg
+        share = cfg.prefilter_keep * min(1.0, cfg.prefilter_full_deg / max(skyline_deg, 1e-9))
+        n_keep = min(rows.size, max(cfg.prefilter_min_keep, math.ceil(share * rows.size)))
         keep = np.sort(np.argpartition(cost, n_keep - 1)[:n_keep]) if n_keep < rows.size \
             else np.arange(rows.size)
         kept_rows = rows[keep]
