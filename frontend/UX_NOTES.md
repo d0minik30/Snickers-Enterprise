@@ -112,3 +112,12 @@ photos from NASA directly. Added a `.gitignore` exception for `frontend/public/d
   - Pauses when scrolled out of view; still image for people who turn off motion; falls back to a sky gradient
     if WebGL fails.
 - `three` added to dependencies. `npm run build` passes.
+
+## Landing page fixes after the example photos changed
+
+- The example photos were swapped (now 3 photos of pose 3/770), which broke the step 1 picture and made the
+  "74 m, 6 photos" line wrong. The landing page now reads the photo, the photo count and the distance from
+  `lib/locate/demo.ts` and its saved answer, so it stays right when they change again.
+- The 3D terrain no longer waits for all 36 NASA tiles: it shows at once as plain Mars-coloured relief and the
+  imagery paints in tile by tile. If NASA is slow or blocked, the scene still works. A failure is logged to the
+  browser console as "Marsfinder 3D terrain failed".
