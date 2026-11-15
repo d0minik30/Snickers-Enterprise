@@ -40,7 +40,7 @@ describe('mission store', () => {
   });
   it('stamps events with mission time', () => {
     let real = 1_000; const s = createMissionStore(fakeStorage(), fakeBus().connect(), () => real);
-    real = 3_000; expect(s.append(ev).tMs).toBe(60_000);            // 2 s real at 30x
+    real = 3_000; expect(s.append(ev).tMs).toBe(200_000);           // 2 s real at 100x
   });
   it('a window opened later rebuilds the same state from storage', () => {
     const storage = fakeStorage(), bus = fakeBus();
