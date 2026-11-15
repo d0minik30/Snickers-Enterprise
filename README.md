@@ -1,4 +1,4 @@
-# Mars Map – Interplanetary Survival Guide
+# Marsfinder – Interplanetary Survival Guide
 
 Navigation for a Mars traverse, built by team Snickers Enterprise for the
 **NASA Space Apps Challenge 2026** – challenge *"Interplanetary Survival Guide: Martian Map"*.
