@@ -3,6 +3,29 @@
 Kept current after each stage. Numbers are measured, not targets.
 Last update: 2026-11-15, 08:30 local.
 
+## Handoff: how to continue in a new session
+
+Everything of the engine is committed and pushed to `main`. To pick up:
+
+1. Read this file, `backend/CONTRACTS.md` and `backend/README.md`. Rules: work only in `backend/`
+   (not `backend/skyline/`, `frontend/`, `data/`); stage files by path; `git pull --rebase`, push.
+2. Check the state: from `backend/`, `.venv\Scripts\python -m pytest` (131 pass, about 2 min).
+3. Open work, most important first:
+   - **App ↔ server:** see "App's Locate screen" below for what was tried and what is left.
+   - **Real photos (16 of 24 poses not found):** needs Person 3. Seven poses have the up/down
+     shift at the ±0.3° limit (levelling), and site-3 truth headings are off by +0.7–0.9°. After
+     their fix rerun `backend/skyline/scripts/validate.py` (write the output to `backend/reports/`,
+     not over their file) and update the table below.
+   - **Circles too small** with several photos (hold 82–84 % instead of 95 %) and on real photos.
+     Where: `radius_for_mass` in `marsloc/match/likelihood.py`, the widening by
+     `fit_z/expected_fit_z` in `marsloc/match/matcher.py`. Measure with
+     `scripts/validate_sim.py --sets three pano --workers 8`.
+   - **Speed:** second coarse pass is 2.2 s of a 3.7 s single-photo request
+     (`CoarseIndex.likelihood` in `marsloc/match/coarse.py`).
+   - **Speed rule lost real pose 3/828** (`prefilter_full_deg` in `MatcherConfig`); revisit after
+     Person 3's fixes.
+   - Optional, never started: `.ply` export of the terrain for viewing.
+
 ## Where it stands
 
 | Stage | State |
