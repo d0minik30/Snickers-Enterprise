@@ -1,9 +1,11 @@
 import type { NextMoveView } from '@/components/field/fieldModel';
 import { TurnArrow } from '@/components/shared/TurnArrow';
+import { useEmbedded } from '@/components/shared/embedded';
 import styles from './field.module.css';
 
 /** Top band: the next move on the left, heading and waypoint count on the right. */
 export function NextMoveBand({ view }: { view: NextMoveView | null }) {
+  const embedded = useEmbedded();
   return (
     <section className={styles.nextMove} aria-label="Next move">
       <div className={styles.move} data-testid="field-next-move" aria-live="polite">
@@ -23,7 +25,7 @@ export function NextMoveBand({ view }: { view: NextMoveView | null }) {
           </>
         )}
       </div>
-      <div className={styles.moveSide}>
+      {!embedded && <div className={styles.moveSide}>
         <div className={styles.sideCell}>
           <span className={styles.sideLabel}>HDG</span>
           <span className={styles.sideValue}>{view ? view.heading : '---°'}</span>
@@ -34,7 +36,7 @@ export function NextMoveBand({ view }: { view: NextMoveView | null }) {
             {view ? `${view.waypointNumber} / ${view.waypointTotal}` : '- / -'}
           </span>
         </div>
-      </div>
+      </div>}
     </section>
   );
 }

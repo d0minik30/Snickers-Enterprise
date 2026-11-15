@@ -52,9 +52,11 @@ export function TopBar({ mode, onMode }: Props) {
         {tab('plan', 'PLAN')}
         {tab('live', 'WATCH')}
       </div>
-      <div className={styles.traverse}>
-        <span className={styles.traversePlace}>LANDING SITE&nbsp;→&nbsp;</span>{destination}
-      </div>
+      {!embedded && (
+        <div className={styles.traverse}>
+          <span className={styles.traversePlace}>LANDING SITE&nbsp;→&nbsp;</span>{destination}
+        </div>
+      )}
       {!embedded && <DemoControls />}
     </header>
   );

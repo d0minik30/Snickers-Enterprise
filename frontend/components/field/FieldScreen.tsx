@@ -63,9 +63,9 @@ export default function FieldScreen() {
           <div className={styles.fixGroup}>
             <button type="button" data-testid="field-photo-fix" className={styles.fixButton} onClick={photoFix}>
               PHOTO FIX
-              <span className={styles.fixButtonNote}>find my position · simulated, ±{PHOTO_FIX_ERROR_M} m from real engine runs</span>
+              {!embedded && <span className={styles.fixButtonNote}>find my position · simulated, ±{PHOTO_FIX_ERROR_M} m from real engine runs</span>}
             </button>
-            <Link href="/locate/" prefetch={false} className={styles.realFix} data-testid="field-real-fix">TAKE A REAL FIX →</Link>
+            {!embedded && <Link href="/locate/" prefetch={false} className={styles.realFix} data-testid="field-real-fix">TAKE A REAL FIX →</Link>}
           </div>
         )}
         {hydrated && state.pos && (
@@ -101,7 +101,7 @@ export default function FieldScreen() {
           onClose={done.close}
         />
       )}
-      {status !== 'awaiting-route' && <ReadoutBand cells={simpleCells(state)} fixCue={hydrated && cue.fix} />}
+      {status !== 'awaiting-route' && <ReadoutBand cells={embedded ? simpleCells(state).filter(c => c.label !== 'Speed') : simpleCells(state)} fixCue={hydrated && cue.fix} />}
     </main>
   );
 }

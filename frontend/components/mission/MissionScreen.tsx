@@ -52,11 +52,11 @@ export default function MissionScreen() {
         </header>
         <div className={styles.panes}>
           <section className={styles.earthPane} aria-label="Mission Control on Earth">
-            <p className={styles.paneLabel}>EARTH · MISSION CONTROL <span>plan the route and watch</span></p>
+            <p className={styles.paneLabel}>EARTH · MISSION CONTROL</p>
             <div className={styles.paneBody}><ControlScreen /></div>
           </section>
           <section className={styles.marsPane} aria-label="The crew on Mars">
-            <p className={styles.paneLabel}>MARS · THE CREW <span>what they see</span></p>
+            <p className={styles.paneLabel}>MARS · THE CREW</p>
             <div className={styles.paneBody}><FieldScreen /></div>
           </section>
         </div>

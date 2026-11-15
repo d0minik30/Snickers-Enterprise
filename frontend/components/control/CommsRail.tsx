@@ -5,6 +5,7 @@ import { earthClock, marsClock, uplinkText } from '@/components/control/controlM
 import type { ControlView, Downlink, Uplink } from '@/lib/mission/control';
 import { MAX_MESSAGE_LENGTH, SIGNAL_DELAY_MS, type MissionEvent } from '@/lib/mission/types';
 import { formatClock } from '@/lib/nav/format';
+import { useEmbedded } from '@/components/shared/embedded';
 import styles from './control.module.css';
 
 type Props = {
@@ -19,6 +20,7 @@ type Entry = { key: string; atMs: number; uplink?: Uplink; downlink?: Downlink }
 /** Right rail in Live mode: every signal in and out, newest first, with its delivery state; orders and messages. */
 export function CommsRail({ view, log, onOrder, onMessage }: Props) {
   const [draft, setDraft] = useState('');
+  const embedded = useEmbedded();
   const entries: Entry[] = [
     ...view.uplinks.map(u => ({ key: `u:${u.event.id}`, atMs: u.sentMs, uplink: u })),
     ...view.downlinks.map(d => ({ key: `d:${d.id}`, atMs: d.receivedMs, downlink: d })),
@@ -74,9 +76,9 @@ export function CommsRail({ view, log, onOrder, onMessage }: Props) {
           />
           <button type="submit" data-testid="msg-send" className={styles.msgSend} disabled={draft.trim() === ''}>SEND</button>
         </form>
-        <p className={styles.sendNote}>
+        {!embedded && <p className={styles.sendNote}>
           Will arrive at <span className={styles.sendDelay}>{earthClock(view.tMs + SIGNAL_DELAY_MS)}</span> UTC
-        </p>
+        </p>}
       </section>
     </aside>
   );

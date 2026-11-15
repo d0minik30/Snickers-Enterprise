@@ -5,6 +5,7 @@ import { QUICK_REPORTS, fieldLog, reportStatusShort } from '@/components/field/f
 import type { FieldState } from '@/lib/mission/field';
 import { MAX_MESSAGE_LENGTH, SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import { formatClock } from '@/lib/nav/format';
+import { useEmbedded } from '@/components/shared/embedded';
 import styles from './field.module.css';
 
 export type FieldPanel = 'none' | 'compose' | 'log';
@@ -15,6 +16,7 @@ export function CommsBar({ state, panel, onPanel }: { state: FieldState; panel: 
   const status = reportStatusShort(state);
   const composing = panel === 'compose';
   const logging = panel === 'log';
+  const embedded = useEmbedded(); // inside Mission, Earth's comms column already shows the log
   return (
     <div className={styles.commsBar}>
       <button
@@ -31,7 +33,7 @@ export function CommsBar({ state, panel, onPanel }: { state: FieldState; panel: 
         </span>
         {composing && <span className={styles.reportMuted}>DELAY {formatClock(SIGNAL_DELAY_MS)}</span>}
       </button>
-      <button
+      {!embedded && <button
         type="button"
         data-testid="field-log-toggle"
         className={`${styles.logButton} ${logging ? styles.logButtonOpen : ''}`}
@@ -46,7 +48,7 @@ export function CommsBar({ state, panel, onPanel }: { state: FieldState; panel: 
             {status.text}
           </span>
         )}
-      </button>
+      </button>}
     </div>
   );
 }

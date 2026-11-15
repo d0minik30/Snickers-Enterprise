@@ -57,8 +57,10 @@ export default function ControlScreen() {
     setChosenMode('live');
   };
 
+  const embedded = useEmbedded();
+  const quietLive = embedded && hydrated && mode === 'live';
   return (
-    <main className={`${styles.screen} ${hydrated && mode === 'plan' ? styles.noRight : ''}`}>
+    <main className={`${styles.screen} ${hydrated && mode === 'plan' ? styles.noRight : ''} ${quietLive ? styles.noStrip : ''}`}>
       <TopBar mode={hydrated ? mode : null} onMode={setChosenMode} />
       {hydrated && (mode === 'plan'
         ? <PlanMode draft={draft} inProgress={sent !== undefined} onSend={send} />
@@ -97,7 +99,8 @@ function LiveMode({ log, onPlan }: { log: MissionEvent[]; onPlan: () => void }) 
   const t = useMissionTime();
   const view = useMemo(() => controlViewAt(log, t), [log, t]);
   const timeline = useMemo(() => buildTimeline(view), [view]);
-  const overlays = useMemo(() => liveOverlays(view), [view]);
+  const embedded = useEmbedded();
+  const overlays = useMemo(() => liveOverlays(view, { quiet: embedded }), [view, embedded]);
   const [flagging, setFlagging] = useState(false);
   const [notice, setNotice] = useState<RerouteBlocker | null>(null);
   const [userMoved, setUserMoved] = useState(false);
@@ -172,7 +175,7 @@ function LiveMode({ log, onPlan }: { log: MissionEvent[]; onPlan: () => void }) 
           </button>
         )}
       </div>
-      <SignalTimeline timeline={timeline} />
+      {!embedded && <SignalTimeline timeline={timeline} />}
       <CommsRail
         view={view}
         log={log}

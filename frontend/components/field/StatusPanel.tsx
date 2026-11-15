@@ -56,17 +56,22 @@ function WaitingPanel() {
 /** The route has landed: its numbers and the Start button, docked at the bottom of the map. */
 function ReadyPanel({ state, onStart, onHeight }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const embedded = useEmbedded(); // inside Mission the step line says the route arrived
   useCoverHeight(ref, onHeight ?? NO_HEIGHT);
   const route = state.route!;
   const length = formatDistance(route.lengthM);
   const time = formatClock((route.lengthM / PACE_MPS[state.traveller ?? 'astronaut']) * 1000);
   return (
     <div ref={ref} className={`${styles.panel} ${styles.panelDocked}`} role="status">
-      <p className={styles.panelTitle}>THE ROUTE HAS ARRIVED</p>
-      <div className={styles.panelStats}>
-        <span><span className={styles.panelLabel}>LENGTH</span> {length.value} {length.unit}</span>
-        <span><span className={styles.panelLabel}>TIME</span> {time}</span>
-      </div>
+      {!embedded && (
+        <>
+          <p className={styles.panelTitle}>THE ROUTE HAS ARRIVED</p>
+          <div className={styles.panelStats}>
+            <span><span className={styles.panelLabel}>LENGTH</span> {length.value} {length.unit}</span>
+            <span><span className={styles.panelLabel}>TIME</span> {time}</span>
+          </div>
+        </>
+      )}
       <button type="button" data-testid="field-start" className={styles.startButton} onClick={onStart}>
         START
       </button>

@@ -7,6 +7,7 @@ import type { ControlView } from '@/lib/mission/control';
 import type { FieldStatus } from '@/lib/mission/field';
 import { SIGNAL_DELAY_MS, type MissionEvent } from '@/lib/mission/types';
 import { formatClock, formatDistance } from '@/lib/nav/format';
+import { useEmbedded } from '@/components/shared/embedded';
 import styles from './control.module.css';
 
 type Props = {
@@ -37,6 +38,7 @@ const STATUS_TONE: Record<FieldStatus, string> = {
 /** Left rail in Live mode: the field as Control last heard it, never as if it were current. */
 export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Props) {
   const { received } = view;
+  const embedded = useEmbedded(); // inside Mission, Mars shows the numbers and the step line says the state
   const sent = routeSentEvent(log);
   const hasRoute = view.activeRoute !== null || view.pendingRoute !== null;
   const hasData = received.status !== 'awaiting-route';
@@ -49,24 +51,26 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
         WHAT YOU SEE HERE IS {formatClock(view.dataAgeMs)} OLD
       </div>
 
-      <section className={styles.section}>
-        <div className={styles.travellerHead}>
+      {(!embedded || !hasData) && <section className={styles.section}>
+        {!embedded && <div className={styles.travellerHead}>
           <span className={styles.travellerName}>{view.traveller === 'rover' ? 'RV-1 · ROVER' : 'EV-1 · ASTRONAUT'}</span>
           {hasData && <span className={`${styles.travellerStatus} ${STATUS_TONE[received.status]}`}>{STATUS_TEXT[received.status]}</span>}
-        </div>
+        </div>}
         {!hasData && (
           <p className={styles.noData}>
             NOTHING HEARD FROM MARS YET
             {sent && <> · FIRST NEWS IN {formatClock(Math.max(0, sent.tMs + 2 * SIGNAL_DELAY_MS - view.tMs))}</>}
           </p>
         )}
-      </section>
+      </section>}
 
       {hasData && (
         <>
-          <section className={`${styles.section} ${styles.liveCells}`}>
-            {simpleCells(received).map(c => <Readout key={c.label} label={c.label} value={c.value} unit={c.unit} tone={c.tone} />)}
-          </section>
+          {!embedded && (
+            <section className={`${styles.section} ${styles.liveCells}`}>
+              {simpleCells(received).map(c => <Readout key={c.label} label={c.label} value={c.value} unit={c.unit} tone={c.tone} />)}
+            </section>
+          )}
 
           {progress && (
             <section className={styles.section}>
@@ -79,7 +83,7 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
             </section>
           )}
 
-          {received.status === 'moving' && ahead > 1 && (
+          {!embedded && received.status === 'moving' && ahead > 1 && (
             <section className={styles.section}>
               <p className={styles.note}>
                 By now they are probably about <span className={styles.noteValue}>{distanceText(ahead)}</span> further along.
@@ -111,7 +115,7 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan }: Prop
         <button type="button" data-testid="replan" className={styles.actionButton} disabled={!hasRoute} onClick={onReplan}>
           PLAN A NEW ROUTE FROM HERE
         </button>
-        <p className={styles.sendNote}>New routes reach Mars in <span className={styles.sendDelay}>{formatClock(SIGNAL_DELAY_MS)}</span></p>
+        {!embedded && <p className={styles.sendNote}>New routes reach Mars in <span className={styles.sendDelay}>{formatClock(SIGNAL_DELAY_MS)}</span></p>}
       </section>
     </aside>
   );

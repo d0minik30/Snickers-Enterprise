@@ -280,6 +280,14 @@ button.brand[aria-expanded='true'] .brandCaret {
     'left strip';
 }
 
+/* Watch inside the Mission screen has no signal timeline: the map takes the strip's row too. */
+.noStrip {
+  grid-template-rows: var(--top-height) minmax(0, 1fr);
+  grid-template-areas:
+    'top  top   top'
+    'left map   right';
+}
+
 .section {
   padding: var(--pad-y) var(--pad-x);
   border-bottom: 1px solid var(--rule);

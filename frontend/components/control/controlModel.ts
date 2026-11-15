@@ -287,7 +287,8 @@ function midpoint(points: LatLon[]): LatLon {
   return pointAlong(points, (cumulativeM(points).at(-1) ?? 0) / 2).pos;
 }
 
-export function liveOverlays(view: ControlView): MapOverlay[] {
+/** `quiet` drops the text tags a jury doesn't need (hazard and sand names, the earliest-reroute mark). */
+export function liveOverlays(view: ControlView, { quiet = false }: { quiet?: boolean } = {}): MapOverlay[] {
   const { received, activeRoute, pendingRoute, estimatedNow } = view;
   const shown = newestRoute(view);
   const dist = received.route ? received.distM : 0;
@@ -298,7 +299,7 @@ export function liveOverlays(view: ControlView): MapOverlay[] {
   for (const h of view.hazards) {
     const notYet = !h.atField && h.source === 'control';
     o.push({ kind: 'hazard', id: `hazard:${h.id}`, hazard: h, pending: notYet });
-    labels.push(notYet
+    if (notYet || !quiet) labels.push(notYet
       ? { kind: 'label', id: `label:hazard:${h.id}`, pos: h.center, text: 'MARKED · CREW NOT TOLD YET', tone: 'inverse', offsetY: 20 }
       : { kind: 'label', id: `label:hazard:${h.id}`, pos: h.center, text: h.label, tone: 'caution' });
   }
@@ -328,7 +329,7 @@ export function liveOverlays(view: ControlView): MapOverlay[] {
     });
     o.push({ kind: 'endpoint', id: 'endpoint:start', pos: shown.points[0], variant: 'start' });
     o.push({ kind: 'endpoint', id: 'endpoint:end', pos: shown.points[shown.points.length - 1], variant: 'end' });
-    if (canReroute(view)) { // a hazard flagged before this point cannot be routed around
+    if (!quiet && canReroute(view)) { // a hazard flagged before this point cannot be routed around
       const { pos: at, bearingDeg: heading } = pointAlong(shown.points, predictBranchDistM(view));
       const half = EARLIEST_REROUTE_TICK_M / 2;
       o.push({
@@ -355,7 +356,7 @@ export function liveOverlays(view: ControlView): MapOverlay[] {
     });
   }
   const sand = sandOverlays();
-  return [...sand.areas, ...o, ...sand.labels, ...labels];
+  return [...sand.areas, ...o, ...(quiet ? [] : sand.labels), ...labels];
 }
 
 /** A hazard this close to the stretch the traveller covers before a new route lands cannot be routed around. */

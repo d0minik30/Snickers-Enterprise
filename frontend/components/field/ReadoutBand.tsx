@@ -5,18 +5,18 @@ import styles from './field.module.css';
 
 type Props = { cells: Cell[]; bars?: BarCell[]; fixCue: boolean };
 
-const POS_ERROR_CELL = 3; // the accuracy cell shows the "fix acquired" cue
+const POS_ERROR_LABEL = 'Position accuracy'; // this cell shows the "fix acquired" cue
 const STEEP_DEG = 12; // slope or tilt above this shows amber, as on Control's route cards
 
 /** Bottom band: the readout cells, then the level bars if any. */
 export function ReadoutBand({ cells, bars, fixCue }: Props) {
   return (
     <section className={styles.readouts} aria-label="Readouts">
-      <div className={styles.cells}>
-        {cells.map((c, i) => (
+      <div className={styles.cells} style={cells.length === 3 ? { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' } : undefined}>
+        {cells.map(c => (
           <div key={c.label} className={styles.cell}>
             <Readout label={c.label} value={c.value} unit={c.unit} tone={c.tone} />
-            {i === POS_ERROR_CELL && fixCue && (
+            {c.label === POS_ERROR_LABEL && fixCue && (
               <span data-testid="field-fix-cue" className={styles.fixCue}>FIX ACQUIRED</span>
             )}
           </div>
