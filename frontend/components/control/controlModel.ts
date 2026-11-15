@@ -2,7 +2,8 @@ import { sandOverlays, type MapOverlay } from '@/components/map/overlays';
 import type { Tone } from '@/components/shared/Readout';
 import { hhmmss, lmstMs, perseveranceSol } from '@/lib/mission/marsTime';
 import { canReroute, predictBranchDistM, type ControlView, type Uplink } from '@/lib/mission/control';
-import { PACE_MPS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
+import { RESERVE_PERCENT, costPercent, lifeSupportAt } from '@/lib/mission/lifeSupport';
+import { PACE_MPS, SIGNAL_DELAY_MS, type MissionEvent, type TravellerKind } from '@/lib/mission/types';
 import { formatClock, formatDistance } from '@/lib/nav/format';
 import { bearingDeg, cumulativeM, destination, distanceM, pointAlong, slicePath } from '@/lib/nav/geo';
 import { DEMO_BOUNDS, DRIFT_PER_M, PHOTO_FIX_ERROR_M, PRESET_HAZARDS, isInsideHazard, positionErrorM, replan, spliceRoute } from '@/lib/planner';
@@ -394,6 +395,88 @@ export function buildReroute(view: ControlView, newHazard: Hazard | null): { rou
   const tail = replan(branch, newest.points[newest.points.length - 1], hazards, newest.profile);
   if (!tail) return null;
   return { route: spliceRoute(newest, branchDistM, tail), hazards };
+}
+
+// ---------------------------------------------------------------- oxygen (battery) on reroutes
+
+const PROFILES: RouteProfile[] = ['safest', 'shortest', 'flattest'];
+
+/** Oxygen (battery) as Field last reported it; a full tank when nothing has been heard yet. */
+function receivedPercent(view: ControlView): number | null {
+  if (!view.traveller) return null;
+  return lifeSupportAt(view.received)?.percent ?? 100;
+}
+
+/**
+ * What will be left when a route sent now lands: from the received state through both signal delays.
+ * Holding (or arrived) costs rest for that time; otherwise the crew is assumed to keep going to the
+ * furthest point a new route can meet them (`predictBranchDistM`), the cautious case.
+ */
+export function branchPercent(view: ControlView): number | null {
+  const now = receivedPercent(view);
+  if (now === null || !view.traveller) return null;
+  const still = view.received.status === 'holding' || view.received.status === 'arrived';
+  return now - (still
+    ? costPercent(view.traveller, 0, 2 * SIGNAL_DELAY_MS)
+    : costPercent(view.traveller, predictBranchDistM(view) - view.received.distM, 0));
+}
+
+/** Expected on arrival on the newest route, projected from the received state. Unclamped. */
+export function projectedArrivalPercent(view: ControlView): number | null {
+  const now = receivedPercent(view);
+  const route = newestRoute(view);
+  if (now === null || !route || !view.traveller) return null;
+  const restMs = view.received.status === 'holding' ? SIGNAL_DELAY_MS : 0;
+  return now - costPercent(view.traveller, route.lengthM - view.received.distM, restMs);
+}
+
+export type RerouteOption = {
+  kind: 'around' | 'back' | 'anyway'; route: Route; hazards: Hazard[]; endPercent: number; keepsReserve: boolean;
+};
+export type OxygenCheck = { options: RerouteOption[]; pick: RerouteOption['kind']; noneKeeps: boolean };
+
+/**
+ * A reroute with its oxygen (battery) checked. `send`: it keeps the reserve, send it as it is. `check`:
+ * it doesn't, so Control chooses between going around the hazard the way that leaves the most, turning
+ * back to the trip's start, or sending it anyway; `pick` is the app's recommendation. Null exactly when
+ * `buildReroute` is null (too late, too close, nothing to plan).
+ */
+export function planReroute(view: ControlView, newHazard: Hazard | null): { send: RerouteOption } | { check: OxygenCheck } | null {
+  const plain = buildReroute(view, newHazard);
+  const newest = newestRoute(view);
+  const atBranch = branchPercent(view);
+  if (!plain || !newest || atBranch === null || !view.traveller) return null;
+  const traveller = view.traveller;
+  const branchDistM = predictBranchDistM(view);
+  // A crew standing still is still where it stood when the new route lands: it walks from there.
+  const still = view.received.status === 'holding' || view.received.status === 'arrived';
+  const fromDistM = still ? view.received.distM : branchDistM;
+  const option = (kind: RerouteOption['kind'], route: Route): RerouteOption => {
+    const endPercent = atBranch - costPercent(traveller, route.lengthM - fromDistM, 0);
+    return { kind, route, hazards: plain.hazards, endPercent, keepsReserve: endPercent >= RESERVE_PERCENT };
+  };
+
+  const anyway = option('anyway', plain.route);
+  if (anyway.keepsReserve) return { send: anyway };
+
+  const branch = pointAlong(newest.points, branchDistM).pos;
+  const spliced = (to: LatLon, profile: RouteProfile) => {
+    const tail = replan(branch, to, plain.hazards, profile);
+    return tail ? spliceRoute(newest, branchDistM, tail) : null;
+  };
+  const around = PROFILES
+    .map(p => spliced(newest.points[newest.points.length - 1], p))
+    .filter((r): r is Route => r !== null)
+    .map(r => option('around', r))
+    .reduce<RerouteOption | null>((best, o) => (!best || o.endPercent > best.endPercent ? o : best), null);
+  const backRoute = spliced(newest.points[0], newest.profile);
+  const back = backRoute ? option('back', backRoute) : null;
+
+  const options = [around, back, around && around.route.id === anyway.route.id ? null : anyway]
+    .filter((o): o is RerouteOption => o !== null);
+  const keeper = [around, back].find(o => o?.keepsReserve);
+  const pick = keeper ?? options.reduce((best, o) => (o.endPercent > best.endPercent ? o : best));
+  return { check: { options, pick: pick.kind, noneKeeps: !keeper } };
 }
 
 export function uplinkText(u: Uplink): string {
