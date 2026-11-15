@@ -1,68 +1,131 @@
 import Link from 'next/link';
+import { formatClock } from '@/lib/nav/format';
+import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import styles from './page.module.css';
+
+const DELAY = formatClock(SIGNAL_DELAY_MS);
+
+// Live NASA Mars Trek tiles of Jezero Crater (MRO CTX, 6 m), zoom 11: a 6 × 6 block around the landing site.
+// Loaded straight from NASA like the rest of the site's imagery.
+const CTX = 'https://trek.nasa.gov/tiles/Mars/EQ/JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0/1.0.0//default/default028mm/11';
+const TILE_X = [2926, 2927, 2928, 2929, 2930, 2931];
+const TILE_Y = [811, 812, 813, 814, 815, 816];
+const TILES = TILE_Y.flatMap(y => TILE_X.map(x => `${CTX}/${y}/${x}.png`));
+// The Perseverance landing site inside that block, in percent (18.4447° N, 77.4508° E).
+const PIN = { left: '53.8%', top: '52.2%' };
+
+const EXAMPLE_PHOTO = '/demo-photos/NLF_0017_0668453452_115ECM_N0030578NCAM00186_01_290J.png';
 
 export default function Home() {
   return (
     <main className={styles.page}>
-      <header className={styles.hero}>
-        <p className={styles.kicker}>NASA SPACE APPS 2026 · TEAM SNICKERS ENTERPRISE</p>
-        <h1 className={styles.title}>MARS MAP</h1>
-        <p className={styles.lede}>
-          There is no GPS on Mars. This map finds where you are from a photo of the horizon.
-        </p>
-      </header>
-
-      <nav className={styles.choices} aria-label="Start here">
-        <Link href="/map/" className={`${styles.choice} ${styles.choiceMain}`} data-testid="choice-map">
-          <span className={styles.choiceTag}>START HERE</span>
-          <span className={styles.choiceTitle}>Where am I?</span>
-          <span className={styles.choiceText}>
-            Upload a photo of the Martian horizon. We match the skyline to the 3D terrain and put a pin on the map
-            where it was taken.
+      {/* ----------------------------------------------------------- hero */}
+      <section className={styles.hero}>
+        <div className={styles.mosaic} aria-hidden="true">
+          {TILES.map(src => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={src} src={src} alt="" loading="eager" />
+          ))}
+          <span className={styles.pin} style={PIN}>
+            <span className={styles.ring} />
+            <span className={styles.ring} />
+            <span className={styles.dot} />
+            <span className={styles.pinLabel}>YOU ARE HERE</span>
           </span>
-          <span className={styles.choiceGo}>OPEN THE MAP →</span>
-        </Link>
-        <Link href="/mission/" className={styles.choice} data-testid="choice-mission">
-          <span className={styles.choiceTag}>&nbsp;</span>
-          <span className={styles.choiceTitle}>Run a mission</span>
-          <span className={styles.choiceText}>
-            Plan a trip across Jezero Crater from Earth and watch the crew on Mars follow it, with the real radio delay.
-          </span>
-          <span className={styles.choiceGo}>START →</span>
-        </Link>
-      </nav>
+        </div>
+        <div className={styles.shade} aria-hidden="true" />
 
+        <nav className={styles.nav} aria-label="Main">
+          <Link href="/" className={styles.logo}>MARS MAP</Link>
+          <span className={styles.navLinks}>
+            <Link href="/map/">Map</Link>
+            <Link href="/mission/">Mission</Link>
+          </span>
+        </nav>
+
+        <div className={styles.heroText}>
+          <p className={styles.kicker}>NASA SPACE APPS 2026 · JEZERO CRATER</p>
+          <h1 className={styles.title}>Lost on Mars?<br /><span>Take a photo.</span></h1>
+          <p className={styles.lede}>
+            There is no GPS on Mars. Mars Map finds where you are by matching the skyline in your photos
+            to the shape of the land around you.
+          </p>
+          <div className={styles.ctas}>
+            <Link href="/map/" className={styles.ctaMain} data-testid="choice-map">FIND ME FROM A PHOTO →</Link>
+            <Link href="/mission/" className={styles.ctaSecond} data-testid="choice-mission">RUN A MISSION</Link>
+          </div>
+          <p className={styles.proof}>
+            <b>74 m</b> from NASA’s real rover position, using 6 Perseverance photos
+          </p>
+        </div>
+      </section>
+
+      {/* ----------------------------------------------------------- how it works */}
       <section className={styles.how} aria-labelledby="how">
-        <h2 id="how" className={styles.sectionTitle}>How “Where am I?” works</h2>
+        <h2 id="how" className={styles.sectionTitle}>How it works</h2>
         <ol className={styles.steps}>
-          <li><b>Take photos</b> of the horizon, a few in different directions.</li>
-          <li><b>Upload them</b> on the map.</li>
-          <li><b>We trace the skyline</b> and compare it with the terrain around Jezero.</li>
-          <li><b>A pin shows where you are</b>, and how sure we are.</li>
+          <li>
+            <div className={styles.visual}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={EXAMPLE_PHOTO} alt="A Perseverance Navcam photo of the horizon in Jezero Crater" />
+            </div>
+            <span className={styles.stepNo}>01</span>
+            <h3>Take photos</h3>
+            <p>Shoot the horizon in a few directions. A phone or a rover camera both work.</p>
+          </li>
+          <li>
+            <div className={`${styles.visual} ${styles.skyline}`} aria-hidden="true">
+              <svg viewBox="0 0 300 160" preserveAspectRatio="none">
+                <path className={styles.ridgeFar} d="M0 92 L30 84 L55 88 L80 70 L110 76 L140 58 L170 66 L200 54 L230 72 L260 64 L300 74 L300 160 L0 160Z" />
+                <path className={styles.ridgeLine} d="M0 92 L30 84 L55 88 L80 70 L110 76 L140 58 L170 66 L200 54 L230 72 L260 64 L300 74" />
+                <path className={styles.ridgeMatch} d="M0 96 L30 86 L55 90 L80 72 L110 79 L140 60 L170 69 L200 56 L230 74 L260 67 L300 77" />
+              </svg>
+            </div>
+            <span className={styles.stepNo}>02</span>
+            <h3>Match the skyline</h3>
+            <p>We trace the line where land meets sky and compare it with thousands of spots on the Mars terrain.</p>
+          </li>
+          <li>
+            <div className={`${styles.visual} ${styles.mini}`} aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`${CTX}/814/2929.png`} alt="" />
+              <span className={styles.miniPin} />
+            </div>
+            <span className={styles.stepNo}>03</span>
+            <h3>Get a pin</h3>
+            <p>Your position on the map, how sure we are, and which way each photo was facing.</p>
+          </li>
         </ol>
+        <Link href="/map/" className={styles.ctaMain}>TRY IT WITH EXAMPLE PHOTOS →</Link>
       </section>
 
-      <section className={styles.more} aria-labelledby="more">
-        <h2 id="more" className={styles.sectionTitle}>More</h2>
-        <ul className={styles.moreList}>
-          <li><Link href="/locate/">Locate (advanced)</Link> The same photo search with every detail: fix the traced skyline by hand, camera settings.</li>
-          <li><Link href="/validate/">Validate</Link> How well Locate does on real rover photos.</li>
-          <li><Link href="/control/">Control</Link> and <Link href="/field/">Field</Link> The two halves of a mission, to open in separate windows or on a phone.</li>
-        </ul>
+      {/* ----------------------------------------------------------- mission */}
+      <section className={styles.mission} aria-labelledby="mission">
+        <div>
+          <h2 id="mission" className={styles.sectionTitle}>Also: run a mission</h2>
+          <p className={styles.missionText}>
+            Plan a trip across Jezero Crater from Earth, send it, and watch the crew on Mars follow it.
+            Every message takes {DELAY} to arrive, just like the real thing.
+          </p>
+          <Link href="/mission/" className={styles.ctaSecond}>START A MISSION →</Link>
+        </div>
+        <dl className={styles.stats}>
+          <div><dt>Radio delay</dt><dd>{DELAY}</dd></div>
+          <div><dt>Routes to choose</dt><dd>3</dd></div>
+          <div><dt>Fastest time speed</dt><dd>1000×</dd></div>
+        </dl>
       </section>
 
-      <section className={styles.more} aria-labelledby="data">
-        <h2 id="data" className={styles.sectionTitle}>The data</h2>
-        <ul className={styles.moreList}>
-          <li><b>Terrain</b> HiRISE 1 m and CTX 20 m elevation models (USGS), the 3D terrain the photos are matched to.</li>
-          <li><b>Places</b> The base at the Perseverance landing site, and four mission sites: Western Delta Deposit, Western Breach, Northern Delta Deposit and Western Inflow Channel.</li>
-          <li><b>Clocks</b> A sped-up demo clock (UTC and Jezero local solar time with the sol number), not the real time now.</li>
-          <li><b>Simulated</b> The crew walking the route. Field's photo fix uses the accuracy of a real engine run (±47 m); Locate takes a real one.</li>
-        </ul>
-      </section>
-
+      {/* ----------------------------------------------------------- footer */}
       <footer className={styles.footer}>
-        Imagery: NASA / JPL-Caltech / USGS, via NASA Mars Trek. Terrain: NASA / JPL-Caltech / University of Arizona / USGS. Geology: USGS SIM 3464 (Sun &amp; Stack, 2020).
+        <span className={styles.logo}>MARS MAP</span>
+        <span className={styles.footerLinks}>
+          <Link href="/locate/">Locate (advanced)</Link>
+          <Link href="/validate/">Test results</Link>
+          <Link href="/control/">Control</Link>
+          <Link href="/field/">Field</Link>
+        </span>
+        <span className={styles.credits}>Team Snickers Enterprise · Imagery: NASA / JPL-Caltech / USGS via NASA Mars Trek</span>
       </footer>
     </main>
   );
