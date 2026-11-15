@@ -199,6 +199,56 @@ describe('oxygen on reroutes', () => {
     expect(r && 'check' in r).toBe(true);
   });
 
+  it('counts a hold Control has already sent but Field has not reported yet', () => {
+    const t = 700_000 + SIGNAL_DELAY_MS + 30 * 60_000;
+    const holdSent: MissionEvent = { id: 'h2', tMs: t - 60_000, type: 'message', origin: 'control', text: 'Hold.', order: 'hold' };
+    const v = controlViewAt([s2, start, holdSent], t);
+    expect(v.received.status).toBe('moving');
+    expect(lifeSupportAt(v.received)!.percent - branchPercent(v)!).toBeCloseTo(costPercent('astronaut', 0, 2 * SIGNAL_DELAY_MS), 6);
+  });
+
+  it('counts a proceed in transit as walking again', () => {
+    const v0 = heldView();
+    const go: MissionEvent = { id: 'p1', tMs: v0.tMs - 60_000, type: 'message', origin: 'control', text: 'Go.', order: 'proceed' };
+    const v = controlViewAt([s2, start, hold, go], v0.tMs);
+    expect(v.received.status).toBe('holding');
+    expect(lifeSupportAt(v.received)!.percent - branchPercent(v)!)
+      .toBeCloseTo(costPercent('astronaut', predictBranchDistM(v) - v.received.distM, 0), 6);
+  });
+
+  it('offers no turn back before the crew has set off', () => {
+    const v = controlViewAt([s2, start], 1_370_000); // Field has the route but had not started when it last reported
+    expect(v.received.status).toBe('ready');
+    const r = planReroute(v, nearEnd(), { alwaysCheck: true });
+    expect(r && 'check' in r && r.check.options.map(o => o.kind)).not.toContain('back');
+  });
+
+  it('leaves turn back out when there is no route back (crew within 40 m of the start)', () => {
+    const early: MissionEvent = { ...hold, tMs: 30_000 };
+    const r = planReroute(controlViewAt([s2, start, early], 710_000 + SIGNAL_DELAY_MS + HELD_MS), nearEnd(), { alwaysCheck: true });
+    expect(r && 'check' in r).toBe(true);
+    if (!r || !('check' in r)) return;
+    expect(r.check.options.map(o => o.kind)).not.toContain('back');
+    expect(r.check.options.length).toBeGreaterThan(0);
+  });
+
+  it('recommends what leaves the most when nothing keeps the reserve', () => {
+    const r = planReroute(controlViewAt([s2, start, hold], HOLD_SENT_MS + 2 * SIGNAL_DELAY_MS + 14 * 3_600_000), nearEnd());
+    if (!r || !('check' in r)) throw new Error('expected a check');
+    expect(r.check.noneKeeps).toBe(true);
+    const best = Math.max(...r.check.options.map(o => o.endPercent));
+    expect(r.check.options.find(o => o.kind === r.check.pick)!.endPercent).toBe(best);
+  });
+
+  it('checks the rover against its battery', () => {
+    const roverSent: MissionEvent = { ...s2, traveller: 'rover' } as MissionEvent;
+    const v = controlViewAt([roverSent, start, hold], HOLD_SENT_MS + 2 * SIGNAL_DELAY_MS + HELD_MS);
+    expect(lifeSupportAt(v.received)!.kind).toBe('battery');
+    expect(lifeSupportAt(v.received)!.percent - branchPercent(v)!).toBeCloseTo(costPercent('rover', 0, 2 * SIGNAL_DELAY_MS), 6);
+    const r = planReroute(v, nearEnd());
+    expect(r && 'send' in r).toBe(true); // nine hours idle and 6 km of driving leave plenty
+  });
+
   it('has nothing to offer when it is too late', () =>
     expect(planReroute(controlViewAt([sent, start], 2_380_000), null)).toBeNull());
 });

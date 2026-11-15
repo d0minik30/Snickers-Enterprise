@@ -408,14 +408,32 @@ function receivedPercent(view: ControlView): number | null {
 }
 
 /**
+ * Whether the crew will be standing still while a route sent now travels: what Field last reported,
+ * updated by hold / proceed orders Control sent that are not in that report yet (still in transit,
+ * or landed after it). Orders only change a crew that is under way, as at Field.
+ */
+function stillUntilRouteLands(view: ControlView): boolean {
+  const { status } = view.received;
+  if (status === 'arrived') return true;
+  if (status !== 'moving' && status !== 'holding') return false;
+  const notReported = view.tMs - 2 * SIGNAL_DELAY_MS; // orders sent after this are not in the received state
+  let still = status === 'holding';
+  for (const u of view.uplinks) {
+    const e = u.event;
+    if (e.type === 'message' && e.order && e.tMs > notReported) still = e.order === 'hold';
+  }
+  return still;
+}
+
+/**
  * What will be left when a route sent now lands: from the received state through both signal delays.
- * Holding (or arrived) costs rest for that time; otherwise the crew is assumed to keep going to the
- * furthest point a new route can meet them (`predictBranchDistM`), the cautious case.
+ * Standing still (see `stillUntilRouteLands`) costs rest for that time; otherwise the crew is assumed to
+ * keep going to the furthest point a new route can meet them (`predictBranchDistM`), the cautious case.
  */
 export function branchPercent(view: ControlView): number | null {
   const now = receivedPercent(view);
   if (now === null || !view.traveller) return null;
-  const still = view.received.status === 'holding' || view.received.status === 'arrived';
+  const still = stillUntilRouteLands(view);
   return now - (still
     ? costPercent(view.traveller, 0, 2 * SIGNAL_DELAY_MS)
     : costPercent(view.traveller, predictBranchDistM(view) - view.received.distM, 0));
@@ -426,14 +444,15 @@ export function projectedArrivalPercent(view: ControlView): number | null {
   const now = receivedPercent(view);
   const route = newestRoute(view);
   if (now === null || !route || !view.traveller) return null;
-  const restMs = view.received.status === 'holding' ? SIGNAL_DELAY_MS : 0;
+  const restMs = stillUntilRouteLands(view) ? SIGNAL_DELAY_MS : 0;
   return now - costPercent(view.traveller, route.lengthM - view.received.distM, restMs);
 }
 
 export type RerouteOption = {
   kind: 'around' | 'back' | 'anyway'; route: Route; hazards: Hazard[]; endPercent: number; keepsReserve: boolean;
 };
-export type OxygenCheck = { options: RerouteOption[]; pick: RerouteOption['kind']; noneKeeps: boolean };
+/** `atMs`: the mission time the figures were worked out at (a click works them out again). */
+export type OxygenCheck = { options: RerouteOption[]; pick: RerouteOption['kind']; noneKeeps: boolean; atMs: number };
 
 /**
  * A reroute with its oxygen (battery) checked. `send`: it keeps the reserve, send it as it is. `check`:
@@ -450,8 +469,7 @@ export function planReroute(view: ControlView, newHazard: Hazard | null, { alway
   const traveller = view.traveller;
   const branchDistM = predictBranchDistM(view);
   // A crew standing still is still where it stood when the new route lands: it walks from there.
-  const still = view.received.status === 'holding' || view.received.status === 'arrived';
-  const fromDistM = still ? view.received.distM : branchDistM;
+  const fromDistM = stillUntilRouteLands(view) ? view.received.distM : branchDistM;
   const option = (kind: RerouteOption['kind'], route: Route): RerouteOption => {
     const endPercent = atBranch - costPercent(traveller, route.lengthM - fromDistM, 0);
     return { kind, route, hazards: plain.hazards, endPercent, keepsReserve: endPercent >= RESERVE_PERCENT };
@@ -464,21 +482,24 @@ export function planReroute(view: ControlView, newHazard: Hazard | null, { alway
     const tail = replan(pointAlong(newest.points, atDistM).pos, to, plain.hazards, profile);
     return tail ? spliceRoute(newest, atDistM, tail) : null;
   };
+  // The plain reroute already is the tail for the newest route's own profile: plan only the other two.
   const around = PROFILES
-    .map(p => spliced(branchDistM, newest.points[newest.points.length - 1], p))
+    .map(p => (p === newest.profile ? plain.route : spliced(branchDistM, newest.points[newest.points.length - 1], p)))
     .filter((r): r is Route => r !== null)
     .map(r => option('around', r))
     .reduce<RerouteOption | null>((best, o) => (!best || o.endPercent > best.endPercent ? o : best), null);
   // Turning back starts where the crew will be: a holding crew turns round on the spot, not after
   // walking on to the branch point (towards the danger it is turning away from).
-  const backRoute = spliced(fromDistM, newest.points[0], newest.profile);
+  // Nothing to turn back from before the crew has set off.
+  const started = view.received.status !== 'ready' && view.received.status !== 'awaiting-route';
+  const backRoute = started ? spliced(fromDistM, newest.points[0], newest.profile) : null;
   const back = backRoute ? option('back', backRoute) : null;
 
   const options = [around, back, around && around.route.id === anyway.route.id ? null : anyway]
     .filter((o): o is RerouteOption => o !== null);
   const keeper = [around, back].find(o => o?.keepsReserve);
   const pick = keeper ?? options.reduce((best, o) => (o.endPercent > best.endPercent ? o : best));
-  return { check: { options, pick: pick.kind, noneKeeps: !keeper } };
+  return { check: { options, pick: pick.kind, noneKeeps: !keeper, atMs: view.tMs } };
 }
 
 /**

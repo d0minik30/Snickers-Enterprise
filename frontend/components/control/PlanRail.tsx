@@ -146,7 +146,7 @@ function RouteCard({ route, traveller, selected, onSelect }: CardProps) {
           <Readout label="Length" value={s.length} />
           <Readout label="Time" value={s.time} />
           <Readout label="Max slope" value={s.maxSlope} tone={slopeTone(route.maxSlopeDeg)} />
-          <Readout label={traveller === 'rover' ? 'Battery at end' : 'O₂ at end'} value={formatEndPercent(end)} tone={lifeTone(end)} />
+          <Readout label={traveller === 'rover' ? 'Battery at end' : 'O₂ at end'} value={formatEndPercent(end, { approx: false })} tone={lifeTone(end)} />
         </span>
       </span>
     </button>

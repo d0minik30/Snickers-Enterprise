@@ -1,6 +1,7 @@
 'use client';
 
-import { liveProgress, projectedArrivalPercent, routeSentEvent, type OxygenCheck, type RerouteBlocker, type RerouteOption } from '@/components/control/controlModel';
+import { useEffect, useId, useRef } from 'react';
+import { earthClock, liveProgress, projectedArrivalPercent, routeSentEvent, type OxygenCheck, type RerouteBlocker, type RerouteOption } from '@/components/control/controlModel';
 import { RESERVE_PERCENT, formatEndPercent, lifeSupportAt, lifeTone } from '@/lib/mission/lifeSupport';
 import { simpleCells } from '@/components/field/fieldModel';
 import { Readout } from '@/components/shared/Readout';
@@ -57,6 +58,15 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan, check,
   const ahead = view.estimatedNow ? view.estimatedNow.distM - received.distM : 0;
   const life = lifeSupportAt(received);
   const atArrival = projectedArrivalPercent(view);
+  // When the OXYGEN CHECK closes (a choice or cancel), the focused button is gone: put focus on Act.
+  const actHeading = useRef<HTMLHeadingElement>(null);
+  const hadCheck = useRef(false);
+  useEffect(() => {
+    if (hadCheck.current && !check && (document.activeElement === document.body || document.activeElement === null)) {
+      actHeading.current?.focus();
+    }
+    hadCheck.current = check !== null;
+  }, [check]);
 
   return (
     <aside className={`${styles.rail} ${styles.leftRail}`} aria-label="Live">
@@ -100,7 +110,7 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan, check,
         {hasData && life && atArrival !== null && received.status !== 'arrived' && (
           <p className={`${styles.lifeLine} ${styles.blockGap}`} data-testid="live-life">
             {life.kind === 'oxygen' ? 'OXYGEN' : 'BATTERY'} {Math.round(life.percent)} % ·{' '}
-            <span className={TONE_CLASS[lifeTone(atArrival)]}>≈ {formatEndPercent(atArrival)} AT ARRIVAL</span>
+            <span className={TONE_CLASS[lifeTone(atArrival)]}>{formatEndPercent(atArrival)} AT ARRIVAL</span>
           </p>
         )}
 
@@ -112,7 +122,7 @@ export function LiveRail({ view, log, flagging, notice, onFlag, onReplan, check,
       </section>
 
       <section className={styles.actions} aria-label="Act">
-        <h2 className={styles.heading}><span>Act</span></h2>
+        <h2 className={styles.heading} ref={actHeading} tabIndex={-1}><span>Act</span></h2>
         {notice === 'too-late' && (
           <p data-testid="too-late" className={styles.tooLate} role="alert">TOO LATE TO CHANGE THE ROUTE · THEY WILL HAVE ARRIVED</p>
         )}
@@ -146,13 +156,23 @@ function OxygenCheckCard({ check, battery, onChoose, onCancel }: {
   check: OxygenCheck; battery: boolean; onChoose: (kind: RerouteOption['kind']) => void; onCancel: () => void;
 }) {
   const asked = check.options.find(o => o.kind === 'anyway') ?? check.options.find(o => o.kind === 'around');
+  const titleId = useId();
+  const cancel = useRef(onCancel);
+  useEffect(() => {
+    cancel.current = onCancel;
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel.current(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   return (
-    <div className={styles.oxygenCheck} data-testid="oxygen-check" role="alert">
-      <p className={styles.oxygenTitle}>{battery ? 'BATTERY CHECK' : 'OXYGEN CHECK'}</p>
-      <p className={styles.oxygenWhy}>
+    <div className={styles.oxygenCheck} data-testid="oxygen-check" role="group" aria-labelledby={titleId}>
+      <p className={styles.oxygenTitle} id={titleId}>{battery ? 'BATTERY CHECK' : 'OXYGEN CHECK'}</p>
+      <p className={styles.oxygenWhy} role="status">
         {check.noneKeeps
           ? `No option keeps the ${RESERVE_PERCENT} % reserve. Highlighted: the one that leaves the most.`
-          : `This route ends at ≈ ${asked ? formatEndPercent(asked.endPercent) : '—'} · reserve is ${RESERVE_PERCENT} %. Highlighted: recommended.`}
+          : `This route ends at ${asked ? formatEndPercent(asked.endPercent) : '—'} · reserve is ${RESERVE_PERCENT} %. Highlighted: recommended.`}
       </p>
       {check.options.map(o => (
         <button
@@ -160,13 +180,14 @@ function OxygenCheckCard({ check, battery, onChoose, onCancel }: {
           type="button"
           data-testid={`oxygen-${o.kind}`}
           className={`${styles.actionButton} ${o.kind === check.pick ? styles.oxygenPick : ''}`}
-          aria-label={`${OPTION_LABEL[o.kind]}, about ${formatEndPercent(o.endPercent)} at the end${o.kind === check.pick ? ', recommended' : ''}`}
           onClick={() => onChoose(o.kind)}
         >
-          {OPTION_LABEL[o.kind]} · ≈ {formatEndPercent(o.endPercent)}
+          {OPTION_LABEL[o.kind]} · {formatEndPercent(o.endPercent)}
+          {o.kind === check.pick && <span className={styles.srOnly}> (recommended)</span>}
         </button>
       ))}
-      <button type="button" className={styles.oxygenCancel} onClick={onCancel}>CANCEL</button>
+      <p className={styles.oxygenAge}>Figures from {earthClock(check.atMs)} · a click works them out again</p>
+      <button type="button" className={styles.oxygenCancel} data-testid="oxygen-cancel" onClick={onCancel}>CANCEL · ESC</button>
     </div>
   );
 }

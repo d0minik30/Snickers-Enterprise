@@ -1301,6 +1301,11 @@ button.brand[aria-expanded='true'] .brandCaret {
   color: var(--surface);
 }
 
+.oxygenAge {
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .oxygenCancel {
   padding: 4px 0;
   color: var(--muted);

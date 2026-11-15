@@ -118,6 +118,14 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
     return () => clearTimeout(timer);
   }, [notice]);
 
+  // An open OXYGEN CHECK that can no longer be acted on (too late, too close, arrived) gives way to the notice.
+  const staleBlocker = pending ? rerouteBlocker(view, pending.hazard) : null;
+  useEffect(() => {
+    if (!staleBlocker) return;
+    setPending(null);
+    setNotice(staleBlocker);
+  }, [staleBlocker]);
+
   useEffect(() => {
     if (!flagging) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFlagging(false); };
