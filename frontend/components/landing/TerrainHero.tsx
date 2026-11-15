@@ -22,33 +22,45 @@ const TEX = { lonW: TX0 * TILE_DEG - 180, lonE: (TX0 + TN) * TILE_DEG - 180, lat
 type Grid = { rows: number; cols: number; bounds: [[number, number], [number, number]]; scale: number; nodata: number; data: Int16Array };
 
 async function loadGrid(): Promise<Grid> {
-  const meta = await (await fetch('/data/elevation_grid.json')).json();
-  const buf = await (await fetch(`/data/${meta.data_file}`)).arrayBuffer();
+  const get = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+    return res;
+  };
+  const meta = await (await get('/data/elevation_grid.json')).json();
+  const buf = await (await get(`/data/${meta.data_file}`)).arrayBuffer();
   const n = meta.rows * meta.cols;
   return { rows: meta.rows, cols: meta.cols, bounds: meta.bounds, scale: meta.scale, nodata: meta.nodata, data: new Int16Array(buf, 0, n) };
 }
 
-/** The CTX tiles stitched on a canvas and warmed to Mars colours (the tiles are greyscale). */
-async function loadTexture(): Promise<HTMLCanvasElement> {
+/**
+ * The surface image: starts as plain Mars-coloured ground so the terrain shows at once, then each NASA CTX
+ * tile is painted in (and warmed to Mars colours, the tiles are greyscale) as it arrives. A slow or blocked
+ * NASA server only means less detail, never an empty page.
+ */
+function startTexture(onTile: () => void): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = TN * 256;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#8a8a8a';
+  ctx.fillStyle = '#a8623c';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  await Promise.all(Array.from({ length: TN * TN }, (_, i) => new Promise<void>(resolve => {
+  for (let i = 0; i < TN * TN; i++) {
     const x = i % TN, y = Math.floor(i / TN);
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => { ctx.drawImage(img, x * 256, y * 256); resolve(); };
-    img.onerror = () => resolve();
+    img.onload = () => {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(img, x * 256, y * 256);
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = '#e8925c';
+      ctx.fillRect(x * 256, y * 256, 256, 256);
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.fillStyle = '#ffb37a';
+      ctx.fillRect(x * 256, y * 256, 256, 256);
+      onTile();
+    };
     img.src = `${TILE_URL}/${TY0 + y}/${TX0 + x}.png`;
-  })));
-  ctx.globalCompositeOperation = 'multiply';
-  ctx.fillStyle = '#e8925c';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.globalCompositeOperation = 'soft-light';
-  ctx.fillStyle = '#ffb37a';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
   return canvas;
 }
 
@@ -166,10 +178,13 @@ export default function TerrainHero() {
     io.observe(host);
 
     (async () => {
-      const [grid, texCanvas] = await Promise.all([loadGrid(), loadTexture()]);
+      const grid = await loadGrid();
       if (disposed) return;
       const { geo, heightAt } = buildTerrain(grid, 2);
-      const tex = new THREE.CanvasTexture(texCanvas);
+      // eslint-disable-next-line prefer-const
+      let tex: THREE.CanvasTexture;
+      const texCanvas = startTexture(() => { if (tex) tex.needsUpdate = true; });
+      tex = new THREE.CanvasTexture(texCanvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       const terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex }));
@@ -261,7 +276,7 @@ export default function TerrainHero() {
       };
       setReady(true);
       tick();
-    })().catch(() => { if (!disposed) setFailed(true); });
+    })().catch(e => { console.error('Marsfinder 3D terrain failed:', e); if (!disposed) setFailed(true); });
 
     return () => {
       disposed = true;

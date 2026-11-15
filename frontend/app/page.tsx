@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { DEMO_PHOTOS, DEMO_TRUTH, demoAnswerFor } from '@/lib/locate/demo';
 import { formatClock } from '@/lib/nav/format';
+import { distanceM } from '@/lib/nav/geo';
 import { SIGNAL_DELAY_MS } from '@/lib/mission/types';
 import { HeroBackground } from '@/components/landing/HeroBackground';
 import styles from './page.module.css';
@@ -10,7 +12,10 @@ const DELAY = formatClock(SIGNAL_DELAY_MS);
 // Loaded straight from NASA like the rest of the site's imagery.
 const CTX = 'https://trek.nasa.gov/tiles/Mars/EQ/JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0/1.0.0//default/default028mm/11';
 
-const EXAMPLE_PHOTO = '/demo-photos/NLF_0017_0668453452_115ECM_N0030578NCAM00186_01_290J.png';
+// The example photos and their saved answer can change (lib/locate/demo.ts): read them, don't hard-code them.
+const EXAMPLE_PHOTO = DEMO_PHOTOS[0].url;
+const demo = demoAnswerFor(DEMO_PHOTOS.map(p => ({ sha256: p.sha256, name: p.id })));
+const DEMO_ERROR_M = demo ? Math.round(distanceM(demo.result.best, DEMO_TRUTH)) : null;
 
 export default function Home() {
   return (
@@ -39,9 +44,11 @@ export default function Home() {
             <Link href="/map/" className={styles.ctaMain} data-testid="choice-map">FIND ME FROM A PHOTO →</Link>
             <Link href="/mission/" className={styles.ctaSecond} data-testid="choice-mission">RUN A MISSION</Link>
           </div>
-          <p className={styles.proof}>
-            <b>74 m</b> from NASA’s real rover position, using 6 Perseverance photos
-          </p>
+          {DEMO_ERROR_M !== null && demo?.result.status === 'ok' && (
+            <p className={styles.proof}>
+              <b>{DEMO_ERROR_M} m</b> from NASA’s real rover position, using {DEMO_PHOTOS.length} Perseverance photos
+            </p>
+          )}
         </div>
       </section>
 
