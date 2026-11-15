@@ -1,4 +1,4 @@
-# Mars Map — Field HUD + Control view
+# Marsfinder — website (landing, Where am I? map, Mission, Locate)
 
 A demo of navigation for a Mars traverse across an **11 min 20 s one-way signal delay**.
 It has two screens that stay in sync across two browser windows, plus a standalone Jezero map:
