@@ -859,6 +859,48 @@ button.brand[aria-expanded='true'] .brandCaret {
   letter-spacing: var(--track-label);
 }
 
+/* Live before any route is sent: what to do next, over the map. */
+.liveEmpty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 28px;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  text-align: center;
+}
+
+.liveEmptyTitle {
+  font-size: var(--type-big);
+  font-weight: 700;
+  letter-spacing: var(--track-title);
+}
+
+.liveEmptyNote {
+  font-size: var(--type-body);
+  color: var(--muted);
+}
+
+.liveEmptyButton {
+  margin-top: 8px;
+  padding: 10px 22px;
+  background: var(--text);
+  color: var(--surface);
+  font-size: var(--type-title);
+  font-weight: 700;
+  letter-spacing: var(--track-label);
+}
+
+:where(.screen) .liveEmptyButton {
+  background: var(--text);
+  color: var(--surface);
+}
+
 .fitButton {
   position: absolute;
   right: 12px;

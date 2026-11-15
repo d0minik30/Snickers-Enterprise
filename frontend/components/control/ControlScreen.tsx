@@ -59,7 +59,7 @@ export default function ControlScreen() {
       <TopBar mode={hydrated ? mode : null} onMode={setChosenMode} />
       {hydrated && (mode === 'plan'
         ? <PlanMode draft={draft} inProgress={sent !== undefined} onSend={send} />
-        : <LiveMode log={snapshot.log} />)}
+        : <LiveMode log={snapshot.log} onPlan={() => setChosenMode('plan')} />)}
     </main>
   );
 }
@@ -90,7 +90,7 @@ function PlanMode({ draft, inProgress, onSend }: { draft: PlanDraft; inProgress:
 const TOO_LATE_SHOW_MS = 6000; // real time the "too late" notice stays up
 
 /** Live mode: the field as last heard, the estimate of now, the comms log and the signal timeline. */
-function LiveMode({ log }: { log: MissionEvent[] }) {
+function LiveMode({ log, onPlan }: { log: MissionEvent[]; onPlan: () => void }) {
   const t = useMissionTime();
   const view = useMemo(() => controlViewAt(log, t), [log, t]);
   const timeline = useMemo(() => buildTimeline(view), [view]);
@@ -155,6 +155,13 @@ function LiveMode({ log }: { log: MissionEvent[] }) {
       />
       <div className={styles.mapArea} onPointerDown={() => setUserMoved(true)} onWheel={() => setUserMoved(true)}>
         <MarsMap overlays={overlays} camera={camera} onMapClick={onMapClick} armed={flagging} interactive />
+        {!newest && (
+          <div className={styles.liveEmpty} data-testid="live-empty">
+            <p className={styles.liveEmptyTitle}>NO ROUTE SENT YET</p>
+            <p className={styles.liveEmptyNote}>Live shows the traverse once a route is on its way to the field.</p>
+            <button type="button" className={styles.liveEmptyButton} onClick={onPlan}>PLAN A ROUTE</button>
+          </div>
+        )}
         {flagging && <div className={styles.mapHint} role="status">CLICK THE MAP TO FLAG A HAZARD · ESC TO CANCEL</div>}
         {userMoved && newest && (
           <button type="button" className={styles.fitButton} onPointerDown={e => e.stopPropagation()} onClick={() => setUserMoved(false)}>
